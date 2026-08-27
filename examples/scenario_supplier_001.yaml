@@ -1,7 +1,29 @@
+$schema: ../schemas/scenario-v1.schema.json
+
 scenario:
   id: supplier_001
   version: 1
   title: Industrial computer supplier negotiation
+  language: ru
+  currency: EUR
+
+  authoring_status:
+    state: draft
+    missing_required_definitions:
+      - protocol.max_rounds
+      - terms.required_and_optional
+      - terms.canonical_opening_offer
+      - term_model.composition_rules
+      - term_model.evaluation_rules
+      - constraints.hard
+      - utility.value_functions
+      - utility.composite_evaluation_rules
+      - zopa.expected_condition
+      - review.reveal_policy
+      - compiler.version_metadata
+
+  protocol:
+    pass_allowed: false
 
   scope:
     price:
@@ -19,86 +41,156 @@ scenario:
     governing_law:
       depth: excluded
 
-  player:
-    role: buyer
-    company: Vector
+  knowledge_model:
+    entities:
+      - id: seller.cashflow_pressure
+        subject_role: seller
+        value_schema: boolean
+        truth:
+          source: authored
+          value: true
+        knowledge_owner_roles:
+          - seller
+        discoverability: dialogue_evidence
 
-    brief:
-      opening_offer: 120000
-      quantity: 100
-      budget_ceiling: 115000
-      target_price: 105000
-      preferred_delivery: "2026-11-15"
-      launch_date: "2026-12-01"
+      - id: seller.can_accelerate_delivery
+        subject_role: seller
+        value_schema: boolean
+        truth:
+          source: authored
+          value: true
+        knowledge_owner_roles:
+          - seller
+        discoverability: dialogue_evidence
 
-    batna:
-      description: Competitor offer
-      nominal_price: 108000
-      utility: 68
+  term_model:
+    primitives:
+      money:
+        currency: EUR
+      percentage:
+        minimum: 0.0
+        maximum: 1.0
+      quantity:
+        unit: device
+        integer: true
+        minimum: 0
+      date:
+        format: date
+      schedule: {}
+      condition: {}
+      contingency: {}
+      obligation: {}
 
-    interests:
-      price:
-        weight: 0.35
-      delivery:
-        weight: 0.30
-      integration_risk:
-        weight: 0.25
-      payment_flexibility:
-        weight: 0.10
+    capabilities:
+      conditional_trade:
+        primitives:
+          - percentage
+          - date
+          - condition
+          - obligation
+        validators:
+          - every_condition_has_then_obligation
 
-    known_capabilities:
-      max_prepayment: 1.0
+      split_delivery:
+        subject_role: seller
+        primitives:
+          - quantity
+          - date
+          - schedule
+        validators:
+          - positive_batch_quantity
+          - total_quantity_matches_order
 
-  npc:
-    role: seller
-    company: Nord Systems
+      contingent_reserve:
+        subject_role: seller
+        primitives:
+          - quantity
+          - date
+          - condition
+          - contingency
+          - obligation
+        validators:
+          - reserve_quantity_not_above_order_quantity
+          - condition_uses_authored_verification_rule
 
-    opening_offer:
-      price: 120000
-      payment: net_30_after_delivery
-      delivery_weeks: 8
+  roles:
+    buyer:
+      company: Vector
 
-    batna:
-      utility: 62
-      approximate_value: 103000
+      brief:
+        opening_offer: 120000
+        quantity: 100
+        budget_ceiling: 115000
+        target_price: 105000
+        preferred_delivery: "2026-11-15"
+        launch_date: "2026-12-01"
 
-    interests:
-      price:
-        weight: 0.35
-      early_payment:
-        weight: 0.35
-      delivery_load:
-        weight: 0.15
-      future_business:
-        weight: 0.15
+      batna:
+        description: Competitor offer
+        nominal_price: 108000
+        utility: 68
 
-    hidden_facts:
-      - id: cashflow_pressure
-        importance: high
-      - id: can_accelerate_delivery
-        importance: high
+      constraints:
+        reservation_utility: 68
 
-    constraints:
-      minimum_utility: 62
+      interests:
+        price:
+          weight: 0.35
+        delivery:
+          weight: 0.30
+        integration_risk:
+          weight: 0.25
+        payment_flexibility:
+          weight: 0.10
+
+      known_capabilities:
+        max_prepayment: 1.0
+
+    seller:
+      company: Nord Systems
+
+      opening_offer:
+        price: 120000
+        payment: net_30_after_delivery
+        delivery_weeks: 8
+
+      batna:
+        utility: 62
+        approximate_value: 103000
+
+      interests:
+        price:
+          weight: 0.35
+        early_payment:
+          weight: 0.35
+        delivery_load:
+          weight: 0.15
+        future_business:
+          weight: 0.15
+
+      constraints:
+        reservation_utility: 62
+
+  distractors: []
 
   assistance:
     guided:
-      expose_player_priorities: true
+      expose_actor_priorities: true
       show_detected_signals: true
       show_coaching: true
 
     easy:
-      expose_player_priorities: true
+      expose_actor_priorities: true
       show_detected_signals: true
       show_coaching: false
 
     normal:
-      expose_player_priorities: false
+      expose_actor_priorities: false
       show_detected_signals: false
       show_coaching: false
 
     expert:
-      expose_player_priorities: false
+      expose_actor_priorities: false
       show_detected_signals: false
       show_coaching: false
-      add_ambiguous_context: true
+      distractor_ids: []

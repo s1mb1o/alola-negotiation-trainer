@@ -1,0 +1,836 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://negotiation-trainer.local/schemas/scenario-v1.schema.json",
+  "title": "Negotiation Trainer Scenario v1",
+  "type": "object",
+  "required": [
+    "scenario"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "scenario": {
+      "$ref": "#/$defs/scenario"
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "title",
+        "language",
+        "currency",
+        "authoring_status",
+        "protocol",
+        "scope",
+        "knowledge_model",
+        "term_model",
+        "roles",
+        "distractors",
+        "assistance"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "authoring_status": {
+          "$ref": "#/$defs/authoringStatus"
+        },
+        "protocol": {
+          "$ref": "#/$defs/protocol"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "knowledge_model": {
+          "$ref": "#/$defs/knowledgeModel"
+        },
+        "term_model": {
+          "$ref": "#/$defs/termModel"
+        },
+        "terms": {
+          "$ref": "#/$defs/terms"
+        },
+        "hard_constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hardConstraint"
+          }
+        },
+        "utility_model": {
+          "$ref": "#/$defs/utilityModel"
+        },
+        "zopa": {
+          "$ref": "#/$defs/zopa"
+        },
+        "review": {
+          "$ref": "#/$defs/review"
+        },
+        "compiler": {
+          "$ref": "#/$defs/compiler"
+        },
+        "roles": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 2,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/role"
+          }
+        },
+        "distractors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/distractor"
+          }
+        },
+        "assistance": {
+          "$ref": "#/$defs/assistance"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authoring_status": {
+                "properties": {
+                  "state": {
+                    "const": "published"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "terms",
+              "hard_constraints",
+              "utility_model",
+              "zopa",
+              "review",
+              "compiler"
+            ],
+            "properties": {
+              "authoring_status": {
+                "properties": {
+                  "missing_required_definitions": {
+                    "maxItems": 0
+                  }
+                }
+              },
+              "protocol": {
+                "required": [
+                  "max_rounds"
+                ]
+              },
+              "term_model": {
+                "required": [
+                  "composition_rules",
+                  "evaluation_rules"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "authoringStatus": {
+      "type": "object",
+      "required": [
+        "state",
+        "missing_required_definitions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "draft",
+            "published"
+          ]
+        },
+        "missing_required_definitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "pass_allowed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pass_allowed": {
+          "type": "boolean"
+        },
+        "max_rounds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_consecutive_clarifications": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "depth"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "depth": {
+            "enum": [
+              "full",
+              "medium",
+              "principle_only",
+              "excluded"
+            ]
+          }
+        }
+      }
+    },
+    "knowledgeModel": {
+      "type": "object",
+      "required": [
+        "entities"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeEntity"
+          }
+        }
+      }
+    },
+    "knowledgeEntity": {
+      "type": "object",
+      "required": [
+        "id",
+        "subject_role",
+        "value_schema",
+        "truth",
+        "knowledge_owner_roles",
+        "discoverability"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.]*$"
+        },
+        "subject_role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "value_schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "boolean",
+                "integer",
+                "number",
+                "string",
+                "date",
+                "money"
+              ]
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "truth": {
+          "type": "object",
+          "required": [
+            "source",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "enum": [
+                "authored",
+                "derived",
+                "authored_runtime_event"
+              ]
+            },
+            "value": {}
+          }
+        },
+        "knowledge_owner_roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "discoverability": {
+          "oneOf": [
+            {
+              "enum": [
+                "never",
+                "dialogue_evidence",
+                "objective_verification"
+              ]
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "disclosure_rule": {
+          "type": "object"
+        },
+        "verification_rule": {
+          "type": "object"
+        },
+        "sensitivity": {
+          "enum": [
+            "public",
+            "private",
+            "secret"
+          ]
+        }
+      }
+    },
+    "termModel": {
+      "type": "object",
+      "required": [
+        "primitives",
+        "capabilities"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "primitives": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/capability"
+          }
+        },
+        "composition_rules": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/compositionRule"
+          }
+        },
+        "evaluation_rules": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/evaluationRule"
+          }
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "required": [
+        "primitives",
+        "validators"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "subject_role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "primitives": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "validators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        }
+      }
+    },
+    "compositionRule": {
+      "type": "object",
+      "required": [
+        "root_type",
+        "allowed_primitives",
+        "validator_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "root_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "allowed_primitives": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "validator_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        }
+      }
+    },
+    "evaluationRule": {
+      "type": "object",
+      "required": [
+        "applies_to_roles",
+        "input_types",
+        "expression"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "applies_to_roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "input_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "expression": {
+          "type": "object",
+          "minProperties": 1
+        }
+      }
+    },
+    "terms": {
+      "type": "object",
+      "required": [
+        "definitions",
+        "required_term_ids",
+        "optional_term_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "definitions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "value_schema",
+              "evaluation_rule_ids"
+            ],
+            "properties": {
+              "value_schema": {
+                "type": "object"
+              },
+              "evaluation_rule_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required_term_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional_term_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hardConstraint": {
+      "type": "object",
+      "required": [
+        "id",
+        "applies_to_role",
+        "expression"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "applies_to_role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "expression": {
+          "type": "object"
+        },
+        "violation_code": {
+          "type": "string"
+        }
+      }
+    },
+    "utilityModel": {
+      "type": "object",
+      "required": [
+        "normalization",
+        "role_models"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "normalization": {
+          "type": "object",
+          "required": [
+            "minimum",
+            "maximum"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "minimum": {
+              "type": "number"
+            },
+            "maximum": {
+              "type": "number"
+            }
+          }
+        },
+        "role_models": {
+          "type": "object",
+          "minProperties": 2,
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "reservation_utility",
+              "aggregation",
+              "value_functions"
+            ],
+            "properties": {
+              "reservation_utility": {
+                "type": "number"
+              },
+              "aggregation": {
+                "enum": [
+                  "weighted_sum",
+                  "piecewise_weighted_sum"
+                ]
+              },
+              "value_functions": {
+                "type": "object",
+                "minProperties": 1
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "zopa": {
+      "type": "object",
+      "required": [
+        "expected_condition",
+        "training_intent"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expected_condition": {
+          "enum": [
+            "non_empty",
+            "empty",
+            "not_constrained"
+          ]
+        },
+        "training_intent": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": [
+        "reveal_policy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reveal_policy": {
+          "type": "object"
+        }
+      }
+    },
+    "compiler": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "compiler_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "compiler_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "role": {
+      "type": "object",
+      "required": [
+        "company",
+        "batna",
+        "constraints",
+        "interests"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "company": {
+          "type": "string",
+          "minLength": 1
+        },
+        "brief": {
+          "type": "object"
+        },
+        "opening_offer": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "batna": {
+          "type": "object",
+          "required": [
+            "utility"
+          ],
+          "properties": {
+            "utility": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "constraints": {
+          "type": "object",
+          "required": [
+            "reservation_utility"
+          ],
+          "properties": {
+            "reservation_utility": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "interests": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "weight"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "known_capabilities": {
+          "type": "object"
+        }
+      }
+    },
+    "distractor": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "content",
+        "truth_note",
+        "audience_role",
+        "delivery_condition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "wrong_opinion",
+            "outdated",
+            "contradictory",
+            "irrelevant"
+          ]
+        },
+        "content": {
+          "type": "string"
+        },
+        "truth_note": {
+          "type": "string"
+        },
+        "audience_role": {
+          "type": "string"
+        },
+        "delivery_condition": {
+          "type": "object"
+        },
+        "canonical_reference": {
+          "type": "string"
+        },
+        "paraphrasing_allowed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "assistance": {
+      "type": "object",
+      "required": [
+        "guided",
+        "easy",
+        "normal",
+        "expert"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "guided": {
+          "$ref": "#/$defs/assistanceMode"
+        },
+        "easy": {
+          "$ref": "#/$defs/assistanceMode"
+        },
+        "normal": {
+          "$ref": "#/$defs/assistanceMode"
+        },
+        "expert": {
+          "$ref": "#/$defs/assistanceMode"
+        }
+      }
+    },
+    "assistanceMode": {
+      "type": "object",
+      "required": [
+        "expose_actor_priorities",
+        "show_detected_signals",
+        "show_coaching"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expose_actor_priorities": {
+          "type": "boolean"
+        },
+        "show_detected_signals": {
+          "type": "boolean"
+        },
+        "show_coaching": {
+          "type": "boolean"
+        },
+        "distractor_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

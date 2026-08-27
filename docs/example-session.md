@@ -8,6 +8,17 @@ Player: Vector, buyer of 100 industrial computers.
 
 NPC: Nord Systems, supplier.
 
+Language: Russian (`ru`).
+
+Assistance mode: Normal.
+
+Assistance usage: none.
+
+Session participants:
+
+- `buyer`: human controller;
+- `seller`: built-in NPC controller.
+
 ### Player brief
 
 - Nord offer: €120,000.
@@ -29,7 +40,7 @@ NPC: Nord Systems, supplier.
 
 ---
 
-## Turn 1
+## Round 1
 
 ### Open channel
 
@@ -58,7 +69,7 @@ NPC makes a small test concession.
 
 ---
 
-## Turn 2
+## Round 2
 
 ### Open channel
 
@@ -80,7 +91,7 @@ The player moved from pure price bargaining toward integrative negotiation.
 
 ---
 
-## Turn 3
+## Round 3
 
 ### Open channel
 
@@ -104,7 +115,7 @@ The player revealed that Nov 10 has value, but received something concrete in ex
 
 ---
 
-## Turn 4
+## Round 4
 
 ### Open channel
 
@@ -118,11 +129,17 @@ NPC:
 
 ### Under the hood
 
-A new deal dimension was created:
+A concrete runtime deal structure was created:
 
 ```text
 split delivery
 ```
+
+The structure uses an authored delivery-schedule primitive and an authored split-delivery capability.
+
+The extractor proposes the concrete schedule. The engine validates it.
+
+The scenario author does not need to enumerate this exact 10/90 schedule.
 
 The player moved from the position:
 
@@ -132,11 +149,11 @@ to the underlying interest:
 
 > enough units early to reduce integration risk.
 
-This creates a Pareto improvement.
+This move is intended to create a Pareto improvement. The executable utility model must verify the improvement.
 
 ---
 
-## Turn 5
+## Round 5
 
 ### Open channel
 
@@ -160,9 +177,11 @@ Negative:
 
 This is information leakage.
 
+The event model first records the statement as a participant claim. The engine records a true disclosure only after it compares the claim with the participant's private authored state.
+
 ---
 
-## Turn 6
+## Round 6
 
 ### Open channel
 
@@ -176,7 +195,7 @@ NPC:
 
 ### Under the hood
 
-New dimension:
+An authored latent term became active:
 
 ```text
 quality reserve / FOC
@@ -186,7 +205,7 @@ Again, the player moves away from pure price bargaining.
 
 ---
 
-## Turn 7
+## Round 7
 
 ### Open channel
 
@@ -204,15 +223,19 @@ This is a contingent agreement.
 
 The player is buying availability and risk reduction, not simply asking for free hardware.
 
-New dimension:
+A runtime contingent structure was created:
 
 ```text
 risk allocation
 ```
 
+The structure combines authored quantity, date, condition, obligation, and payment primitives.
+
+The engine can score it only when the scenario provides capabilities and deterministic evaluation rules for this composition.
+
 ---
 
-## Turn 8
+## Round 8
 
 ### Open channel
 
@@ -240,6 +263,56 @@ FOC principle = agreed
 RMA wording = agreed_in_principle
 legal drafting = out_of_scope
 ```
+
+The NPC accepts only a commercial principle in this turn. This is not formal acceptance of a complete deal.
+
+The transcript intentionally stops before a formal terminal transition.
+
+A complete version must materialize one offer revision and use the contextual confirmation flow in `docs/offer-session-protocol.md`.
+
+## Protocol appendix
+
+This appendix illustrates the accepted interaction protocol.
+
+It assumes that a published successor to the draft scenario defines every required term and evaluation rule.
+
+The engine has one complete active offer revision.
+
+The preceding dialogue discussed both the RMA principle and the complete commercial package.
+
+Participant:
+
+> Согласен.
+
+The context permits two meanings.
+
+The participant may agree only with the RMA principle, or with the complete offer.
+
+The engine does not bind an agreement.
+
+It returns:
+
+```text
+result = clarification_required
+next_actor = same participant
+question = "Вы соглашаетесь только с принципом RMA или принимаете всё предложение?"
+```
+
+Participant:
+
+> Принимаю всё предложение целиком.
+
+The engine validates one complete active revision.
+
+It returns `confirmation_required` and the complete materialized terms.
+
+Participant:
+
+> Подтверждаю полное принятие этого предложения.
+
+The engine validates the pending revision again.
+
+It atomically freezes the deal and enters `agreement_reached`.
 
 ---
 

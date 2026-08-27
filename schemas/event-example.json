@@ -1,31 +1,115 @@
 {
+  "$schema": "./negotiation-event-v1.schema.json",
+  "fixture_purpose": "event_contract_example",
+  "schema_version": 1,
   "event_id": "evt_006",
-  "session_id": "sess_abc123",
-  "round": 5,
-  "actor": "player",
-  "type": "PLAYER_CONDITIONAL_OFFER",
+  "session_id": "sess_protocol_fixture_001",
+  "seq": 6,
+  "session_revision": 6,
+  "command_id": "cmd_006",
+  "causation_id": "cmd_006",
+  "timestamp": "2026-08-27T12:00:00Z",
+  "round": 3,
+  "participant_id": "participant_buyer",
+  "role": "buyer",
+  "type": "PARTICIPANT_ACTION_COMMITTED",
+  "language": "ru",
+  "visibility": "internal",
   "raw_message": "Мы готовы внести 50% предоплаты при условии поставки 10 ноября.",
-  "parsed": {
+  "extractor_output": {
     "speech_acts": [
       "proposal",
       "conditional_offer"
     ],
-    "deal_changes": {
-      "prepayment": 0.5,
-      "delivery_date": "2026-11-10"
-    },
-    "information_revealed": [
-      "delivery_is_important"
+    "proposed_action": "counter_offer",
+    "proposed_runtime_terms": [
+      {
+        "type": "condition",
+        "if": {
+          "type": "obligation",
+          "participant_role": "buyer",
+          "term": {
+            "type": "percentage",
+            "semantic": "prepayment_fraction",
+            "value": 0.5
+          }
+        },
+        "then": {
+          "type": "obligation",
+          "participant_role": "seller",
+          "term": {
+            "type": "date",
+            "semantic": "delivery_date",
+            "value": "2026-11-10"
+          }
+        }
+      }
+    ],
+    "proposed_evidence": [
+      {
+        "knowledge_item_id": "interest.buyer.delivery.importance",
+        "observer_participant_id": "participant_seller",
+        "signal": "positive",
+        "strength": 0.7,
+        "source_span": "при условии поставки 10 ноября",
+        "source_event_id": "evt_006"
+      }
     ]
   },
+  "validation": {
+    "action": "accepted",
+    "runtime_terms": "accepted",
+    "evidence": "accepted"
+  },
   "state_effect": {
-    "dimensions_opened": [
-      "payment",
-      "delivery"
+    "offer": {
+      "offer_id": "offer_01",
+      "offer_revision": 3,
+      "base_offer_id": "offer_01",
+      "base_offer_revision": 2,
+      "materialized_terms": {
+        "price": 113000,
+        "currency": "EUR",
+        "quantity": 100,
+        "prepayment": 0.5,
+        "delivery_date": "2026-11-10",
+        "incoterm": "DDP"
+      },
+      "unresolved_required_terms": [
+        "remaining_payment_due"
+      ]
+    },
+    "offer_lifecycle_changes": [
+      {
+        "offer_id": "offer_01",
+        "offer_revision": 2,
+        "status_before": "active",
+        "status_after": "superseded"
+      },
+      {
+        "offer_id": "offer_01",
+        "offer_revision": 3,
+        "status_before": null,
+        "status_after": "active"
+      }
     ],
-    "player_utility_before": 70,
-    "player_utility_after": 76,
-    "npc_utility_before": 69,
-    "npc_utility_after": 74
+    "next_actor_after": "participant_seller",
+    "substantive_turn_count_before": 5,
+    "substantive_turn_count_after": 6,
+    "round_before": 3,
+    "round_after": 3,
+    "hypothesis_creations": [],
+    "belief_updates": [
+      {
+        "observer_participant_id": "participant_seller",
+        "knowledge_item_id": "interest.buyer.delivery.importance",
+        "confidence_before": 0.1,
+        "confidence_after": 0.52,
+        "evidence_event_ids": [
+          "evt_006"
+        ],
+        "update_policy_version": "belief-v1"
+      }
+    ]
   }
 }

@@ -24,13 +24,23 @@ For MVP, weighted piecewise functions are sufficient.
 
 BATNA is the best alternative to a negotiated agreement.
 
-A deal is acceptable when:
+BATNA utility is an input to the reservation utility.
+
+The reservation utility is the authoritative threshold for economic acceptability and built-in policy acceptance.
+
+A scenario may define a justified difference between BATNA utility and reservation utility. The justification can include switching cost, execution risk, or another authored adjustment.
+
+A deal is acceptable when all hard constraints pass and:
 
 \[
-U(deal) > U(BATNA)
+U(deal) \ge reservation\_utility
 \]
 
 This is more general than a single price floor.
+
+A human or external-agent participant may bind a deal below its own reservation utility when every hard constraint passes.
+
+The review must identify that economic failure.
 
 A supplier may accept a lower price in exchange for:
 
@@ -46,6 +56,14 @@ A supplier may accept a lower price in exchange for:
 ZOPA is the set of deals acceptable to both parties.
 
 In a multi-dimensional negotiation, it should be thought of as a region in deal space, not only an interval on price.
+
+The ZOPA can be empty.
+
+An intentional no-ZOPA scenario can train BATNA discipline and a correct walk-away decision.
+
+The scenario must declare the expected ZOPA condition or training intent.
+
+The scenario linter reports ZOPA status and compares it with the declared intent. It does not reject an intentional no-ZOPA scenario only because the ZOPA is empty.
 
 ---
 
@@ -150,6 +168,34 @@ MVP does not need this unless required by a scenario.
 
 ---
 
+## Authored semantics and runtime structures
+
+Each utility-bearing primitive and evaluation rule must be declared by the immutable scenario version.
+
+The declaration defines the primitive identifier, type, unit, valid domain, capabilities, composition rules, and role-specific value function.
+
+The declaration maps interests to one or more primitives or derived values.
+
+A latent term is authored but may remain unavailable until its activation condition occurs.
+
+A participant may create a concrete composite structure at runtime.
+
+The structure can include a schedule, condition, contingency, obligation, option, or service level.
+
+The engine validates the structure against authored capabilities, constraints, composition rules, and evaluation rules.
+
+A valid runtime structure can affect utility even when the author did not enumerate that concrete package.
+
+A proposal outside the compiled scenario grammar is an `unscored_proposal`.
+
+The engine may let participants discuss, clarify, or decline an `unscored_proposal`.
+
+An `unscored_proposal` cannot affect deal validity, ZOPA, or utility. It cannot become binding.
+
+An LLM must not estimate provisional utility for an `unscored_proposal`.
+
+---
+
 ## Information discovery
 
 Players should not see hidden utility weights.
@@ -158,11 +204,22 @@ The player learns through dialogue.
 
 The engine may track:
 
-- facts discovered;
-- critical facts discovered;
-- inferred interests;
-- confidence levels;
+- validated evidence;
+- true disclosures;
+- participant-scoped beliefs;
+- grounded and ungrounded hypotheses;
+- confidence levels and evidence event IDs;
 - information leakage.
+
+The scenario compiler can create atomic knowledge-item definitions from authored domain entities.
+
+The extractor proposes evidence from dialogue.
+
+The belief engine applies a deterministic and versioned confidence update.
+
+The UI derives display labels from confidence.
+
+See `docs/knowledge-and-emergent-state.md` for the normative state model.
 
 Potential metric:
 
@@ -200,6 +257,10 @@ Example:
 
 This converts disagreement about probability into a contract conditional on outcome.
 
+The contingent structure must use compiled DSL primitives and authored evaluation rules.
+
+The engine stores the concrete runtime structure as a validated typed tree.
+
 ---
 
 ## Objective criteria
@@ -214,3 +275,7 @@ Example:
 - agreed logs or acceptance procedure.
 
 The negotiation trainer should distinguish between negotiating principles and detailed contract drafting.
+
+An `agreed_in_principle` term is non-binding.
+
+A binding deal requires confirmation of one complete active offer revision under `docs/offer-session-protocol.md`.

@@ -50,7 +50,7 @@ The training layer answers:
 ### Value creation
 
 - identifying differently-valued terms;
-- creating new dimensions;
+- creating validated runtime deal structures;
 - split delivery;
 - volume/price trades;
 - payment/price trades;
@@ -77,6 +77,10 @@ Better feedback:
 
 > When the supplier said payment terms mattered, you immediately offered flexibility without first asking what they would provide in return. This revealed a valuable resource before pricing it.
 
+Each feedback claim must reference one or more evidence event IDs.
+
+Evidence events include claims, extracted signals, belief updates, contradiction detection, exposed bluffs, runtime term creation, delivered hints, delivered distractors, offers, clarification requests, and accepted state transitions.
+
 ---
 
 ## Replay / deliberate practice
@@ -87,7 +91,7 @@ Example:
 
 > At turn 4, you were close to a local optimum because the discussion remained focused on price.
 
-Allow the player to replay from that turn.
+Allow the player to replay from the exact session revision before that action.
 
 This creates:
 
@@ -124,13 +128,77 @@ Try to trade payment flexibility for something valuable to you.
 
 Show facts and probable interests.
 
+The labels are actor-safe views derived from belief confidence and visible evidence.
+
 ### Normal
 
 Show only brief + public state.
 
 ### Expert
 
-Show ambiguity and noisy information.
+Show authored ambiguous, conflicting, outdated, or irrelevant information.
+
+An LLM may paraphrase visible distractor content. It must not invent facts or change numbers.
+
+Store the exact rendered distractor content as a participant delivery event.
+
+Keep the authored `truth_note` and other hidden evaluation data outside the participant observation.
+
+---
+
+## Outcome and skill scores
+
+The outcome score measures the economic result.
+
+Hints and assistance do not reduce the outcome score.
+
+The skill score records assistance usage and assistance mode.
+
+The review lists the delivered assistance and its evidence events.
+
+The skill score is an intended cross-mode comparator. Do not claim cross-mode validity until the formula is calibrated and validated.
+
+A rational walk-away can be a successful outcome in an intentional no-ZOPA scenario.
+
+---
+
+## Bluffing and claims
+
+Bluffing is permitted.
+
+The evaluator does not apply a moral penalty for a bluff.
+
+Each participant has a claim ledger.
+
+The engine keeps claims separate from verified facts and inferred interests.
+
+The extractor records a claim and proposed evidence.
+
+The deterministic belief engine updates confidence.
+
+An ungrounded hypothesis remains participant belief state. It does not become scenario truth.
+
+An unexposed bluff is not information leakage.
+
+An exposed contradiction may reduce credibility and change counterparty policy.
+
+The review reports the evidence and observed consequence without moral language.
+
+---
+
+## Benchmark evaluation
+
+Each independent benchmark trial uses a fresh session.
+
+Each tested agent plays both roles.
+
+The runner repeats trials with a fixed scenario version and fixed run configuration.
+
+Benchmark trials disable hints and training assistance.
+
+The runner reports results by role and across repetitions.
+
+The benchmark keeps hidden information sealed until the complete run set is finished.
 
 ---
 
