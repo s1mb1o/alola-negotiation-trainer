@@ -1,0 +1,31 @@
+{
+  "event_id": "evt_006",
+  "session_id": "sess_abc123",
+  "round": 5,
+  "actor": "player",
+  "type": "PLAYER_CONDITIONAL_OFFER",
+  "raw_message": "Мы готовы внести 50% предоплаты при условии поставки 10 ноября.",
+  "parsed": {
+    "speech_acts": [
+      "proposal",
+      "conditional_offer"
+    ],
+    "deal_changes": {
+      "prepayment": 0.5,
+      "delivery_date": "2026-11-10"
+    },
+    "information_revealed": [
+      "delivery_is_important"
+    ]
+  },
+  "state_effect": {
+    "dimensions_opened": [
+      "payment",
+      "delivery"
+    ],
+    "player_utility_before": 70,
+    "player_utility_after": 76,
+    "npc_utility_before": 69,
+    "npc_utility_after": 74
+  }
+}

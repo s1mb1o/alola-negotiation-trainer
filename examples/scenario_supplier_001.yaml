@@ -1,0 +1,104 @@
+scenario:
+  id: supplier_001
+  version: 1
+  title: Industrial computer supplier negotiation
+
+  scope:
+    price:
+      depth: full
+    payment:
+      depth: full
+    delivery:
+      depth: full
+    foc:
+      depth: full
+    replacement:
+      depth: full
+    rma:
+      depth: principle_only
+    governing_law:
+      depth: excluded
+
+  player:
+    role: buyer
+    company: Vector
+
+    brief:
+      opening_offer: 120000
+      quantity: 100
+      budget_ceiling: 115000
+      target_price: 105000
+      preferred_delivery: "2026-11-15"
+      launch_date: "2026-12-01"
+
+    batna:
+      description: Competitor offer
+      nominal_price: 108000
+      utility: 68
+
+    interests:
+      price:
+        weight: 0.35
+      delivery:
+        weight: 0.30
+      integration_risk:
+        weight: 0.25
+      payment_flexibility:
+        weight: 0.10
+
+    known_capabilities:
+      max_prepayment: 1.0
+
+  npc:
+    role: seller
+    company: Nord Systems
+
+    opening_offer:
+      price: 120000
+      payment: net_30_after_delivery
+      delivery_weeks: 8
+
+    batna:
+      utility: 62
+      approximate_value: 103000
+
+    interests:
+      price:
+        weight: 0.35
+      early_payment:
+        weight: 0.35
+      delivery_load:
+        weight: 0.15
+      future_business:
+        weight: 0.15
+
+    hidden_facts:
+      - id: cashflow_pressure
+        importance: high
+      - id: can_accelerate_delivery
+        importance: high
+
+    constraints:
+      minimum_utility: 62
+
+  assistance:
+    guided:
+      expose_player_priorities: true
+      show_detected_signals: true
+      show_coaching: true
+
+    easy:
+      expose_player_priorities: true
+      show_detected_signals: true
+      show_coaching: false
+
+    normal:
+      expose_player_priorities: false
+      show_detected_signals: false
+      show_coaching: false
+
+    expert:
+      expose_player_priorities: false
+      show_detected_signals: false
+      show_coaching: false
+      add_ambiguous_context: true

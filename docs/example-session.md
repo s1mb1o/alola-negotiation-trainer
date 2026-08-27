@@ -1,0 +1,263 @@
+# Example Negotiation Session
+
+This is a condensed example based on the design discussion.
+
+## Scenario
+
+Player: Vector, buyer of 100 industrial computers.
+
+NPC: Nord Systems, supplier.
+
+### Player brief
+
+- Nord offer: €120,000.
+- Budget ceiling: €115,000.
+- Preferred target: €105,000.
+- Alternative supplier: €108,000, but worse hardware and additional integration risk.
+- Preferred delivery: before Nov 15.
+- Player can be flexible on prepayment.
+- Project launch: Dec 1.
+
+### Hidden NPC state
+
+- Target price: €112,000+.
+- BATNA equivalent value: about €103,000.
+- Early payment: very valuable.
+- Delivery acceleration: relatively cheap.
+- Cash-flow pressure: hidden.
+- Future business: moderately valuable.
+
+---
+
+## Turn 1
+
+### Open channel
+
+Player:
+
+> Качество нас устраивает полностью, но предложение выходит за выделенный бюджет. Имеется ли возможность оптимизировать стоимость?
+
+NPC:
+
+> Определённый запас есть. При стандартных условиях можем рассмотреть около €116,000.
+
+### Under the hood
+
+Player did well:
+
+- did not reveal exact budget;
+- did not reveal BATNA;
+- used external constraint.
+
+Player also revealed:
+
+- product is strongly preferred;
+- price is an obstacle.
+
+NPC makes a small test concession.
+
+---
+
+## Turn 2
+
+### Open channel
+
+Player:
+
+> У нас есть возможность предложить вам оплату части продукта авансом. Насколько это будет интересно?
+
+NPC:
+
+> 50% аванса позволит обсуждать около €113,000.
+
+### Under the hood
+
+Hidden interest discovered:
+
+- early payment matters.
+
+The player moved from pure price bargaining toward integrative negotiation.
+
+---
+
+## Turn 3
+
+### Open channel
+
+Player:
+
+> Мы готовы внести 50% предоплаты при условии DDP 10 ноября.
+
+NPC:
+
+> €113,000, 50% аванс, DDP 10 ноября выглядит реализуемо.
+
+### Under the hood
+
+This is a conditional trade:
+
+```text
+50% prepayment ↔ earlier delivery
+```
+
+The player revealed that Nov 10 has value, but received something concrete in exchange.
+
+---
+
+## Turn 4
+
+### Open channel
+
+Player:
+
+> Мы готовы внести 100% предоплаты за 10 единиц, чтобы завершить интеграцию, если получим их в начале ноября. Остальные приемлемо получить 20 ноября.
+
+NPC:
+
+> 10 единиц — 5–7 ноября, 90 — до 20 ноября. При такой структуре можем обсуждать €111,000.
+
+### Under the hood
+
+A new deal dimension was created:
+
+```text
+split delivery
+```
+
+The player moved from the position:
+
+> all 100 units early
+
+to the underlying interest:
+
+> enough units early to reduce integration risk.
+
+This creates a Pareto improvement.
+
+---
+
+## Turn 5
+
+### Open channel
+
+Player:
+
+> Мы достаточно гибки по предоплате, особенно при хорошей цене.
+
+NPC:
+
+> Тогда могу предложить €109,500 при сохранении согласованного графика.
+
+### Under the hood
+
+Positive:
+
+- player signaled a trade direction.
+
+Negative:
+
+- player revealed that prepayment flexibility is cheap without first forcing the supplier to price it.
+
+This is information leakage.
+
+---
+
+## Turn 6
+
+### Open channel
+
+Player:
+
+> Ещё хотели обсудить % Free of Charge на случай брака.
+
+NPC:
+
+> Обычно можем предложить 1% FOC. Для 2–3% нужно обсуждать структуру.
+
+### Under the hood
+
+New dimension:
+
+```text
+quality reserve / FOC
+```
+
+Again, the player moves away from pure price bargaining.
+
+---
+
+## Turn 7
+
+### Open channel
+
+Player:
+
+> Желательно иметь 3 устройства и быструю замену. После 1 декабря готовы оплатить лишние устройства, если они окажутся невостребованными.
+
+NPC:
+
+> Три устройства могут быть резервом до 1 декабря. Использованные при подтверждённом браке — FOC. Неиспользованные — оплачиваются.
+
+### Under the hood
+
+This is a contingent agreement.
+
+The player is buying availability and risk reduction, not simply asking for free hardware.
+
+New dimension:
+
+```text
+risk allocation
+```
+
+---
+
+## Turn 8
+
+### Open channel
+
+Player proposes:
+
+- immediate substitution from reserve;
+- failed unit returned for diagnosis;
+- payment outcome depends on diagnosis.
+
+NPC accepts the principle but asks to clarify the defect criteria.
+
+### Under the hood
+
+The negotiation moves into objective criteria.
+
+The trainer should detect a boundary:
+
+- commercial principle is in scope;
+- detailed legal/RMA drafting may be out of scope.
+
+The scenario can mark:
+
+```text
+FOC principle = agreed
+RMA wording = agreed_in_principle
+legal drafting = out_of_scope
+```
+
+---
+
+## Training observations
+
+Strong moves in the example:
+
+- conditional trading;
+- discovering payment importance;
+- split delivery;
+- moving from position to underlying interest;
+- contingent agreement;
+- risk allocation.
+
+Possible weaknesses:
+
+- revealing product preference;
+- revealing payment flexibility too cheaply;
+- not testing supplier BATNA;
+- not explicitly testing how much earlier payment is worth;
+- risk of over-negotiating once the deal is already strong.
