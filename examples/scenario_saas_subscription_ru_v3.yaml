@@ -1,0 +1,170 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: saas_subscription_ru
+  version: 3
+  title: Годовая подписка на аналитическую платформу
+  language: ru
+  currency: RUB
+  authoring_status:
+    state: published
+    missing_required_definitions: []
+  protocol:
+    pass_allowed: true
+    max_rounds: 12
+    max_consecutive_clarifications: 3
+  scope:
+    commercial_terms: {depth: full}
+    implementation: {depth: medium}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: seller.quarter_deadline
+        subject_role: seller
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      price:
+        value_schema: {type: number, minimum: 900000, maximum: 1400000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      delivery_weeks:
+        value_schema: {type: integer, minimum: 2, maximum: 14}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [price, prepayment_fraction, delivery_weeks]
+    optional_term_ids: []
+  exchange_policy:
+    candidate_values:
+      price: [1000000, 1050000, 1100000, 1150000, 1200000, 1250000]
+      prepayment_fraction: [0, 0.25, 0.5, 0.75, 1]
+      delivery_weeks: [2, 4, 6, 8, 10, 14]
+  hard_constraints:
+    - id: buyer_price_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: price}, right: {const: 1250000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_price_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: price}, right: {const: 1000000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 30
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 900000, input_max: 1400000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          delivery_weeks: {weight: 0.10, type: linear, input_min: 2, input_max: 14, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 20
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 900000, input_max: 1400000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          delivery_weeks: {weight: 0.10, type: linear, input_min: 2, input_max: 14, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Найти цену от 1000000 до 1250000 и обменять цену на аванс или срок запуска.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      conversation_style: analytical
+      company: ООО Меридиан Ритейл
+      brief:
+        objective: Купить годовую подписку и быстро запустить аналитику.
+        context: Бюджет ограничен. Аванс и срок запуска можно обсуждать. Стоимость подписки сокращает бюджет на внедрение. Аванс отвлекает оборотные средства. Задержка запуска продлевает использование текущей системы.
+      dialogue_reasons:
+        - id: implementation_budget
+          term_id: price
+          text: Стоимость подписки сокращает бюджет на внедрение.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: working_capital
+          term_id: prepayment_fraction
+          text: Аванс отвлекает оборотные средства.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: current_system
+          term_id: delivery_weeks
+          text: Задержка запуска продлевает использование текущей системы.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 25, description: Продлить текущую систему на один квартал.}
+      constraints: {reservation_utility: 30, maximum_price: 1250000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.10}
+    seller:
+      conversation_style: relationship_focused
+      company: АО Спектр Аналитика
+      brief:
+        objective: Продать годовую подписку с приемлемой маржой.
+        context: Закрытие сделки в этом квартале важно. Больший аванс улучшает условия. Стоимость подписки должна покрывать работу платформы и команды внедрения. Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами.
+      opening_offer: {price: 1350000, prepayment_fraction: 0.5, delivery_weeks: 8}
+      dialogue_reasons:
+        - id: platform_cost
+          term_id: price
+          text: Стоимость подписки должна покрывать работу платформы и команды внедрения.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: implementation_financing
+          term_id: prepayment_fraction
+          text: Аванс уменьшает потребность финансировать внедрение своими средствами.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: team_planning
+          term_id: delivery_weeks
+          text: Срочный запуск усложняет распределение команды между проектами.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 15, description: Перенести команду внедрения на другого клиента.}
+      constraints: {reservation_utility: 20, minimum_price: 1000000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.10}
+  distractors:
+    - id: buyer_vendor_desperate_rumor
+      type: wrong_opinion
+      content: Коллега уверен, что поставщик отчаянно закрывает квартал и примет любую цену.
+      truth_note: Поставщик ценит сделку, но имеет допустимую альтернативу и ценовой предел.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_buyer_price_only_rumor
+      type: outdated
+      content: Старое письмо говорит, что заказчика интересует только минимальная цена лицензии.
+      truth_note: Для заказчика также важны срок внедрения и график оплаты.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_vendor_desperate_rumor, seller_buyer_price_only_rumor]}

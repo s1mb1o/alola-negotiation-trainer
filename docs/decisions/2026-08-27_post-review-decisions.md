@@ -238,7 +238,7 @@
 - A human or external agent may accept below its own reservation utility. The review reports the failure.
 - A built-in NPC cannot accept below reservation utility.
 - A parser transport or schema failure permits one retry.
-- NLG permits two retries after the first failure and then uses a deterministic template.
+- An eligible non-binding NPC turn uses at most one provider attempt in the MVP and then uses the precomputed deterministic template.
 - A stale acceptance returns HTTP `409` with `offer_not_active`.
 - A recoverable processing failure resumes from the last committed revision without duplicating an action.
 - The evaluator produces a review for every terminal state.
@@ -270,6 +270,165 @@ The normative contract is in [the offer and session protocol](../offer-session-p
 - Replay stores and reapplies validated evidence and deterministic belief updates without an LLM.
 
 The normative contract is in [the knowledge and emergent state model](../knowledge-and-emergent-state.md).
+
+---
+
+## DR-15. Administrator Session Inspector
+
+**Decision.**
+- The Web UI contains a separate administrator Session Inspector.
+- The Inspector uses administrator endpoints that require the `NEGOTIATION_ADMIN_TOKEN` Bearer credential.
+- The Inspector can list SQLite sessions and filter by status, scenario, language, and run mode.
+- A session detail can contain participant metadata, raw transcript messages, public event payloads, immutable offer revisions, and an allowed public review.
+- The administrator projection MUST omit participant credentials, credential hashes, raw session state, scenario source, private event payloads, and private review data.
+- An active session MUST NOT expose review data.
+- A benchmark review MUST remain sealed until its complete declared run set is terminal.
+- A terminal training session and a released benchmark session MAY expose `reviews.public_json`.
+- The browser MUST keep the administrator credential in memory or `sessionStorage` only.
+
+**Consequences.**
+- The administrator API is separate from the Player API.
+- Administrator access does not change participant observation or review-release rules.
+- The Inspector is read-only in this increment.
+- The Inspector does not expose scenario-authoring secrets or utility models.
+
+The implementation plan is in [the Admin Session Inspector plan](../plans/02_admin-session-inspector.md).
+
+---
+
+## DR-16. Optional LLM rendering for built-in NPC dialogue
+
+Accepted on 2026-08-28.
+
+The exact-option and NPC-only-context rules below are historical.
+[DR-26](2026-09-05_contextual-npc-dialogue.md) supersedes those rules from 2026-09-05.
+DR-26 preserves deterministic action selection, canonical messages, credential protection, and durable rendering.
+
+**Decision.**
+- The engine MUST select and validate the authoritative built-in NPC action before dialogue rendering.
+- The engine MUST select each fact that the NPC can disclose before dialogue rendering.
+- The dialogue renderer MUST receive a dedicated allowlisted `NpcDialogueRequest`.
+- The request MUST contain only the approved speech act, approved public offer terms, approved qualitative disclosures, scenario language, scenario currency, participant-facing term identifiers, approved reply options, the deterministic fallback, and bounded previously delivered NPC reply context.
+- The request MUST NOT contain a raw observation, raw scenario source, role brief, raw session state, counterparty-private state, utility weights, reservation utility, BATNA utility, authored knowledge truth, distractor truth notes, constraints, private event payloads, reviews, participant credentials, provider credentials, or a list of forbidden secrets.
+- Participant text is untrusted data.
+- The renderer request MUST NOT contain raw participant text.
+- Renderer context MAY contain only engine-authored or validated NPC messages that the service already delivered.
+- NPC reply context MUST contain no more than six turns.
+- Each NPC reply context turn MUST contain no more than 1,000 characters.
+- The service MUST redact the authenticated participant token and credential-shaped fragments before it parses or persists a participant message.
+- `approved_reply_options` MUST contain no more than six engine-authored actor-safe strings.
+- Each approved reply option MUST contain no more than 1,200 characters.
+- All approved reply options together MUST contain no more than 4,000 characters.
+- An approved reply option MUST NOT interpolate or quote raw participant or transcript text.
+- A non-binding approved reply option MUST NOT contain a number, date, percentage, currency symbol, or currency code.
+- An external provider MAY process only a non-binding speech act.
+- For a non-binding speech act, the provider MUST select one approved reply option without changes.
+- The provider response MUST be one strict JSON object with only `speech_act` and `reply`.
+- A deterministic validator MUST require speech-act equality and exact reply-option membership.
+- The validator MUST reject invalid JSON, unexpected fields, empty output, unsafe structure, multiple speakers, markup, tool output, URLs, and output that exceeds a bound.
+- Provider output MUST NOT synthesize public prose, an offer, a term, an acceptance, a rejection, a disclosure, or a lifecycle action.
+- `opening_offer`, `offer_acceptance`, `offer_rejection`, and `complete_counteroffer` MUST bypass the provider.
+- Each binding speech act MUST use the canonical deterministic template and canonical engine-approved terms.
+- The service MUST use a deterministic actor-safe template when no dialogue provider is configured.
+- The service MUST use the precomputed deterministic template when provider execution fails, times out, returns empty or invalid output, or violates the output contract.
+- A provider call MUST occur outside a SQLite write transaction.
+- Dialogue rendering failure MUST NOT roll back or duplicate an authoritative action.
+- Provider credentials MUST remain in process environment variables.
+- Provider credentials, unvalidated provider output, raw provider errors, and prompts MUST NOT enter the database, transcript, events, API responses, logs, reviews, or benchmark artifacts.
+
+**Consequences.**
+- The built-in NPC policy remains deterministic.
+- An optional `NpcDialogueRenderer` selects one engine-approved wording for an approved non-binding action.
+- The renderer supports deterministic template, OpenAI, and Qwen modes.
+- The default mode is deterministic template rendering.
+- The service persists the approved NPC intent before an external provider call.
+- A render attempt has a stable session and intent-revision identity.
+- The service atomically claims a pending render job with a compare-and-swap update before one provider attempt.
+- Concurrent service instances MUST NOT make more than one provider attempt for the same render job.
+- The service delivers at most one validated provider message or deterministic fallback for that identity.
+- The service delivers a deterministic fallback for an unfinished durable render job during startup recovery.
+- A pending render job blocks a new participant message, hint, or administrative close until delivery finishes.
+- A create-time built-in NPC binding action uses its canonical deterministic message in the create transaction and does not invoke a provider.
+- The public Player API returns the authoritative structured action and the delivered public message.
+- A client MUST use the structured action and offer as the source of truth.
+- A client MUST NOT infer a lifecycle action from generated prose.
+- Russian and English renderers use the same structured speech-act contract.
+- Prompt injection can affect only the selection among options for the same approved speech act.
+- Concurrent sessions MUST NOT share dialogue, actor state, renderer request state, or write-transaction time.
+- Failure telemetry uses safe provider metadata and the bounded reason codes `provider_failure`, `output_invalid`, `renderer_failure`, and `restart_recovery`.
+- OpenAI rendering defaults to `gpt-5.6-luna`.
+- Qwen rendering defaults to `qwen3.8-max` and the QwenCloud Token Plan endpoint.
+- The service does not send `temperature` when `NEGOTIATION_NPC_TEMPERATURE` is empty.
+
+**Risks.** A provider can follow untrusted dialogue instructions or receive the wrong credential through unsafe custom configuration. Mitigation requires a strict input allowlist, closed reply options, provider-bound credential configuration, exact-match output validation, bounded context, deterministic binding messages, and deterministic fallback.
+
+---
+
+## DR-17. Built-in NPC opens Easy sessions
+
+Accepted on 2026-08-28.
+
+**Decision.**
+- An Easy training session MUST present the authored opening offer in the transcript when the opening-offer participant uses the built-in NPC controller.
+- The service MUST use the canonical `opening_offer` template.
+- The message MUST contain only the complete public opening-offer terms and actor-safe scenario language.
+- The message MUST use `session_revision = 0`.
+- The message MUST NOT create, revise, counter, accept, reject, or withdraw an offer.
+- The message MUST NOT increment the session revision, round, or substantive-turn count.
+- The message MUST NOT change `next_actor`.
+- The message MUST NOT create negotiation evidence, a belief update, or a detected-interest signal.
+- The message MUST bypass an external dialogue provider.
+- The service MUST record one `npc.opening_utterance.delivered` event.
+- A repeated create-session request MUST NOT duplicate the message or event.
+- The service MUST NOT synthesize a message for a human or external-agent opening-offer participant.
+
+**Consequences.**
+- The built-in opponent starts an Easy session before the player sends a message.
+- The authored opening offer remains the structured source of truth.
+- Web, CLI, Telegram, replay, and Inspector clients receive the same stored transcript.
+- Guided, Normal, and Expert creation behavior does not change.
+
+**Supersession note.** DR-18 supersedes the complete-offer assumption in DR-17 only when a scenario uses `opening_position`. All other DR-17 rules remain in effect.
+
+---
+
+## DR-18. Partial authored opening positions do not use placeholder values
+
+Accepted on 2026-08-28.
+
+**Decision.**
+- Exactly one scenario role MUST define exactly one authored opening artifact.
+- The artifact MUST be either `opening_offer` or `opening_position`.
+- `opening_offer` MUST contain every required term.
+- `opening_position` MAY omit required terms.
+- `opening_position` MUST contain at least one authored term.
+- An omitted required term in `opening_position` is `UNSPECIFIED`.
+- The omitted term MUST remain in `unresolved_required_terms` until a participant proposes it.
+- The compiler and service MUST NOT infer, copy, default, or substitute a value for an omitted term.
+- An explicit zero is a real term value. The compiler and service MUST NOT interpret zero as `UNSPECIFIED`.
+- The initial active offer revision MUST expose only the terms that the authored opening artifact contains.
+- A partial opening position MUST NOT become binding.
+- The service MUST NOT create an acceptance confirmation for a partial opening position.
+- In Easy training, a built-in NPC opening role MUST present exactly the authored public terms.
+- The Easy presentation MUST use a deterministic canonical template.
+- The Easy presentation speech act MUST match the authored artifact: `opening_offer` or `opening_position`.
+- `opening_position` MUST bypass an external dialogue provider.
+- The Easy presentation MUST NOT imply that an `opening_position` is a complete package.
+- The Easy presentation MUST NOT add a hidden active term or expose a private term.
+- Published scenario versions remain immutable.
+- `supplier_001` version 2 MUST retain its authored zero-prepayment and eight-week opening offer for replay.
+- `supplier_001` version 3 becomes the current published version and uses `opening_position: {price: 120000}`.
+
+**Consequences.**
+- A participant must resolve every required term before binding acceptance.
+- An active partial offer revision reports the missing term identifiers in `unresolved_required_terms`.
+- A counteroffer can add an omitted required term through the standard natural-language message flow.
+- Existing complete `opening_offer` scenarios keep their current behavior.
+- Public metadata MAY retain the compatibility field name `opening_offer_role`. This field identifies the opening role for either artifact.
+- Clients must use `unresolved_required_terms` to distinguish a partial opening position from a complete offer.
+- A scenario author omits an unannounced term instead of inserting `0`, `null`, an empty string, or another placeholder.
+
+**Risks.** A client can describe a partial opening position as a complete offer if it ignores `unresolved_required_terms`. Contract tests and UI tests must cover this case.
 
 ---
 

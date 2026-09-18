@@ -55,6 +55,12 @@
           "type": "string",
           "pattern": "^[A-Z]{3}$"
         },
+        "negotiation_contract": {
+          "const": "supply-package-v1"
+        },
+        "supply_model": {
+          "$ref": "#/$defs/supplyModel"
+        },
         "authoring_status": {
           "$ref": "#/$defs/authoringStatus"
         },
@@ -72,6 +78,9 @@
         },
         "terms": {
           "$ref": "#/$defs/terms"
+        },
+        "exchange_policy": {
+          "$ref": "#/$defs/exchangePolicy"
         },
         "hard_constraints": {
           "type": "array",
@@ -113,6 +122,11 @@
         }
       },
       "allOf": [
+        {
+          "if": {"required": ["negotiation_contract"]},
+          "then": {"required": ["supply_model"]},
+          "else": {"not": {"required": ["supply_model"]}}
+        },
         {
           "if": {
             "properties": {
@@ -601,15 +615,125 @@
               "aggregation": {
                 "enum": [
                   "weighted_sum",
-                  "piecewise_weighted_sum"
+                  "piecewise_weighted_sum",
+                  "supply-economics-v1"
                 ]
               },
               "value_functions": {
-                "type": "object",
-                "minProperties": 1
+                "type": "object"
               }
             },
+            "allOf": [{
+              "if": {"properties": {"aggregation": {"const": "supply-economics-v1"}}},
+              "then": {"properties": {"value_functions": {"maxProperties": 0}}},
+              "else": {"properties": {"value_functions": {"minProperties": 1}}}
+            }],
             "additionalProperties": true
+          }
+        }
+      }
+    },
+    "supplyModel": {
+      "type": "object",
+      "required": ["version", "evaluator_version", "calendar", "capabilities", "bounds", "reserve_rules", "economics", "npc_policy"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {"const": "supply-package-v1"},
+        "evaluator_version": {"const": "supply-economics-v1"},
+        "calendar": {
+          "type": "object",
+          "required": ["negotiation_date", "timezone", "earliest_date", "earliest_full_date", "latest_date", "early_november_start", "early_november_end", "integration_deadline", "completion_deadline"],
+          "additionalProperties": false,
+          "properties": {
+            "negotiation_date": {"type": "string", "format": "date"},
+            "timezone": {"type": "string"},
+            "earliest_date": {"type": "string", "format": "date"},
+            "earliest_full_date": {"type": "string", "format": "date"},
+            "latest_date": {"type": "string", "format": "date"},
+            "early_november_start": {"type": "string", "format": "date"},
+            "early_november_end": {"type": "string", "format": "date"},
+            "integration_deadline": {"type": "string", "format": "date"},
+            "completion_deadline": {"type": "string", "format": "date"}
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "required": ["main_quantity", "max_lots", "max_early_quantity", "max_reserve_quantity", "lot_ids", "delivery_basis", "destination_id", "balance_days"],
+          "additionalProperties": false,
+          "properties": {
+            "main_quantity": {"type": "integer", "minimum": 2},
+            "max_lots": {"const": 2},
+            "max_early_quantity": {"type": "integer", "minimum": 1},
+            "max_reserve_quantity": {"type": "integer", "minimum": 1, "maximum": 3},
+            "lot_ids": {"const": ["main", "early", "remaining"]},
+            "delivery_basis": {"const": "DDP"},
+            "destination_id": {"const": "vector_site"},
+            "balance_days": {"const": [0, 30]}
+          }
+        },
+        "bounds": {
+          "type": "object", "additionalProperties": false,
+          "required": ["base_price_min_minor", "base_price_max_minor"],
+          "properties": {
+            "base_price_min_minor": {"type": "integer", "minimum": 1},
+            "base_price_max_minor": {"type": "integer", "minimum": 1}
+          }
+        },
+        "reserve_rules": {
+          "type": "object", "additionalProperties": false,
+          "required": ["use_cutoff", "unused_payable_on", "diagnosis_days", "unit_price_rule", "diagnosis_policy_id", "inconclusive_deadline_outcome", "hardware_precedence"],
+          "properties": {
+            "use_cutoff": {"type": "string", "format": "date"},
+            "unused_payable_on": {"type": "string", "format": "date"},
+            "diagnosis_days": {"type": "integer", "minimum": 1, "maximum": 60},
+            "unit_price_rule": {"const": "base_unit_ceil"},
+            "diagnosis_policy_id": {"const": "hardware-replacement-v1"},
+            "inconclusive_deadline_outcome": {"const": "free"},
+            "hardware_precedence": {"const": true}
+          }
+        },
+        "economics": {
+          "type": "object", "additionalProperties": false,
+          "required": ["buyer", "seller", "utility_divisor_minor"],
+          "properties": {
+            "utility_divisor_minor": {"type": "integer", "minimum": 1},
+            "buyer": {
+              "type": "object", "additionalProperties": false,
+              "required": ["maximum_liability_minor", "comparison_value_minor", "integration_value_minor", "completion_value_minor", "financing_cost_minor", "reserve_value_per_unit_minor", "delayed_balance_benefit_minor"],
+              "properties": {
+                "maximum_liability_minor": {"type": "integer", "minimum": 0},
+                "comparison_value_minor": {"type": "integer", "minimum": 0},
+                "integration_value_minor": {"type": "integer", "minimum": 0},
+                "completion_value_minor": {"type": "integer", "minimum": 0},
+                "financing_cost_minor": {"type": "integer", "minimum": 0},
+                "reserve_value_per_unit_minor": {"type": "integer", "minimum": 0},
+                "delayed_balance_benefit_minor": {"type": "integer", "minimum": 0}
+              }
+            },
+            "seller": {
+              "type": "object", "additionalProperties": false,
+              "required": ["minimum_base_price_minor", "base_cost_minor", "split_cost_minor", "acceleration_cost_per_unit_minor", "financing_credit_minor", "reserve_cost_per_unit_minor", "delayed_balance_cost_minor"],
+              "properties": {
+                "minimum_base_price_minor": {"type": "integer", "minimum": 0},
+                "base_cost_minor": {"type": "integer", "minimum": 0},
+                "split_cost_minor": {"type": "integer", "minimum": 0},
+                "acceleration_cost_per_unit_minor": {"type": "integer", "minimum": 0},
+                "financing_credit_minor": {"type": "integer", "minimum": 0},
+                "reserve_cost_per_unit_minor": {"type": "integer", "minimum": 0},
+                "delayed_balance_cost_minor": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        },
+        "npc_policy": {
+          "type": "object", "additionalProperties": false,
+          "required": ["price_candidates_minor", "standard_price_index", "advance_price_index", "split_price_index", "advance_threshold_bps"],
+          "properties": {
+            "price_candidates_minor": {"type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": {"type": "integer", "minimum": 1}},
+            "standard_price_index": {"type": "integer", "minimum": 0},
+            "advance_price_index": {"type": "integer", "minimum": 0},
+            "split_price_index": {"type": "integer", "minimum": 0},
+            "advance_threshold_bps": {"type": "integer", "minimum": 0, "maximum": 10000}
           }
         }
       }
@@ -664,6 +788,54 @@
         }
       }
     },
+    "dialogueReason": {
+      "description": "A qualitative authored explanation. The engine may disclose this text on a matching topic question. The private source is never renderer context.",
+      "type": "object",
+      "required": ["id", "term_id", "text", "source_ref", "disclose_when"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 100
+        },
+        "term_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Plain nonnumeric text. The publication compiler rejects numbers, dates, currencies, credential fragments, control characters, and markup. The author is responsible for semantic grounding in source_ref."
+        },
+        "source_ref": {
+          "enum": ["brief.objective", "brief.context"]
+        },
+        "disclose_when": {
+          "const": "on_topic_question"
+        }
+      }
+    },
+    "exchangePolicy": {
+      "type": "object",
+      "required": ["candidate_values"],
+      "additionalProperties": false,
+      "properties": {
+        "candidate_values": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 12,
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "number"}
+          }
+        }
+      }
+    },
     "role": {
       "type": "object",
       "required": [
@@ -681,7 +853,16 @@
         "brief": {
           "type": "object"
         },
+        "conversation_style": {
+          "enum": ["pragmatic", "analytical", "relationship_focused"]
+        },
+        "dialogue_reasons": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {"$ref": "#/$defs/dialogueReason"}
+        },
         "opening_offer": {
+          "description": "A complete authored opening offer. Published scenarios must include every required term.",
           "oneOf": [
             {
               "type": "number"
@@ -690,6 +871,11 @@
               "type": "object"
             }
           ]
+        },
+        "opening_position": {
+          "description": "A non-empty authored opening position. Omitted required terms remain unresolved and cannot bind.",
+          "type": "object",
+          "minProperties": 1
         },
         "batna": {
           "type": "object",

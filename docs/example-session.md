@@ -19,9 +19,36 @@ Session participants:
 - `buyer`: human controller;
 - `seller`: built-in NPC controller.
 
+### Executable adaptation
+
+The repository includes [supplier scenario version 3](../examples/scenario_supplier_001_v3.yaml) as the current published version.
+
+Version 3 fixes the order quantity at 100 computers.
+It executes three required scalar deal terms:
+
+- total price in EUR;
+- prepayment share;
+- delivery time for the complete order in weeks.
+
+The seller's authored `opening_position` states only the total price of EUR 120,000.
+Prepayment and whole-order delivery time start as `UNSPECIFIED` and unresolved.
+The engine does not insert a placeholder value for either term.
+The opening position cannot bind until every required term is explicit.
+
+Version 3 does not bind a split-delivery schedule, FOC reserve, contingent payment, or RMA structure.
+The engine returns `clarification_required` with reason code `unscored_proposal` for a scalar offer that also contains these composite semantics.
+The proposal cannot change the active offer or receive utility.
+
+[Supplier scenario version 2](../examples/scenario_supplier_001_v2.yaml) remains immutable and available for replay.
+Its complete opening offer retains the authored zero prepayment and eight-week delivery terms.
+
+Rounds 1 through 3 show the closest executable flow.
+Rounds 4 through 8 remain specification examples for a future composite-term runtime.
+
 ### Player brief
 
-- Nord offer: €120,000.
+- Nord stated a price of €120,000.
+- The parties have not agreed on prepayment or delivery time.
 - Budget ceiling: €115,000.
 - Preferred target: €105,000.
 - Alternative supplier: €108,000, but worse hardware and additional integration risk.
@@ -274,7 +301,8 @@ A complete version must materialize one offer revision and use the contextual co
 
 This appendix illustrates the accepted interaction protocol.
 
-It assumes that a published successor to the draft scenario defines every required term and evaluation rule.
+Published version 2 supports this protocol for its scalar price, prepayment, and delivery package.
+A future scenario version must define every required composition and evaluation rule before it can bind the composite package from rounds 4 through 8.
 
 The engine has one complete active offer revision.
 

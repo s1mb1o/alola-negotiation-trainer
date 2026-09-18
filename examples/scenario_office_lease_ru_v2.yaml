@@ -1,0 +1,126 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: office_lease_ru
+  version: 2
+  title: Годовая аренда офиса
+  language: ru
+  currency: RUB
+  authoring_status: {state: published, missing_required_definitions: []}
+  protocol: {pass_allowed: true, max_rounds: 12, max_consecutive_clarifications: 3}
+  scope:
+    commercial_terms: {depth: full}
+    move_in_planning: {depth: medium}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: seller.vacancy_cost
+        subject_role: seller
+        value_schema: money
+        truth: {source: authored, value: 180000}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      annual_rent:
+        value_schema: {type: number, minimum: 1800000, maximum: 3000000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      office_readiness_weeks:
+        value_schema: {type: integer, minimum: 1, maximum: 12}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [annual_rent, prepayment_fraction, office_readiness_weeks]
+    optional_term_ids: []
+  hard_constraints:
+    - id: buyer_annual_rent_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: annual_rent}, right: {const: 2600000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_annual_rent_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: annual_rent}, right: {const: 2100000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 25
+        aggregation: weighted_sum
+        value_functions:
+          annual_rent: {weight: 0.80, type: linear, input_min: 1800000, input_max: 3000000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.10, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          office_readiness_weeks: {weight: 0.10, type: linear, input_min: 1, input_max: 12, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 20
+        aggregation: weighted_sum
+        value_functions:
+          annual_rent: {weight: 0.80, type: linear, input_min: 1800000, input_max: 3000000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          office_readiness_weeks: {weight: 0.05, type: linear, input_min: 1, input_max: 12, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Согласовать годовую арендную плату от 2100000 до 2600000 рублей, предоплату и срок готовности офиса к въезду.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      company: ООО Кодовая Линия
+      brief:
+        objective: Арендовать офис на год в пределах утверждённого бюджета.
+        context: До въезда компания продолжит оплачивать коворкинг. Низкая предоплата сохраняет оборотные средства.
+      batna: {utility: 17, description: Продлить аренду мест в коворкинге ещё на шесть месяцев.}
+      constraints: {reservation_utility: 25, maximum_annual_rent: 2600000}
+      interests:
+        annual_rent: {weight: 0.80}
+        prepayment_fraction: {weight: 0.10}
+        office_readiness_weeks: {weight: 0.10}
+    seller:
+      company: АО Городские Пространства
+      brief:
+        objective: Сдать свободный офис в аренду на год по приемлемой ставке.
+        context: Пока офис пустует, компания теряет арендный доход. Предоплата снижает риск задержки платежей. Срочная подготовка офиса увеличивает расходы.
+      opening_offer: {annual_rent: 2850000, prepayment_fraction: 0.5, office_readiness_weeks: 10}
+      batna: {utility: 12, description: Продолжить поиск арендатора в следующем квартале.}
+      constraints: {reservation_utility: 20, minimum_annual_rent: 2100000}
+      interests:
+        annual_rent: {weight: 0.80}
+        prepayment_fraction: {weight: 0.15}
+        office_readiness_weeks: {weight: 0.05}
+  distractors:
+    - id: buyer_no_demand_rumor
+      type: outdated
+      content: Знакомый утверждает, что на этот офис давно нет других претендентов.
+      truth_note: У арендодателя есть другие обращения. Точный спрос арендатору неизвестен.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_unlimited_budget_rumor
+      type: wrong_opinion
+      content: Брокер предполагает, что арендатор согласится на любую ставку ради этого адреса.
+      truth_note: У арендатора есть жёсткий бюджетный предел.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_no_demand_rumor, seller_unlimited_budget_rumor]}

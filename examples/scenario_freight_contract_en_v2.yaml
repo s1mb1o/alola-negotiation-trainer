@@ -1,0 +1,153 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: freight_contract_en
+  version: 2
+  title: Urgent freight contract
+  language: en
+  currency: RUB
+  authoring_status: {state: published, missing_required_definitions: []}
+  protocol: {pass_allowed: true, max_rounds: 10, max_consecutive_clarifications: 3}
+  scope:
+    commercial_terms: {depth: full}
+    delivery_planning: {depth: medium}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: buyer.production_deadline
+        subject_role: buyer
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [buyer]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      price:
+        value_schema: {type: number, minimum: 300000, maximum: 500000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      delivery_weeks:
+        value_schema: {type: integer, minimum: 1, maximum: 8}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [price, prepayment_fraction, delivery_weeks]
+    optional_term_ids: []
+  hard_constraints:
+    - id: buyer_price_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: price}, right: {const: 440000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_price_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: price}, right: {const: 350000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 25
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 300000, input_max: 500000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.10, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          delivery_weeks: {weight: 0.15, type: linear, input_min: 1, input_max: 8, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 20
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 300000, input_max: 500000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          delivery_weeks: {weight: 0.10, type: linear, input_min: 1, input_max: 8, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Find a price from 350000 to 440000 and trade prepayment against delivery time.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      company: Northern Plant LLC
+      brief:
+        objective: Deliver components without stopping production.
+        context: Speed matters more than payment convenience, but the budget has a strict limit.
+      dialogue_reasons:
+        - id: freight_budget
+          term_id: price
+          text: The freight cost must stay within our budget.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: production_continuity
+          term_id: delivery_weeks
+          text: We need the components in time to keep production running.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+      batna: {utility: 18, description: Use the slower incumbent carrier.}
+      constraints: {reservation_utility: 25, maximum_price: 440000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.10}
+        delivery_weeks: {weight: 0.15}
+    seller:
+      company: TransLine JSC
+      brief:
+        objective: Fill available freight capacity at a profitable rate.
+        context: A larger prepayment reduces financial risk. A longer lead time simplifies planning.
+      opening_offer: {price: 480000, prepayment_fraction: 0.4, delivery_weeks: 6}
+      dialogue_reasons:
+        - id: profitable_rate
+          term_id: price
+          text: The freight rate must provide a profit.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+        - id: payment_risk
+          term_id: prepayment_fraction
+          text: A larger prepayment reduces financial risk.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: transport_planning
+          term_id: delivery_weeks
+          text: A longer lead time simplifies transport planning.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 14, description: Take two smaller standard freight jobs.}
+      constraints: {reservation_utility: 20, minimum_price: 350000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.10}
+  distractors:
+    - id: buyer_capacity_rumor
+      type: wrong_opinion
+      content: A colleague believes that no carrier has spare trucks and negotiation is pointless.
+      truth_note: The supplier has spare capacity. The colleague's opinion is not verified.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_price_only_rumor
+      type: outdated
+      content: An old market note says that this buyer always selects the lowest price.
+      truth_note: Delivery speed matters more to the buyer than the lowest price.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_capacity_rumor, seller_price_only_rumor]}

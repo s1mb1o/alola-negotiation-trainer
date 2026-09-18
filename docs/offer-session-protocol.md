@@ -1,10 +1,96 @@
 # Offer and Session Protocol
 
+## Reference supply contract (DR-30)
+
+[DR-30](decisions/2026-09-08_reference-supply-implementation.md) and the [resolved contract](reference-supply-contract.md) define the opt-in implementation.
+
+Scenarios with `negotiation_contract: supply-package-v1` MUST initialize an exact authored preliminary proposal instead of an accept-enabled formal opening offer.
+Preliminary proposals MUST remain non-binding even when complete.
+The service MUST distinguish preliminary revision, final-offer publication, acceptance intent, and exact-revision confirmation.
+A participant's final offer MUST require confirmation of its exact materialized snapshot before publication.
+NPC promotion of its own preliminary package MUST present a formal offer without also treating the presentation request as acceptance.
+The service MUST permit at most one actor-bound pending finalization operation per session.
+An explicit amendment based on a formal offer MUST supersede that offer and invalidate its pending confirmation atomically.
+Questions and uncommitted hypotheticals MUST NOT supersede an offer.
+Every material amendment MUST use a source revision and preserve dependent conditions atomically.
+Composite quantities, monetary allocation, reserve references, and all outcome obligations MUST be validated deterministically.
+Incomplete packages MUST NOT receive authoritative complete-package utility.
+The NPC MUST select actions using authored rules, NPC utility, and actor-safe public context.
+It MUST NOT rank actions using counterpart private utility or expose hidden limits.
+New supply rendering MAY use bounded paragraphs around an immutable engine-authored package block.
+The LLM MUST NOT alter the block, invent amounts, or establish agreement through prose.
+Legacy scalar scenarios, financial confirmation text, and stored renderer versions MUST retain their existing behavior.
+Humans and external agents MUST use the same authenticated natural-language Player API.
+Public history MUST retain source-linked preliminary revisions and formal offers without exposing private economics.
+Replay and restart MUST use persisted validated transitions and stored wording without new LLM calls.
+The implementation MUST pass offline reference trajectories and safety regressions before any generalization.
+Optional semantic normalization MUST run outside SQLite write transactions.
+The service MUST recheck actor authority, session revision, turn, and idempotency before committing its result.
+The normalizer MUST preserve numeric tokens and MUST pass its result through deterministic parsing and validation.
+Explicit negation, past proposals, and protocol controls MUST NOT become amendments through normalization.
+Unsupported conditional clauses and uncertain equivalence MUST produce no package mutation.
+Normalization failure MUST produce an observable clarification without exposing raw provider errors.
+
+## Grounded dialogue extension (DR-28)
+
+[DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md) applies before offer transitions and NPC delivery.
+The parser MUST distinguish questions, quotations, proposals, relative changes, and short answers before committing terms.
+Numeric questions and quotations MUST NOT create offers.
+A mixed message MAY commit an explicitly scoped proposal clause while leaving a separate question non-binding.
+The service MUST derive parse context after participant authentication, revision checks, and turn checks.
+A relative change MUST use one active public offer revision and the scenario currency.
+A short numeric answer MAY use one unambiguous public topic or an engine-authored requested term.
+An ambiguous reference, missing baseline, or unsupported calculation MUST request clarification without changing offer terms.
+Generated NPC prose MUST NOT establish the requested term, an agreement, or ground truth.
+Human and external-agent acceptance MUST retain the separate complete-offer confirmation step.
+
+The compiler MUST bound an authored exchange grid and validate its numeric candidates against required term schemas.
+The engine MUST select a complete package that passes every role's hard constraints and the NPC reservation utility.
+It MUST use only NPC utility, public proposals, and authored rules for exchange selection.
+It MUST NOT optimize against counterpart private utility or expose private limits.
+The policy SHOULD prefer a monetary concession in return for an authored nonmonetary benefit to the NPC.
+It MUST NOT reverse a previous public monetary concession.
+Missing terms MUST remain `UNSPECIFIED` during discussion.
+The policy MUST NOT complete an omitted opening term implicitly.
+An unsupported exchange MUST use a validated fallback or rejection without invented terms.
+An exchange explanation MUST describe only the selected public package.
+
+Numeric references MUST use exact attributed engine quote slots tied to an active public offer revision.
+Each slot MUST identify its offer, revision, proposer role, term, value, currency, and exact display text.
+The provider MUST emit a slot token instead of writing a number.
+Unknown, altered, repeated, inactive, or unbound slots MUST be rejected.
+The service MUST substitute exact engine text and validate the resolved reply.
+A quote MUST NOT authorize a new promise, waiver, calculation, or agreement.
+Novel prose MUST still pass the separate grounding check.
+Canonical financial actions MUST remain deterministic.
+The durable render plan MUST preserve the slots and their revision binding.
+Historical plans without slots MUST remain readable.
+
+New scenario versions MAY add grounded reasons, exchange candidates, and an allowlisted stable conversation style.
+Existing versions MUST remain unchanged.
+The service MUST select a bounded public dialogue profile from the session difficulty.
+Guided and Easy profiles SHOULD clarify one term at a time and take conversational initiative.
+Normal and Expert profiles SHOULD ask for grounds and reciprocal changes without abusive behavior.
+Difficulty and style MUST NOT change hidden truth, utility, hard constraints, or reservation thresholds.
+Benchmark sessions MUST use Normal difficulty and disabled assistance.
+
+Dialogue quality MUST remain separate from utility and agreement rate.
+Admin diagnostics MUST use public transcript, public renderer events, and bounded telemetry only.
+They MUST distinguish exact repetition, question repetition, latency, fallback rate, and categorized validation failures.
+Missing telemetry MUST remain unavailable rather than zero.
+Heuristics MUST NOT be presented as proof of relevance or factual correctness.
+Offline human scorecards MUST retain versioned source references and rating coverage.
+Unrated dimensions MUST remain unrated.
+The regression corpus MUST cover connected Russian and English dialogue, numeric questions, relative changes, short replies, corrections, repetitions, and false claims.
+Existing privacy, confirmation, immutable-version, and durable-render boundaries remain required.
+
 ## Status
 
 This document is normative.
 
 Alexander Shmelev accepted this protocol on 2026-08-27.
+
+Alexander Shmelev accepted the partial-opening update in DR-18 on 2026-08-28.
 
 The protocol applies to human participants and external-agent participants.
 
@@ -29,6 +115,62 @@ The protocol applies to human participants and external-agent participants.
 - The event log stores every authoritative transition.
 
 The knowledge and runtime-term boundary is defined in `docs/knowledge-and-emergent-state.md`.
+
+## Session initialization
+
+Exactly one scenario role MUST define exactly one authored opening artifact.
+
+The artifact is either `opening_offer` or `opening_position`.
+
+Public scenario metadata MAY use `opening_offer_role` as a compatibility field for the role that owns either artifact.
+
+An `opening_offer` MUST contain every required term.
+
+An `opening_position` MAY omit required terms.
+
+An `opening_position` MUST contain at least one authored term.
+
+The service commits the authored opening artifact as the initial active offer revision at `session_revision = 0`.
+
+The initial active revision MUST contain exactly the terms in the authored artifact.
+
+An omitted required term is `UNSPECIFIED`.
+
+The service MUST list each omitted required term in `unresolved_required_terms`.
+
+The compiler and service MUST NOT infer, copy, default, or substitute a value for an omitted term.
+
+An explicit zero is a real term value. It is not `UNSPECIFIED`.
+
+The other participant is `next_actor`.
+
+In an Easy training session, a built-in NPC opening role MUST present the authored public opening terms in the transcript.
+
+The presentation uses a deterministic canonical template.
+
+Its speech act matches the authored artifact: `opening_offer` or `opening_position`.
+
+The presentation MUST contain exactly the authored public terms.
+
+The presentation MUST NOT imply that an `opening_position` is a complete package.
+
+The presentation MUST NOT add an active term that is absent from the authored opening artifact.
+
+The presentation has `session_revision = 0` and is not a substantive action.
+
+It MUST NOT change the offer, session revision, round, substantive-turn count, or `next_actor`.
+
+It MUST NOT create negotiation evidence, a belief update, or a detected-interest signal.
+
+It MUST NOT call an external dialogue provider.
+
+The event log records one `npc.opening_utterance.delivered` event.
+
+The event identifies whether the authored artifact is `opening_offer` or `opening_position`.
+
+A create-session idempotency replay MUST NOT duplicate the message or event.
+
+The service MUST NOT synthesize an opening message for a human or external-agent opening role.
 
 ## Public message model
 
@@ -83,7 +225,7 @@ Every formal offer revision contains:
 - `base_offer_id`, when applicable;
 - `base_offer_revision`, when applicable;
 - `offer_set_id`, when applicable;
-- a complete materialized term package;
+- a materialized term package;
 - unresolved required terms;
 - creation session revision.
 
@@ -112,6 +254,10 @@ The engine MUST reject an attempt to unset a required term.
 An offer can remain incomplete during negotiation.
 
 Every required term MUST be resolved before binding acceptance.
+
+An active revision created from `opening_position` cannot bind while `unresolved_required_terms` is not empty.
+
+The service MUST NOT create a pending acceptance confirmation for an incomplete revision.
 
 ## Offer status and lifetime
 
@@ -200,6 +346,41 @@ If the context does not identify one meaning with sufficient confidence, the eng
 Partial acceptance is not binding.
 
 A proposed modification creates a counteroffer.
+
+A natural acceptance phrase that names the offer, the terms, or the package is an acceptance intent. Examples: `принимаю ваше предложение целиком`, `согласны на ваше встречное предложение`, `we accept your offer`.
+
+A negated acceptance phrase is not an acceptance intent.
+
+An acceptance phrase that also states a new term value is a counteroffer with that value. This rule also applies while an acceptance confirmation is pending.
+
+A positive, unquoted assertion that restates every term of the counterpart's complete active revision is an acceptance intent.
+A question or reported quotation MUST NOT become an acceptance intent through numeric matching.
+The engine does not create a duplicate offer revision for a valid acceptance intent.
+
+A bare agreement word such as `согласен`, `договорились`, or `ok`, with or without punctuation, requires clarification.
+
+The parser reads number words and thousand or million abbreviations, for example `сто десять тысяч`, `110 тыс.`, `1,2 млн`, `thirty percent`, `six weeks`.
+
+The server MUST build `ParseContext` only after participant authentication, expected-revision validation, and turn validation.
+The snapshot contains `active_offer_id`, `active_offer_revision`, `active_offer_terms`, `active_offer_currency`, `focused_term_id`, `expected_term_id`, and `ambiguous_offer_reference`.
+It MUST contain at most 12 finite numeric public terms.
+The active baseline MUST match one active public offer revision from lifecycle state.
+The parser MUST NOT select a superseded offer or a historical transcript quotation as its baseline.
+
+The parser MAY resolve one `на` or `by` delta against that baseline.
+A monetary delta MAY be an absolute amount or a percentage of the baseline.
+A prepayment delta MUST identify percentage points.
+Week and quantity values MUST remain integral.
+The parser MUST request clarification for ambiguous units, several referents, missing baselines, unsupported calculations, and unsupported date expressions.
+It MUST NOT treat a relative amount as an absolute offer price.
+It MUST exclude questions and quotations before term extraction.
+An explicit proposal clause in a mixed message MAY still create a counteroffer.
+
+An unlabelled short numeric answer MUST identify one unambiguous public focus or requested term.
+Conflicting focus and requested-term context MUST request clarification.
+`expected_term_id` MUST come from the latest relevant delivered NPC event's engine-authored `requested_term_id`.
+A pending intent or generated question alone MUST NOT establish this field.
+The public Player API MUST NOT let a client supply this context directly.
 
 ## Clarification flow
 
@@ -345,6 +526,44 @@ The scenario policy must explicitly permit `pass`.
 
 A built-in NPC MAY ask a question, request clarification, hold its position, reject an offer, or walk away without a counteroffer.
 
+A built-in NPC MUST NOT evaluate an incomplete active revision as a complete package.
+
+It preserves the incomplete revision and MAY request the missing required terms by name.
+
+While an incomplete revision is active, a built-in NPC still answers a greeting, a priority question, or a general question before it repeats the request for the missing terms.
+
+An explicit request to discuss one authored term MUST take precedence over a generic discussion cue.
+
+An incomplete valid price proposal MUST NOT force an immediate complete-package request when a focused non-binding response is available.
+
+The engine MAY select `focused_discussion` or `acknowledge_partial_offer` before rendering.
+
+An explicit topic switch MUST replace the previous focus.
+
+A postponed topic MUST remain unresolved and MAY resume after a later explicit request.
+
+All omitted required terms MUST remain `UNSPECIFIED`.
+
+Binding acceptance MUST still require a complete validated package.
+
+A built-in NPC MUST NOT bind a package that violates a hard constraint of any role, even when the package satisfies its own reservation utility.
+
+A built-in NPC counteroffer MUST NOT reverse its previous public monetary concession.
+The NPC anchors a later monetary counter on its own previous counter, not on the opening terms.
+Other terms MAY change only as part of a validated package.
+
+An authored `exchange_policy.candidate_values` grid MUST contain between two and 12 required terms.
+It MUST include `price` or `annual_rent`.
+Each term MUST have between one and 16 distinct finite numeric values that pass its schema.
+The compiler MUST limit the complete candidate product to 512 packages.
+The policy MUST evaluate a complete candidate before selecting it.
+The candidate MUST satisfy every role's hard constraints and the NPC reservation utility.
+The policy MUST NOT optimize counterpart private utility.
+It SHOULD prefer a monetary concession with a nonmonetary change that improves NPC utility.
+The selected public terms are the only basis for the exchange explanation.
+An incomplete offer MUST NOT trigger implicit completion by the exchange policy.
+Without a supported exchange, the NPC MUST use a validated fallback or rejection.
+
 When one participant uses the built-in NPC as the counterparty, the service automatically runs the built-in NPC after a valid substantive participant action.
 
 The request can return the committed participant result and the generated NPC response.
@@ -367,6 +586,10 @@ Session creation includes `idempotency_key` only.
 
 A repeated idempotency key returns the stored result of the first request that used that key.
 
+The create-session response delivers participant credentials only once.
+The stored create-session result excludes credentials.
+A repeated create-session request returns the same session with `credential_delivery: initial_response_only`.
+
 This rule includes stored domain-error results.
 
 A mismatched expected revision returns HTTP `409` with code `revision_conflict`.
@@ -375,15 +598,135 @@ The response includes the current session revision.
 
 No parser, policy, validator, or NLG retry can append the same authoritative action twice.
 
-## NLG failure handling
+## Conversation memory and authored reasons
 
-The system retries a failed NLG operation at most two times after the first failure.
+These rules implement [DR-27](decisions/2026-09-06_conversation-continuity.md).
 
-The system then uses an actor-safe deterministic template.
+The service MUST derive conversation memory deterministically from durable public messages and public events in the current session.
+Memory MUST contain a version and source message or event references.
+The service MUST rebuild memory after restart without process-local state.
+It MUST NOT use an LLM summary as authoritative memory.
+The renderer projection MUST remain bounded and validated.
+The service MUST redact credentials before memory construction and truncation.
+Memory MUST NOT contain role briefs, private event payloads, hidden knowledge, utility values, or another session's data.
 
-An NLG failure does not roll back an already committed authoritative action.
+Memory MAY retain explicit and postponed topics, attributed participant statements, question-response references, public offer revisions, and a binding agreement.
+An event-derived offer or agreement MUST remain distinct from a participant claim.
+Each remembered offer MUST retain its lifecycle status and the public event reference that establishes that status.
+Public lifecycle events MUST control historical offer status.
+The renderer MUST NOT present an inactive historical offer as active.
+A question followed by a reply MAY be marked `responded`.
+Chronology alone MUST NOT mark the question `answered`.
+Topic extraction MUST use participant text and engine-authored metadata.
+It MUST NOT parse generated NPC prose into negotiation state.
+A reply, claim, question, or postponed topic MUST NOT become an agreement or ground truth.
 
-The worker resumes from the last committed session revision.
+A role MAY define `dialogue_reasons` in a new immutable scenario version.
+Each reason MUST contain `id`, `term_id`, `text`, `source_ref`, and `disclose_when`.
+`source_ref` MUST reference that role's `brief.objective` or `brief.context`.
+`disclose_when` MUST be `on_topic_question` in this increment.
+The compiler MUST validate identifiers, uniqueness, topic references, source references, limits, and plain nonnumeric text.
+Each role MAY define at most six reasons.
+Each reason text MUST contain at most 300 characters.
+The author remains responsible for semantic grounding in the referenced authored source.
+
+The engine MAY disclose at most two reasons per reply when the participant asks about the matching term or asks a contextual follow-up about the current topic.
+The renderer MUST receive only selected reason identifiers and texts, plus previously delivered public reason history.
+It MUST NOT receive the private source text or unselected private reasons.
+Only delivered disclosures MAY enter persistent disclosed-reason history.
+A pending or failed render MUST NOT prove disclosure.
+The renderer MUST include every text from `approved_reasons` verbatim in the reply.
+It MUST reject generated text that omits or paraphrases a selected reason instead of including the exact text.
+After a reason is delivered, the engine MUST NOT select it again for `approved_reasons`.
+The renderer MAY use that reason from `disclosed_reasons` without verbatim repetition.
+Only an exact reason text in the delivered message qualifies for the public `disclosed_reason_ids` metadata.
+A paraphrase alone MUST NOT prove disclosure.
+Reasons MUST NOT change utility, acceptance thresholds, hard constraints, or capabilities.
+Old scenario versions MUST remain unchanged and valid without reasons.
+Historical render plans without conversation memory or authored reasons MUST remain readable.
+
+## Grounded rendering fields
+
+The durable `NpcDialogueRequest` includes `difficulty`, `conversation_style`, `requested_term_id`, and `numeric_references`.
+`difficulty` MUST be `guided`, `easy`, `normal`, or `expert`.
+`conversation_style` MUST be `pragmatic`, `analytical`, or `relationship_focused`.
+The provider receives fixed instructions as `dialogue_profile` and `conversation_style`.
+These profiles MUST NOT alter economic truth or disclosure permissions.
+The existing Easy canonical opening rule remains unchanged.
+
+`requested_term_id` MUST be an authored participant-facing identifier or `null`.
+The engine MUST select it before rendering.
+When it is present, a generated numeric-answer question MUST concern that term only.
+Both `npc.intent.committed` and `npc.utterance.delivered` record the field.
+Only actual delivery can supply the next parser's requested-term context.
+
+The numeric reference list MUST contain at most 12 unique slots named `quote_a` through `quote_l`.
+Each slot contains `slot_id`, `offer_id`, `offer_revision`, `proposer_role`, `term_id`, `value`, `currency`, `display_text`, and `format_version`.
+`format_version` MUST be `1` in this increment.
+`display_text` MUST contain at most 400 characters and MUST preserve exact value and attribution.
+The request MUST validate each slot against one active public offer and the request currency.
+Inactive or omitted terms MUST NOT receive a slot.
+The provider MUST emit the exact supplied token, such as `[[quote_a]]`, instead of writing a number.
+The service MUST substitute the engine-authored display text.
+It MUST reject unknown, altered, repeated, or unbound tokens.
+The reply MUST satisfy the 1,200-character limit before and after substitution.
+The resolved reply MUST pass all applicable deterministic and grounding checks.
+Quoted terms remain proposals, not new commitments or agreements.
+
+The enclosing durable plan retains `render_id`, `session_id`, `intent_revision`, `npc_participant_id`, `action`, and `request`.
+It MUST preserve the approved references before provider I/O.
+Recovery MUST revalidate the request and retain its original revision binding.
+Old requests default to Normal difficulty, pragmatic style, no requested term, and an empty reference list.
+The existing atomic render claim, compare-and-swap delivery, and same-session pending-render lock remain required.
+
+## Built-in NPC dialogue failure handling
+
+Opening presentation, binding acceptance, rejection, and complete counteroffer messages use canonical deterministic templates.
+
+These canonical messages do not call a dialogue provider.
+
+A non-binding speech act MAY use contextual LLM wording under [DR-26](decisions/2026-09-05_contextual-npc-dialogue.md).
+The engine MUST select the action and permitted disclosures before generation.
+Novel prose MUST pass deterministic output checks and a separate LLM grounding check.
+The grounding check MAY reject presentation only.
+It MUST NOT change the action, utility, truth, or session state.
+The service MUST NOT parse generated NPC prose back into negotiation state.
+The semantic check is probabilistic, not a formal guarantee.
+One claimed render attempt MAY contain a generation call and a grounding-check call.
+Both calls MUST occur outside SQLite write transactions.
+
+An eligible non-binding NPC utterance uses at most one claimed render attempt.
+
+A provider failure, timeout, empty response, invalid response, or contract violation uses the precomputed actor-safe deterministic template.
+
+A dialogue-rendering failure does not roll back an already committed authoritative action.
+
+The worker resumes the durable render job from its stable intent revision.
+
+The worker does not duplicate the NPC action or public message.
+
+The renderer MAY record safe `validation_failure`, `latency_ms`, and `attempted_generation` metadata.
+Validation categories are `format`, `speech_act`, `numeric_reference`, `unauthorized_claim`, `repetition`, `grounding`, `language`, and `credential`.
+An unavailable category or duration MUST remain `null`.
+The legacy `failure_reason` categories remain unchanged.
+No raw rejected output, prompt, credential, or provider error may enter public telemetry.
+
+## Separate dialogue evaluation
+
+The Admin session detail MAY expose `dialogue_quality` with version `1`.
+It MUST derive only from the selected session's public messages and public renderer events.
+It MUST distinguish technical diagnostics from economic outcome and human judgment.
+Repetition flags MUST cite source messages and MUST remain bounded to 100 displayed flags.
+The counts MAY include further repeats beyond the displayed flags.
+Canonical replies without generation MUST NOT enter latency or fallback-rate denominators.
+Missing latency and fallback observations MUST remain unavailable.
+The API human dimensions remain unrated in this increment.
+An offline scorecard MAY rate relevance, continuity, attribution, and absence of unsupported claims from 0 to 4.
+It MUST retain rubric version, source references, reviewer identity, and coverage.
+The analyzer MUST reject changed sources, invalid ratings, and unknown source references.
+Unrated dimensions MUST remain `null`.
+Dialogue diagnostics MUST NOT reveal hidden state or release sealed benchmark reviews.
+See the [dialogue evaluation rubric](dialogue-evaluation-rubric.md).
 
 ## Terminal states
 
@@ -405,11 +748,15 @@ The terminal session states are:
 
 An ambiguous statement about ending negotiations requires clarification.
 
+A negated ending statement such as `мы не уйдём из переговоров` or `we will not walk away` is not a walk-away. The parser ignores the ending cue and reads the rest of the message.
+
 The MVP uses scenario `max_rounds` for expiry.
 
 The MVP does not require a wall-clock deadline.
 
 When `max_rounds` is reached without another terminal transition, the session enters `expired`.
+
+The engine evaluates `max_rounds` immediately after the substantive action that completes the last round, for every controller type. A built-in NPC receives no action after the last round is complete.
 
 An unambiguous `walk_away` terminates the session without a separate confirmation.
 

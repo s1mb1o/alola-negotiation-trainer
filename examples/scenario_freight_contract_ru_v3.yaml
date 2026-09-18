@@ -1,0 +1,165 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: freight_contract_ru
+  version: 3
+  title: Контракт на срочную грузовую перевозку
+  language: ru
+  currency: RUB
+  authoring_status: {state: published, missing_required_definitions: []}
+  protocol: {pass_allowed: true, max_rounds: 10, max_consecutive_clarifications: 3}
+  scope:
+    commercial_terms: {depth: full}
+    delivery_planning: {depth: medium}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: buyer.production_deadline
+        subject_role: buyer
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [buyer]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      price:
+        value_schema: {type: number, minimum: 300000, maximum: 500000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      delivery_weeks:
+        value_schema: {type: integer, minimum: 1, maximum: 8}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [price, prepayment_fraction, delivery_weeks]
+    optional_term_ids: []
+  exchange_policy:
+    candidate_values:
+      price: [350000, 365000, 380000, 400000, 420000, 440000]
+      prepayment_fraction: [0, 0.25, 0.5, 0.75, 1]
+      delivery_weeks: [1, 2, 4, 6, 8]
+  hard_constraints:
+    - id: buyer_price_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: price}, right: {const: 440000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_price_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: price}, right: {const: 350000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 25
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 300000, input_max: 500000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.10, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          delivery_weeks: {weight: 0.15, type: linear, input_min: 1, input_max: 8, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 20
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 300000, input_max: 500000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          delivery_weeks: {weight: 0.10, type: linear, input_min: 1, input_max: 8, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Найти цену от 350000 до 440000 и согласовать аванс со сроком доставки.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      conversation_style: analytical
+      company: ООО Северный Завод
+      brief:
+        objective: Доставить комплектующие без остановки производства.
+        context: Скорость важнее удобного графика платежей, но бюджет имеет жесткий предел. Расходы на перевозку сокращают резерв производственного бюджета. Предоплата отвлекает средства до получения комплектующих.
+      dialogue_reasons:
+        - id: production_budget
+          term_id: price
+          text: Расходы на перевозку сокращают резерв производственного бюджета.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: cash_reserve
+          term_id: prepayment_fraction
+          text: Предоплата отвлекает средства до получения комплектующих.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: production_continuity
+          term_id: delivery_weeks
+          text: Комплектующие нужны вовремя, чтобы избежать остановки производства.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+      batna: {utility: 18, description: Использовать более медленного текущего перевозчика.}
+      constraints: {reservation_utility: 25, maximum_price: 440000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.10}
+        delivery_weeks: {weight: 0.15}
+    seller:
+      conversation_style: pragmatic
+      company: АО ТрансЛайн
+      brief:
+        objective: Загрузить свободный транспорт по прибыльной ставке.
+        context: Больший аванс снижает финансовый риск. Более длинный срок упрощает планирование. Тариф должен покрывать топливо и работу перевозчика. Короткий срок ограничивает выбор подходящего рейса.
+      opening_offer: {price: 480000, prepayment_fraction: 0.4, delivery_weeks: 6}
+      dialogue_reasons:
+        - id: transport_cost
+          term_id: price
+          text: Тариф должен покрывать топливо и работу перевозчика.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: payment_risk
+          term_id: prepayment_fraction
+          text: Большая предоплата снижает финансовый риск.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: route_planning
+          term_id: delivery_weeks
+          text: Короткий срок ограничивает выбор подходящего рейса.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 14, description: Взять две небольшие стандартные перевозки.}
+      constraints: {reservation_utility: 20, minimum_price: 350000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.10}
+  distractors:
+    - id: buyer_capacity_rumor
+      type: wrong_opinion
+      content: Коллега считает, что у перевозчиков сейчас нет свободных машин и торг бесполезен.
+      truth_note: У поставщика есть свободный транспорт. Мнение коллеги не подтверждено.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_price_only_rumor
+      type: outdated
+      content: Старый обзор утверждает, что заказчик всегда выбирает только минимальную цену.
+      truth_note: Для заказчика скорость поставки важнее минимальной цены.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_capacity_rumor, seller_price_only_rumor]}

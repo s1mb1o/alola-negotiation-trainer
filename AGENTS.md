@@ -144,6 +144,14 @@ Do not over-engineer the utility model. Begin with weighted/piecewise utilities 
 
 The scenario MUST define the truth model, term primitives, capabilities, constraints, composition rules, and evaluation rules that the MVP scenario needs.
 
+Exactly one scenario role MUST define exactly one authored opening artifact.
+The artifact is either a complete `opening_offer` or an `opening_position` that can omit required terms.
+An `opening_position` MUST contain at least one authored term.
+An omitted `opening_position` term is `UNSPECIFIED` and remains unresolved.
+The compiler and service MUST NOT insert a default or placeholder value for an omitted term.
+An explicit zero is a real term value.
+An incomplete opening position MUST NOT become binding.
+
 The scenario compiler MAY create atomic knowledge items from authored domain entities.
 
 A concrete composite deal structure MAY emerge at runtime when every primitive and evaluation rule is authored.

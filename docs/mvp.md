@@ -1,5 +1,49 @@
 # MVP Plan
 
+## Reference supply contract (DR-30)
+
+[DR-30](decisions/2026-09-08_reference-supply-implementation.md) and the [resolved contract](reference-supply-contract.md) define the opt-in implementation.
+
+Scenarios with `negotiation_contract: supply-package-v1` MUST initialize an exact authored preliminary proposal instead of an accept-enabled formal opening offer.
+Preliminary proposals MUST remain non-binding even when complete.
+The service MUST distinguish preliminary revision, final-offer publication, acceptance intent, and exact-revision confirmation.
+A participant's final offer MUST require confirmation of its exact materialized snapshot before publication.
+NPC promotion of its own preliminary package MUST present a formal offer without also treating the presentation request as acceptance.
+The service MUST permit at most one actor-bound pending finalization operation per session.
+An explicit amendment based on a formal offer MUST supersede that offer and invalidate its pending confirmation atomically.
+Questions and uncommitted hypotheticals MUST NOT supersede an offer.
+Every material amendment MUST use a source revision and preserve dependent conditions atomically.
+Composite quantities, monetary allocation, reserve references, and all outcome obligations MUST be validated deterministically.
+Incomplete packages MUST NOT receive authoritative complete-package utility.
+The NPC MUST select actions using authored rules, NPC utility, and actor-safe public context.
+It MUST NOT rank actions using counterpart private utility or expose hidden limits.
+New supply rendering MAY use bounded paragraphs around an immutable engine-authored package block.
+The LLM MUST NOT alter the block, invent amounts, or establish agreement through prose.
+Legacy scalar scenarios, financial confirmation text, and stored renderer versions MUST retain their existing behavior.
+Humans and external agents MUST use the same authenticated natural-language Player API.
+Public history MUST retain source-linked preliminary revisions and formal offers without exposing private economics.
+Replay and restart MUST use persisted validated transitions and stored wording without new LLM calls.
+The implementation MUST pass offline reference trajectories and safety regressions before any generalization.
+Optional semantic normalization MUST run outside SQLite write transactions.
+The service MUST recheck actor authority, session revision, turn, and idempotency before committing its result.
+The normalizer MUST preserve numeric tokens and MUST pass its result through deterministic parsing and validation.
+Explicit negation, past proposals, and protocol controls MUST NOT become amendments through normalization.
+Unsupported conditional clauses and uncertain equivalence MUST produce no package mutation.
+Normalization failure MUST produce an observable clarification without exposing raw provider errors.
+
+## Delivery order (DR-29)
+
+[DR-29](decisions/2026-09-08_reference-before-generalization.md) defines the accepted sequence.
+
+The next increment MUST implement and validate one bounded supply-negotiation scenario before generalizing its deal model.
+The reference increment MUST retain structured-state authority, actor-safe projections, exact confirmation, immutable scenario versions, and replay without LLM calls.
+Generalization MUST preserve the reference scenario's validated behavior and support a second domain through authored configuration.
+Implementation MUST NOT begin until the reference specification, economic assumptions, and unresolved contract rules are approved.
+This sequencing decision does not authorize paid model calls or external AI review.
+
+The [reference specification](reference-supply-spec.md) records the design. DR-30 and the resolved contract replace its open alternatives.
+The [delivery plan](plans/05_reference-supply-and-generalization.md) records stages and readiness gates.
+
 ## Phase 1 — Domain skeleton
 
 Implement:
@@ -31,6 +75,10 @@ Acceptance:
 
 - scenario can be loaded;
 - scenario conforms to the external schema;
+- exactly one scenario role defines exactly one of `opening_offer` and `opening_position`;
+- `opening_offer` contains every required term;
+- an omitted `opening_position` term remains unresolved and receives no generated placeholder value;
+- an explicit zero remains a real term value;
 - linter reports ZOPA status and accepts an intentional no-ZOPA scenario when it matches the declared training intent;
 - session can be started;
 - Russian is stored as the scenario and session language;
@@ -128,6 +176,10 @@ Implement:
 Acceptance:
 
 - benchmark sessions cannot request hints;
+- an Easy training session with a built-in NPC opening role starts with one replayable canonical opening message;
+- the Easy message contains exactly the authored public opening terms;
+- the Easy message does not describe a partial `opening_position` as a complete package;
+- the Easy opening message does not change the session revision, round, turn count, offer, or `next_actor`;
 - an LLM may paraphrase visible distractor text but cannot invent facts;
 - the exact rendered assistance content can be replayed.
 

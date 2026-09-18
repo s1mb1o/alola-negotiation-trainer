@@ -1,0 +1,153 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: saas_subscription_en
+  version: 2
+  title: Annual analytics platform subscription
+  language: en
+  currency: RUB
+  authoring_status:
+    state: published
+    missing_required_definitions: []
+  protocol:
+    pass_allowed: true
+    max_rounds: 12
+    max_consecutive_clarifications: 3
+  scope:
+    commercial_terms: {depth: full}
+    implementation: {depth: medium}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: seller.quarter_deadline
+        subject_role: seller
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      price:
+        value_schema: {type: number, minimum: 900000, maximum: 1400000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      delivery_weeks:
+        value_schema: {type: integer, minimum: 2, maximum: 14}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [price, prepayment_fraction, delivery_weeks]
+    optional_term_ids: []
+  hard_constraints:
+    - id: buyer_price_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: price}, right: {const: 1250000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_price_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: price}, right: {const: 1000000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 30
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 900000, input_max: 1400000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          delivery_weeks: {weight: 0.10, type: linear, input_min: 2, input_max: 14, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 20
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.75, type: linear, input_min: 900000, input_max: 1400000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          delivery_weeks: {weight: 0.10, type: linear, input_min: 2, input_max: 14, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Find a price from 1000000 to 1250000 and trade price against prepayment or launch time.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      company: Meridian Retail LLC
+      brief:
+        objective: Buy an annual subscription and launch analytics quickly.
+        context: The budget is limited. Prepayment and launch time are negotiable.
+      dialogue_reasons:
+        - id: subscription_budget
+          term_id: price
+          text: The subscription cost must stay within our budget.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: analytics_launch
+          term_id: delivery_weeks
+          text: We need to launch analytics quickly.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+      batna: {utility: 25, description: Extend the current system for one quarter.}
+      constraints: {reservation_utility: 30, maximum_price: 1250000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.10}
+    seller:
+      company: Spectrum Analytics JSC
+      brief:
+        objective: Sell an annual subscription with an acceptable margin.
+        context: Closing this quarter matters. A larger prepayment improves the offer.
+      opening_offer: {price: 1350000, prepayment_fraction: 0.5, delivery_weeks: 8}
+      dialogue_reasons:
+        - id: subscription_margin
+          term_id: price
+          text: The subscription price must provide an acceptable margin.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+        - id: advance_payment
+          term_id: prepayment_fraction
+          text: A larger prepayment improves the offer for us.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 15, description: Assign the implementation team to another customer.}
+      constraints: {reservation_utility: 20, minimum_price: 1000000}
+      interests:
+        price: {weight: 0.75}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.10}
+  distractors:
+    - id: buyer_vendor_desperate_rumor
+      type: wrong_opinion
+      content: A colleague is certain that the vendor is desperate to close the quarter and will accept any price.
+      truth_note: The vendor values the deal but has a viable alternative and a price floor.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_buyer_price_only_rumor
+      type: outdated
+      content: An old email says that the buyer cares only about the lowest licence price.
+      truth_note: Implementation time and payment schedule also matter to the buyer.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_vendor_desperate_rumor, seller_buyer_price_only_rumor]}

@@ -1,0 +1,224 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: supplier_integration_en
+  title: "Computer supply: integration and reserve"
+  language: en
+
+  negotiation_contract: supply-package-v1
+  version: 1
+  currency: EUR
+  authoring_status: {state: published, missing_required_definitions: []}
+  protocol: {pass_allowed: true, max_rounds: 24, max_consecutive_clarifications: 4}
+  scope:
+    commercial_price: {depth: full}
+    payment_schedule: {depth: full}
+    split_delivery: {depth: full}
+    contingent_quality_reserve: {depth: full}
+    rma_principle: {depth: principle_only}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: main_order.quantity
+        subject_role: buyer
+        value_schema: integer
+        truth: {source: authored, value: 100}
+        knowledge_owner_roles: [buyer, seller]
+        discoverability: objective_verification
+        sensitivity: public
+      - id: seller.order_financing
+        subject_role: seller
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      money: {description: Exact integer minor-unit amount}
+      quantity: {description: Positive integer device count}
+      date_window: {description: Inclusive ISO calendar window}
+      fraction: {description: Integer basis-point fraction}
+      schedule: {description: Payment or delivery entries with stable lot references}
+      condition: {description: Authored verified reserve outcome}
+      obligation: {description: Derived one-time monetary or ownership obligation}
+    capabilities:
+      supply_package:
+        subject_role: seller
+        primitives: [money, quantity, date_window, fraction, schedule, condition, obligation]
+        validators: [supply_package_v1]
+    composition_rules:
+      supply_package:
+        root_type: supply_package
+        allowed_primitives: [money, quantity, date_window, fraction, schedule, condition, obligation]
+        validator_ids: [supply_package_v1]
+    evaluation_rules:
+      supply_economics:
+        applies_to_roles: [buyer, seller]
+        input_types: [supply_package]
+        expression: {type: supply-economics-v1, source: supply_model}
+  terms:
+    definitions:
+      base_price:
+        value_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            currency: {const: EUR}
+            minor_units: {type: integer, minimum: 10000000, maximum: 12500000}
+        evaluation_rule_ids: [supply_economics]
+      delivery_lots:
+        value_schema:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            type: object
+            required: [lot_id]
+            additionalProperties: false
+            properties:
+              lot_id: {enum: [main, early, remaining]}
+              quantity: {type: integer, minimum: 1, maximum: 100}
+              window_start: {type: string, format: date}
+              window_end: {type: string, format: date}
+        evaluation_rule_ids: [supply_economics]
+      payment_schedule:
+        value_schema:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            type: object
+            required: [lot_id]
+            additionalProperties: false
+            properties:
+              lot_id: {enum: [main, early, remaining]}
+              advance_bps: {type: integer, minimum: 0, maximum: 10000}
+              balance_days: {enum: [0, 30]}
+        evaluation_rule_ids: [supply_economics]
+      delivery_basis:
+        value_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            basis: {const: DDP}
+            destination_id: {const: vector_site}
+        evaluation_rule_ids: [supply_economics]
+      reserve_policy:
+        value_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            mode: {enum: [none, contingent]}
+            quantity: {type: integer, minimum: 1, maximum: 3}
+            delivery_lot_id: {enum: [main, early, remaining]}
+            use_cutoff: {const: "2026-12-01"}
+            unused_payable_on: {const: "2026-12-02"}
+            unit_price_rule: {const: base_unit_ceil}
+            diagnosis_policy_id: {const: hardware-replacement-v1}
+        evaluation_rule_ids: [supply_economics]
+    required_term_ids: [base_price, delivery_lots, payment_schedule, delivery_basis, reserve_policy]
+    optional_term_ids: []
+  hard_constraints: []
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer: {reservation_utility: 40, aggregation: supply-economics-v1, value_functions: {}}
+      seller: {reservation_utility: 40, aggregation: supply-economics-v1, value_functions: {}}
+  supply_model:
+    version: supply-package-v1
+    evaluator_version: supply-economics-v1
+    calendar:
+      negotiation_date: "2026-10-01"
+      timezone: Europe/Moscow
+      earliest_date: "2026-11-05"
+      earliest_full_date: "2026-11-10"
+      latest_date: "2026-11-26"
+      early_november_start: "2026-11-05"
+      early_november_end: "2026-11-07"
+      integration_deadline: "2026-11-07"
+      completion_deadline: "2026-11-20"
+    capabilities:
+      main_quantity: 100
+      max_lots: 2
+      max_early_quantity: 10
+      max_reserve_quantity: 3
+      lot_ids: [main, early, remaining]
+      delivery_basis: DDP
+      destination_id: vector_site
+      balance_days: [0, 30]
+    bounds: {base_price_min_minor: 10000000, base_price_max_minor: 12500000}
+    reserve_rules:
+      use_cutoff: "2026-12-01"
+      unused_payable_on: "2026-12-02"
+      diagnosis_days: 10
+      unit_price_rule: base_unit_ceil
+      diagnosis_policy_id: hardware-replacement-v1
+      inconclusive_deadline_outcome: free
+      hardware_precedence: true
+    economics:
+      utility_divisor_minor: 20000
+      buyer:
+        maximum_liability_minor: 11500000
+        comparison_value_minor: 12000000
+        integration_value_minor: 500000
+        completion_value_minor: 250000
+        financing_cost_minor: 200000
+        reserve_value_per_unit_minor: 35000
+        delayed_balance_benefit_minor: 25000
+      seller:
+        minimum_base_price_minor: 10300000
+        base_cost_minor: 10200000
+        split_cost_minor: 30000
+        acceleration_cost_per_unit_minor: 1000
+        financing_credit_minor: 450000
+        reserve_cost_per_unit_minor: 20000
+        delayed_balance_cost_minor: 50000
+    npc_policy:
+      price_candidates_minor: [11500000, 11300000, 11100000, 10950000, 10800000, 10500000, 10300000]
+      standard_price_index: 0
+      advance_price_index: 1
+      split_price_index: 3
+      advance_threshold_bps: 5000
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-supply-v1}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Create mutual value through price, lot-specific payment, early delivery, and a contingent reserve. Evaluate total liability rather than discount alone.
+  roles:
+    buyer:
+      company: Vector
+      conversation_style: analytical
+      brief:
+        objective: Buy 100 industrial computers for the project launch and reduce integration risk.
+        context: The scenario date is 1 October 2026. In this scenario, early November means 5–7 November 2026. Aim to receive the first 10 devices in that window and the rest by 20 November. The EUR 115,000 budget includes the maximum purchase liability for additional reserve units. Advance payment is possible, but reduces integration funds. The supplier quotes EUR 120,000 for the main 100 devices; payment, DDP, and reserve terms remain unresolved. All companies and economic inputs are fictional.
+      batna: {utility: 36, description: "Select another supplier and accept additional integration risk."}
+      constraints: {reservation_utility: 40, maximum_total_liability: 115000}
+      interests:
+        base_price: {weight: 0.40}
+        delivery_lots: {weight: 0.30}
+        payment_schedule: {weight: 0.10}
+        reserve_policy: {weight: 0.20}
+    seller:
+      company: Nord Systems
+      conversation_style: relationship_focused
+      brief:
+        objective: Sell 100 computers on terms that cover costs and financing.
+        context: The scenario date is 1 October 2026. In this scenario, early November means 5–7 November 2026. Standard delivery is 26 November. The main order can use two lots; at most 10 devices are available before 10 November. Advance payment reduces order financing costs. An additional reserve consumes resources. The main-device price cannot be below EUR 103,000. All companies and economic inputs are fictional.
+      opening_position:
+        base_price: {currency: EUR, minor_units: 12000000}
+        delivery_lots:
+          - {lot_id: main, quantity: 100, window_start: "2026-11-26", window_end: "2026-11-26"}
+      batna: {utility: 34, description: "Sell the devices to another customer."}
+      constraints: {reservation_utility: 40, minimum_base_price: 103000}
+      interests:
+        base_price: {weight: 0.50}
+        payment_schedule: {weight: 0.30}
+        delivery_lots: {weight: 0.10}
+        reserve_policy: {weight: 0.10}
+  distractors: []
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}

@@ -128,6 +128,18 @@ Try to trade payment flexibility for something valuable to you.
 
 Show facts and probable interests.
 
+When the built-in NPC is the opening role, show one canonical opening message before the player's first turn.
+
+Show exactly the terms in the authored `opening_offer` or `opening_position`.
+
+Do not fill an omitted required term with a default or placeholder value.
+
+Describe a partial `opening_position` as a position, not as a complete package.
+
+Store this message and its delivery event at session revision 0.
+
+Do not count it as a turn or a hint.
+
 The labels are actor-safe views derived from belief confidence and visible evidence.
 
 ### Normal

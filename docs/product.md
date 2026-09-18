@@ -1,5 +1,49 @@
 # Product Model
 
+## Reference supply contract (DR-30)
+
+[DR-30](decisions/2026-09-08_reference-supply-implementation.md) and the [resolved contract](reference-supply-contract.md) define the opt-in implementation.
+
+Scenarios with `negotiation_contract: supply-package-v1` MUST initialize an exact authored preliminary proposal instead of an accept-enabled formal opening offer.
+Preliminary proposals MUST remain non-binding even when complete.
+The service MUST distinguish preliminary revision, final-offer publication, acceptance intent, and exact-revision confirmation.
+A participant's final offer MUST require confirmation of its exact materialized snapshot before publication.
+NPC promotion of its own preliminary package MUST present a formal offer without also treating the presentation request as acceptance.
+The service MUST permit at most one actor-bound pending finalization operation per session.
+An explicit amendment based on a formal offer MUST supersede that offer and invalidate its pending confirmation atomically.
+Questions and uncommitted hypotheticals MUST NOT supersede an offer.
+Every material amendment MUST use a source revision and preserve dependent conditions atomically.
+Composite quantities, monetary allocation, reserve references, and all outcome obligations MUST be validated deterministically.
+Incomplete packages MUST NOT receive authoritative complete-package utility.
+The NPC MUST select actions using authored rules, NPC utility, and actor-safe public context.
+It MUST NOT rank actions using counterpart private utility or expose hidden limits.
+New supply rendering MAY use bounded paragraphs around an immutable engine-authored package block.
+The LLM MUST NOT alter the block, invent amounts, or establish agreement through prose.
+Legacy scalar scenarios, financial confirmation text, and stored renderer versions MUST retain their existing behavior.
+Humans and external agents MUST use the same authenticated natural-language Player API.
+Public history MUST retain source-linked preliminary revisions and formal offers without exposing private economics.
+Replay and restart MUST use persisted validated transitions and stored wording without new LLM calls.
+The implementation MUST pass offline reference trajectories and safety regressions before any generalization.
+Optional semantic normalization MUST run outside SQLite write transactions.
+The service MUST recheck actor authority, session revision, turn, and idempotency before committing its result.
+The normalizer MUST preserve numeric tokens and MUST pass its result through deterministic parsing and validation.
+Explicit negation, past proposals, and protocol controls MUST NOT become amendments through normalization.
+Unsupported conditional clauses and uncertain equivalence MUST produce no package mutation.
+Normalization failure MUST produce an observable clarification without exposing raw provider errors.
+
+## Delivery order (DR-29)
+
+[DR-29](decisions/2026-09-08_reference-before-generalization.md) defines the accepted sequence.
+
+The next increment MUST implement and validate one bounded supply-negotiation scenario before generalizing its deal model.
+The reference increment MUST retain structured-state authority, actor-safe projections, exact confirmation, immutable scenario versions, and replay without LLM calls.
+Generalization MUST preserve the reference scenario's validated behavior and support a second domain through authored configuration.
+Implementation MUST NOT begin until the reference specification, economic assumptions, and unresolved contract rules are approved.
+This sequencing decision does not authorize paid model calls or external AI review.
+
+The [reference specification](reference-supply-spec.md) records the design. DR-30 and the resolved contract replace its open alternatives.
+The [delivery plan](plans/05_reference-supply-and-generalization.md) records stages and readiness gates.
+
 ## Product thesis
 
 A negotiation trainer should not be only a role-playing chatbot.
@@ -152,6 +196,28 @@ A proposal outside the compiled grammar can be discussed. It cannot affect utili
 
 See `docs/knowledge-and-emergent-state.md` for the normative model.
 
+## Authored opening artifacts
+
+Exactly one scenario role defines exactly one authored opening artifact.
+
+A complete `opening_offer` contains every required term.
+
+An `opening_position` contains at least one authored term.
+
+It contains only the terms that the role states at the start.
+
+An omitted required term is `UNSPECIFIED` and remains unresolved.
+
+The system never inserts a default or placeholder value for an omitted term.
+
+An explicit zero is a real offer value.
+
+A participant cannot bind an opening position until every required term is explicit.
+
+This model lets a scenario preserve a negotiation topic for discovery.
+
+For example, a supplier can state a price without stating a prepayment share or delivery time.
+
 ## Agreement interaction
 
 The system interprets agreement in context.
@@ -195,9 +261,16 @@ Example:
 
 Shows:
 
+- one canonical built-in-NPC presentation of the authored public opening artifact at session start;
 - clear own priorities;
 - confirmed or probable counterparty interests;
 - no direct recommended wording.
+
+The opening presentation states exactly the terms in the authored opening artifact.
+
+It describes a partial `opening_position` as a position, not as a complete package.
+
+It does not consume a turn or change the deal state.
 
 ### Normal
 

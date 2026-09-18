@@ -1,0 +1,169 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: supplier_001
+  version: 2
+  title: Поставка 100 промышленных компьютеров
+  language: ru
+  currency: EUR
+  authoring_status: {state: published, missing_required_definitions: []}
+  protocol: {pass_allowed: true, max_rounds: 12, max_consecutive_clarifications: 3}
+  scope:
+    commercial_price: {depth: full}
+    prepayment: {depth: full}
+    whole_order_delivery: {depth: full}
+    split_delivery: {depth: excluded}
+    contingent_quality_reserve: {depth: excluded}
+    rma_principle: {depth: principle_only}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: buyer.order_quantity
+        subject_role: buyer
+        value_schema: integer
+        truth: {source: authored, value: 100}
+        knowledge_owner_roles: [buyer, seller]
+        discoverability: objective_verification
+        sensitivity: public
+      - id: buyer.project_launch_date
+        subject_role: buyer
+        value_schema: date
+        truth: {source: authored, value: "2026-12-01"}
+        knowledge_owner_roles: [buyer]
+        discoverability: dialogue_evidence
+        sensitivity: private
+      - id: buyer.batna_integration_risk
+        subject_role: buyer
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [buyer]
+        discoverability: dialogue_evidence
+        sensitivity: private
+      - id: seller.cashflow_pressure
+        subject_role: seller
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: secret
+      - id: seller.delivery_acceleration_low_cost
+        subject_role: seller
+        value_schema: boolean
+        truth: {source: authored, value: true}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: private
+      - id: seller.target_price
+        subject_role: seller
+        value_schema: money
+        truth: {source: authored, value: 112000}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: secret
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      price:
+        value_schema: {type: number, minimum: 100000, maximum: 125000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      delivery_weeks:
+        value_schema: {type: integer, minimum: 1, maximum: 8}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [price, prepayment_fraction, delivery_weeks]
+    optional_term_ids: []
+  hard_constraints:
+    - id: buyer_price_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: price}, right: {const: 115000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_price_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: price}, right: {const: 103000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 40
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.50, type: linear, input_min: 100000, input_max: 125000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          delivery_weeks: {weight: 0.35, type: linear, input_min: 1, input_max: 8, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 40
+        aggregation: weighted_sum
+        value_functions:
+          price: {weight: 0.40, type: linear, input_min: 100000, input_max: 125000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.40, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          delivery_weeks: {weight: 0.20, type: linear, input_min: 1, input_max: 8, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Согласовать цену от 103 000 до 115 000 евро и обменять цену на размер предоплаты или срок поставки всего заказа.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      company: Vector
+      brief:
+        objective: Закупить 100 промышленных компьютеров для запуска проекта 1 декабря.
+        context: Nord Systems предложила комплект за 120 000 евро. Утверждённый бюджет не превышает 115 000 евро. Целевая цена составляет 105 000 евро. Срок поставки считается в полных неделях с 1 октября 2026 года. Поставка всего заказа до 15 ноября снижает риск срыва интеграции. Размер предоплаты можно обсуждать.
+      batna:
+        utility: 36
+        description: Купить комплект за 108 000 евро у другого поставщика. Его оборудование хуже и создаёт дополнительный риск при интеграции.
+      constraints: {reservation_utility: 40, maximum_price: 115000}
+      interests:
+        price: {weight: 0.50}
+        prepayment_fraction: {weight: 0.15}
+        delivery_weeks: {weight: 0.35}
+    seller:
+      company: Nord Systems
+      brief:
+        objective: Продать Vector комплект из 100 промышленных компьютеров на приемлемых условиях.
+        context: Целевая цена составляет не менее 112 000 евро. Ранняя оплата имеет высокую ценность. Срок поставки считается в полных неделях с 1 октября 2026 года. Ускорение поставки требует небольших дополнительных затрат. Возможность последующих заказов имеет умеренную ценность.
+      opening_offer: {price: 120000, prepayment_fraction: 0, delivery_weeks: 8}
+      batna:
+        utility: 34
+        description: Направить оборудование другому покупателю. Экономический эквивалент этого варианта составляет около 103 000 евро.
+      constraints: {reservation_utility: 40, minimum_price: 103000}
+      interests:
+        price: {weight: 0.40}
+        prepayment_fraction: {weight: 0.40}
+        delivery_weeks: {weight: 0.20}
+  distractors:
+    - id: buyer_seller_desperate_rumor
+      type: wrong_opinion
+      content: Коллега уверен, что Nord Systems срочно нужны деньги и компания согласится на цену ниже 100 000 евро.
+      truth_note: У поставщика есть приемлемая альтернатива. Цена ниже 103 000 евро нарушает его жёсткое ограничение.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_buyer_no_alternative_rumor
+      type: wrong_opinion
+      content: Менеджер считает, что у Vector нет другого поставщика и компания может заплатить до 125 000 евро.
+      truth_note: У покупателя есть предложение другого поставщика. Бюджет Vector не превышает 115 000 евро.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_seller_desperate_rumor, seller_buyer_no_alternative_rumor]}

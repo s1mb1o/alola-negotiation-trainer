@@ -1,6 +1,107 @@
 # Smoke Tests
 
+## Implementation status — 2026-09-07
+
+The lists below define the full specification acceptance target.
+They do not imply that every target is implemented.
+
+The current executable suite verifies these areas:
+
+- seven current published scenario entries, immutable versions, and compiler rules;
+- the event example schema;
+- Player API actor authentication and hidden-state filtering;
+- SQLite WAL persistence and restart recovery;
+- same-revision concurrency and idempotency;
+- complete materialized offers and immutable revisions;
+- context-aware acceptance and strict confirmation;
+- Unicode-safe grouped prices and proposal-clause selection;
+- safe clarification for several offer packages in one message;
+- explicit currency mismatch handling;
+- bounded clarifications, protocol controls, hints, and rounds;
+- actor-safe histories and reviews;
+- benchmark run-set review sealing;
+- benchmark model-score release gating and generation provenance;
+- role-swapped aggregation and technical-failure attribution;
+- Russian and English sessions;
+- Guided, Easy, Normal, and Expert projections;
+- replayable Easy built-in-NPC opening-artifact presentation at revision 0;
+- partial opening positions with unresolved terms and no generated placeholder values;
+- focused partial-offer dialogue, event-derived bounded memory, public offer lifecycle status, and gated authored reasons;
+- numeric intent separation, relative edits against one active baseline, and short-answer term context;
+- bounded exchange candidates, complete-package validation, and monotonic public monetary concessions;
+- active-offer numeric quote slots, durable profiles, and engine-authored requested terms;
+- separate dialogue diagnostics and offline source-attributed human scorecards;
+- structured actor-safe role briefs and localized value formatting;
+- CLI, Telegram adapter, OpenAI, and Qwen provider contracts;
+- React session, confirmation, context, review, and statistics views.
+- Russian and English UI labels, localized scenario discovery, and document metadata.
+- Light, dark, and system themes with stored preferences and narrow-screen controls.
+- Web UI typography tokens and minimum readable text sizes.
+- administrator-authenticated safe session list and detail projections;
+- Stable Web UI routes for training, progress, and Inspector views.
+
+These target areas remain unimplemented:
+
+- exact-revision forks;
+- MESO offer sets;
+- typed runtime composite terms;
+- knowledge compilation, evidence extraction, and belief updates;
+- fuzzy LLM policy ranking;
+- server-side speech adapters.
+
+The earlier DR-27 checks on 2026-09-06 passed 373 Python tests and 66 frontend tests in 16 files.
+The frontend production build and `git diff --check` passed.
+Browser restoration and catalog/state reads passed without submitting a dialogue turn.
+The OpenAI continuity smoke attempt produced 11 `provider_failure` fallbacks.
+It does not verify live generated replies or conversational quality.
+The network retry remains blocked by automatic safety review until fresh explicit transmission consent is available.
+See `docs/reports/2026-09-06-conversation-continuity.md` for the earlier DR-27 evidence and limits.
+The DR-28 sections below define the new acceptance checks.
+Run them with fake providers or template mode unless a live transmission is separately authorized.
+
+The final DR-28 local run passed 655 Python tests and 70 frontend tests.
+The frontend build and `git diff --check` passed.
+No external model call was made for DR-28 verification.
+See the [DR-28 verification report](docs/reports/2026-09-06-grounded-negotiation-dialogue.md).
+
+The DR-28 validation-harness run on 2026-09-07 passed 761 Python tests.
+The offline matrix passed 48 sessions and 232 scripted messages with four workers.
+It checked supplier version 5 in Russian and office version 4 in English at all four difficulty levels.
+It used offline fixtures and made zero external model calls.
+The frontend was not changed or retested in this increment.
+See the [validation-suite report](docs/reports/2026-09-07-dr28-dialogue-validation.md).
+
+### Executable DR-28 smoke matrix
+
+```sh
+.venv/bin/python -m backend.live_dialogue_smoke
+.venv/bin/python -m backend.live_dialogue_smoke --mode offline --workers 4 --output benchmark-results/dr28-offline-new.json
+```
+
+The default command prints a plan and constructs no provider or session.
+Offline mode uses the real renderer and Player API with a local fixture provider.
+An existing output file must remain unchanged. Use a new path for each run.
+The [validation guide](docs/dr28-dialogue-validation.md) defines live execution prerequisites and the full command set.
+
+- Verify unchanged offers and no acceptance request after numeric questions and false agreement claims.
+- Verify short numeric answers use the requested term and preserve unresolved terms.
+- Verify relative edits use the correct offer ID and increment its revision.
+- Verify explicit zero remains a real proposal value.
+- Verify ambiguous or missing baselines request clarification and permit later recovery.
+- Require actual delivered numeric quote use in quote-request steps. Check exact text, attribution, and active source revision.
+- Reject unused, replaced, or invalid quote output as coverage evidence.
+- Distinguish expected clarification or canonical replies from unobserved conversational generation.
+- Verify one atomic provider-call limit across concurrent cases and grounding invocations.
+- Verify public export allowlists, credential redaction, source identifiers, and evaluator compatibility.
+- Keep all human ratings unset until a reviewer supplies source-linked labels.
+- Run legacy `contextual` and `continuity` scripts offline to preserve earlier checks.
+
 ## Specification acceptance tests
+
+Composite-supply checks implement [DR-30](docs/decisions/2026-09-08_reference-supply-implementation.md).
+Run `.venv/bin/python -m pytest backend/tests/test_supply*.py` for typed economics, source-bound parsing, confirmation, replay, optional semantic extraction, and renderer regressions.
+The [offline report](docs/reports/2026-09-08-supply-offline-dialogue.md) contains four completed reference trajectories.
+No live-model naturalness or model ranking is claimed.
 
 ### Versioned schemas
 
@@ -8,6 +109,22 @@
 - Verify that structural schema validation passes for the declared draft state.
 - Attempt to publish the draft.
 - Verify that the publication linter rejects every item in `missing_required_definitions`.
+- Validate and compile `examples/scenario_supplier_001_v2.yaml` as `supplier_001` version 2.
+- Validate and compile `examples/scenario_supplier_001_v3.yaml` as `supplier_001` version 3.
+- Validate and compile `examples/scenario_supplier_001_v4.yaml` as `supplier_001` version 4.
+- Validate and compile `examples/scenario_supplier_001_v5.yaml` as `supplier_001` version 5.
+- Verify that the catalog exposes version 5 and does not expose draft version 1.
+- Verify that the explicit-version endpoint retains immutable versions 2, 3, and 4.
+- Verify that versions 2 through 5 require `price`, `prepayment_fraction`, and `delivery_weeks`.
+- Verify that the current Russian and English office-lease versions are 4 and the current freight and SaaS versions are 3.
+- Compare each DR-28 scenario with its preceding version. Verify unchanged opening terms, economic truth, utility rules, reservation thresholds, and hard constraints.
+- Verify that richer context, grounded reasons, conversation style, and bounded exchange grids exist only in the new versions.
+- Verify that exactly one role defines exactly one of `opening_offer` and `opening_position`.
+- Reject an `opening_offer` that omits a required term.
+- Compile an `opening_position` that omits a required term.
+- Reject an empty `opening_position`.
+- Verify that the compiler does not add the omitted term.
+- Verify that an explicit zero remains a real term value.
 - Verify that a published scenario requires controlled composition-rule and evaluation-rule catalogs.
 - Validate `schemas/event-example.json` against `schemas/negotiation-event-v1.schema.json`.
 
@@ -19,14 +136,122 @@
 - Run one human participant and one external-agent participant through the same natural-language message flow.
 - Verify that neither participant can submit a typed public action.
 
+### Easy opening dialogue
+
+- Create `supplier_001` version 3 as an Easy training session with a human buyer and a built-in NPC opening seller.
+- Verify that the transcript starts with one seller `opening_position` message.
+- Verify that the message states only the authored price of 120 000 EUR.
+- Verify that the message does not state a prepayment share or delivery time.
+- Verify that the message does not describe the position as a complete package.
+- Verify that the active revision contains only `price: 120000`.
+- Verify that `unresolved_required_terms` contains `prepayment_fraction` and `delivery_weeks`.
+- Verify that `offer.created` contains the same unresolved-term list.
+- Verify that `npc.opening_utterance.delivered` contains `speech_act: opening_position` and `opening_kind: opening_position`.
+- Attempt to accept the partial revision.
+- Verify that the service returns HTTP `422` with `offer_not_bindable`.
+- Verify that the service does not create a pending acceptance confirmation or agreement.
+- Verify that `revision = 0`, `round = 1`, and `substantive_turn_count = 0`.
+- Verify that the buyer remains `next_actor`.
+- Verify that the active offer remains unchanged.
+- Verify that the opener creates no evidence, belief update, detected signal, or probable interest.
+- Verify that one `npc.opening_utterance.delivered` event exists.
+- Repeat creation with the same idempotency key.
+- Verify that the message and event are not duplicated.
+- Configure a dialogue provider spy.
+- Verify that Easy session creation makes no provider call.
+- Create an Easy scenario that has a complete `opening_offer`.
+- Verify that its message uses `opening_offer` and contains the exact complete public package.
+- Create an Easy scenario with an explicit zero opening term.
+- Verify that the active revision and presentation retain the zero value.
+- Verify that Guided, Normal, and Expert creation does not add the Easy opener.
+- Verify that the service does not synthesize an opener for a human or external-agent proposer.
+
+### Web UI routes
+
+- Open `/training` directly.
+- Verify that the training view is active.
+- Open `/progress` directly.
+- Verify that the progress view is active.
+- Open `/inspector` directly.
+- Verify that the Inspector view is active.
+- Navigate between all three views.
+- Verify that browser Back and Forward restore the corresponding view.
+- Open `/` and an unknown path.
+- Verify that the Web UI replaces each path with `/training`.
+
+### Admin Session Inspector
+
+- Start the service with `NEGOTIATION_ADMIN_TOKEN` configured.
+- Request `GET /admin/sessions` without a credential.
+- Verify that the service returns `administrator_unauthorized`.
+- Repeat the request with a participant credential.
+- Verify that the service returns `administrator_unauthorized`.
+- Request the endpoint with the configured administrator credential.
+- Filter by status, scenario, language, and run mode.
+- Verify pagination and the reported total.
+- Open an active session detail.
+- Verify that participants, transcript messages, public events, and offer revisions are present.
+- Verify that credentials, credential hashes, raw session state, scenario source, private event payloads, and private review data are absent.
+- Verify that the active session has `review_state: not_ready` and `review: null`.
+- Verify that `dialogue_quality` is available independently from the economic review.
+- Verify that missing latency and fallback observations display as unavailable in both UI languages.
+- Verify that exact repeats and repeated questions show source references and a heuristic warning.
+- Verify that the API human dimensions remain unrated.
+- Complete one trial in an incomplete benchmark run set.
+- Verify that the session has `review_state: sealed` and `review: null`.
+- Complete the declared run set.
+- Verify that the Inspector exposes only `reviews.public_json`.
+- Open `/inspector` in Russian and English.
+- Verify list filters, session selection, tabs, and pagination.
+- Verify light and dark themes at 1440 by 900 pixels and 390 by 844 pixels.
+- Disconnect administrator access.
+- Verify that the token is removed from `sessionStorage` and is absent from `localStorage`.
+
+### Web UI readability at 100% zoom
+
+- Set browser zoom to 100%.
+- Use a desktop viewport of at least 1440 by 900 pixels.
+- Open the setup, active negotiation, confirmation, review, and statistics views.
+- Verify that body text is at least 16 pixels.
+- Verify that captions and metadata are at least 12 pixels.
+- Verify that Russian and English text has no clipping or overlap.
+- Verify the same views in the light and dark themes.
+- Repeat the check with a 390-pixel-wide viewport.
+- Verify that all controls remain visible and usable.
+
+### Structured role brief
+
+- Start one Russian session and one English session.
+- Verify that `role_brief` contains `summary`, `objectives`, `context`, `batna`, `constraints`, and `priorities`.
+- Verify that `role_brief` does not contain `reservation_utility`, BATNA utility, interest weights, or role data for the counterpart.
+- Verify that the Web UI shows a separate localized section for each non-empty field.
+- Verify that a price constraint uses the scenario currency and the UI locale.
+- Verify that priority identifiers use localized labels and retain their authored order.
+- Verify that the Web UI still renders a legacy string `role_brief`.
+- Verify that the formatted card is readable in light and dark themes.
+- Load the legacy office-lease role-brief string.
+- Verify that the Web UI does not show JSON, snake-case identifiers, or supply-delivery labels.
+
+### Office-lease vocabulary
+
+- List the Russian and English office-lease scenarios.
+- Verify that the catalog returns version 4 and that the explicit version endpoint still returns versions 1 through 3.
+- Verify that version 2 uses annual rent, prepayment, and office-readiness terms.
+- Submit one complete Russian package with an annual rent, a prepayment percentage, and an office-readiness period.
+- Submit the equivalent English package.
+- Verify that both packages compile into the three expected terms.
+- Start a human-landlord session in each language.
+- Verify that the NPC mentions office readiness or move-in and does not mention product delivery.
+- Verify that the role brief and offer panel show localized labels, currency, percentages, and week units.
+
 ### Context-aware agreement
 
 - Submit `Согласен на 50% предоплаты` while a complete offer is active.
 - Verify that the engine does not classify the message as complete acceptance.
 - Submit `Согласен, если доставка будет раньше`.
 - Verify that the engine creates a counteroffer.
-- Submit `Согласен` when one complete active offer is the only possible referent.
-- Verify that the response is `confirmation_required` and not `clarification_required`.
+- Submit `Согласен` when one complete active offer exists.
+- Verify that the bare phrase still requires clarification and cannot bind an agreement.
 - Submit `Согласен` when the context can refer to one condition or the complete offer.
 - Verify that the response is `clarification_required`.
 - Submit an unambiguous complete-offer acceptance intent.
@@ -66,8 +291,14 @@
 - Verify that the parser runs one retry.
 - Force the parser retry to fail.
 - Verify that the server records `parser_failure`, preserves deal state, and returns `clarification_required` with reason `parser_unavailable`.
-- Force NLG failure through the initial attempt and two retries.
-- Verify that the server uses an actor-safe deterministic template without duplicating the committed action.
+- Force one configured NPC dialogue-provider attempt to fail.
+- Verify that the server immediately uses the precomputed actor-safe deterministic template without duplicating the committed action.
+- Submit a message that rejects one price and proposes another price.
+- Verify that the engine commits the explicit proposal price.
+- Use U+202F as the price digit-grouping character.
+- Verify that the engine commits the complete numeric value.
+- Submit two alternative packages in one message.
+- Verify that the engine returns `multiple_offer_candidates` without changing the active offer.
 
 ### Revision and idempotency
 
@@ -113,9 +344,23 @@
 
 ### Russian-first language support
 
-- Start the supplier scenario with language `ru`.
+- Start `supplier_001` version 3 with language `ru`.
 - Verify that the session, prompts, transcript, and rendered messages record the language.
 - Verify that structured term and event identifiers do not contain localized labels.
+
+### Executable supplier scenario
+
+- Verify that the version 3 opening position contains only 120 000 EUR.
+- Verify that prepayment and delivery are unresolved.
+- Verify that no API, transcript, event, replay, or Inspector projection invents values for these terms.
+- Submit 111 000 EUR, 50% prepayment, and three weeks as one complete package.
+- Verify that both roles pass their hard constraints and reservation thresholds for this package.
+- Verify that each participant receives only its own brief and Expert distractor.
+- Verify that the NPC uses industrial-computer supply wording.
+- Submit a package that also contains a split schedule or contingent reserve.
+- Verify that the engine returns `unscored_proposal` clarification and does not change the active offer.
+- Start immutable version 2 through the explicit-version API.
+- Verify that its complete opening offer remains 120 000 EUR, zero prepayment, and eight weeks.
 
 ### Reservation boundary
 
@@ -164,6 +409,217 @@
 - Verify that the engine rejects the ranking and selects only a legal action.
 - Verify that the dialogue generator receives no raw hidden facts or secret identifiers.
 
+### Built-in NPC dialogue rendering
+
+- Run the service without `NEGOTIATION_NPC_PROVIDER`.
+- Verify that the built-in NPC uses deterministic templates.
+- Configure `NEGOTIATION_NPC_PROVIDER=template`.
+- Verify that behavior is equivalent to the default.
+- Configure OpenAI with an empty `NEGOTIATION_NPC_MODEL` and `NEGOTIATION_NPC_TEMPERATURE`.
+- Verify that the renderer uses `gpt-5.6-luna` and omits `temperature` from the provider request.
+- Configure Qwen with an empty `NEGOTIATION_NPC_MODEL` and `NEGOTIATION_NPC_BASE_URL`.
+- Set ambient `QWEN_BASE_URL` to a different endpoint.
+- Verify that the built-in NPC renderer uses `qwen3.8-max` and the QwenCloud Token Plan endpoint.
+- Verify that the built-in NPC renderer ignores ambient `QWEN_BASE_URL`.
+- Configure a fake OpenAI or Qwen dialogue provider.
+- Verify that the engine selects and persists the NPC action before provider rendering.
+- Verify that the provider call occurs outside every SQLite write transaction.
+- Verify that the renderer receives a dedicated allowlisted `NpcDialogueRequest`.
+- Verify that the request does not contain a raw observation, raw scenario source, role brief, session state, private event payload, review, constraint, BATNA value, utility value, reservation value, knowledge truth, distractor truth note, participant credential, or provider credential.
+- Verify that renderer context contains at most 12 public messages from both participants and 1,000 characters per message.
+- Verify that the latest participant message enters the renderer request as untrusted context.
+- Verify that the request includes only the public scenario title, NPC role identifier, labels for missing terms, focused term identifiers, bounded public memory, and selected or previously delivered reasons in addition to the approved rendering fields.
+- Verify the DR-28 profile identifiers, requested-term metadata, and active-only numeric references against the checks below.
+- Put participant-token, Bearer-token, OpenAI-key, and Qwen-key canaries in participant text.
+- Put known administrator and custom provider-key canaries in participant text.
+- Verify that credential values become `[REDACTED_CREDENTIAL]` before parsing, truncation, persistence, and provider submission.
+- Insert a legacy public message that contains a credential canary.
+- Verify that context construction redacts the stored message before truncation and provider submission.
+- Put `prepayment_fraction` next to a credential canary.
+- Verify that the credential is redacted and `prepayment_fraction` remains unchanged.
+- Verify that the request contains at most six approved reply options and 4,000 option characters in total.
+- Verify that each approved reply option contains at most 1,200 characters.
+- Verify that approved reply options are engine-authored and do not interpolate or quote raw transcript text.
+- Put distinct hidden canaries in each forbidden source.
+- Verify that no canary enters the provider request, transcript, event payload, response, or log.
+- Put instruction-like text in the public transcript.
+- Verify that the text remains untrusted conversation data and cannot change the approved speech act or terms.
+- Return one approved reply option without changes.
+- Verify that the service accepts the option for the approved non-binding speech act.
+- Verify that an exact engine-authored option does not require a grounding check.
+- Return a short contextual paraphrase that is not an approved reply option.
+- Approve that reply through the separate grounding check.
+- Verify that the service delivers the novel reply without changing structured state.
+- Reject a novel reply through the grounding check.
+- Return an invalid grounding response or fail the grounding provider call.
+- Verify that each failed check delivers the precomputed fallback.
+- Return unsupported commercial claims without digits, such as `Доставка бесплатно` or `We waive prepayment`.
+- Return a new numeric term, a credential, or a claim that an agreement exists.
+- Verify that unsafe output is not delivered, persisted, or parsed into state.
+- Return a different speech act from the fake provider.
+- Return an unexpected field, speaker, tool call, URL, or markup block.
+- Return empty and over-length output.
+- Verify that the deterministic validator rejects each output and delivers the precomputed fallback.
+- Trigger acceptance, rejection, and complete counteroffer speech acts.
+- Verify that each speech act bypasses the provider.
+- Verify that each binding message uses the canonical deterministic template and canonical engine-approved terms.
+- Force provider timeout, transport failure, invalid JSON, and output-contract failure.
+- Raise a built-in socket `TimeoutError` from the HTTP client.
+- Verify that the adapter returns the safe `ProviderError("Provider request timed out")` without the raw socket detail.
+- Verify that each failure produces one deterministic fallback and leaves the session usable.
+- Verify that no API response contains a raw provider output, prompt, provider error body, or credential.
+- Crash after durable NPC intent persistence and before provider delivery.
+- Retry the render identity.
+- Verify that the service does not duplicate the NPC action or public message.
+- Start two service instances against one SQLite database.
+- Submit the same pending render job through both instances.
+- Verify that the atomic claim permits only one render attempt, including its generation and grounding-check calls.
+- Verify that the losing request returns HTTP `409` with `npc_render_pending`.
+- Restart the service without retrying the original HTTP request.
+- Verify that startup recovery delivers the precomputed fallback exactly once.
+- Verify that a pending render blocks a new participant message, hint, and administrative close.
+- Create a session in which the built-in NPC starts with a binding action.
+- Verify that creation uses one canonical deterministic message in the create transaction.
+- Verify that creation does not create a render job or call a provider.
+- Start two sessions with a barrier fake renderer.
+- Verify that both provider calls run concurrently.
+- Verify that each request contains only its own session, actor, dialogue, and canary data.
+- Run greetings, follow-up questions, and priority questions in Russian and English.
+- Verify that the NPC answers the immediate question and does not request a complete package after every message.
+- Tell the NPC that it previously promised an unauthored concession.
+- Verify that this participant assertion does not become an approved fact or a binding term.
+- Verify that unspecified opening terms remain unspecified throughout ordinary conversation.
+- Review sample generated replies manually because the semantic check is probabilistic.
+
+### Conversation continuity and authored reasons
+
+These targets cover DR-27.
+The automated continuity checks passed within the 373-test Python suite.
+Live generated-dialogue and manual language-quality assessment remain unverified in this increment.
+
+- In `supplier_001` version 4, send `Давайте обсудим только цену`, then `Предлагаю 105 000 евро`.
+- Verify that the engine selects a focused non-binding reply and does not immediately require a complete package.
+- Verify that prepayment and delivery remain `UNSPECIFIED` and the partial offer cannot bind.
+- Repeat the topic continuation in an English scenario.
+- Use a request with both a generic discussion cue and a specific term. Verify that the specific term determines the focus.
+- Postpone prepayment, discuss price, then explicitly resume prepayment.
+- Verify that the postponed term remains unresolved and the explicit switch changes the focus.
+- Add more than 12 public transcript turns after an explicit topic or postponed-topic request.
+- Verify that bounded memory retains the relevant topic with its original source reference.
+- Restart the service. Verify that rebuilding from durable messages and public events produces the same memory.
+- Add a private event, a hidden canary, and a message in another session. Verify that none enters the memory projection.
+- Add credential canaries to a legacy public message. Verify redaction before memory construction and truncation.
+- Assert that the NPC previously accepted a term. Verify that memory records an attributed player statement and no agreement.
+- Ask a question and send an unrelated reply. Verify that chronology can mark it `responded`, but not `answered`.
+- Verify that public offer revisions and an actual agreement cite authoritative public events.
+- Counter, reject, withdraw, accept, expire, and terminate public offers. Verify that memory retains each resulting lifecycle status and its source event reference.
+- Verify that memory and renderer input never identify an inactive historical offer as active.
+- Verify the memory version, source references, and bounds: 8,000 serialized characters, one current topic, 12 postponed topics, six statements, four questions, four offers, and 400 characters per statement or question.
+- Load a historical render plan without memory or reason fields. Verify compatible empty defaults and normal recovery.
+- Ask about an authored term in Russian and English. Verify that the engine selects at most two matching reasons.
+- Ask a contextual follow-up about the current topic. Verify that the same disclosure gate applies.
+- Send a greeting or ask about another term. Verify that unrelated reasons are absent from the renderer request.
+- Verify that the request contains selected reasons and previously delivered public reason history without private source text or unselected private reasons.
+- Reject reasons with duplicate or invalid identifiers, unknown terms, invalid source references, unsupported disclosure gates, numeric text, excessive text length, or more than six reasons per role.
+- Fail rendering before delivery. Verify that a pending or failed render does not record disclosure.
+- Deliver a reply with an exact selected reason text. Verify that `npc.utterance.delivered` records its identifier once.
+- Generate a paraphrase without the exact selected reason text. Verify that validation rejects the candidate before delivery. Verify that the delivered fallback contains the exact selected text and records only that actual disclosure.
+- Test disclosure bookkeeping separately with a nonmatching delivered string. Verify that it cannot record the selected reason identifier. Do not treat this bookkeeping test as a permitted renderer path.
+- After a reason was delivered, ask whether the corresponding term was waived. Verify that the reason remains in disclosed history without mandatory verbatim repetition or a new waiver.
+- Verify that reasons do not change utility, reservation rules, hard constraints, or capabilities.
+- Evaluate connected sample dialogues for relevance, continuity, repeated questions, and unsupported claims. Record this assessment separately from output-validation and fallback counts.
+
+### Grounded numeric interpretation (DR-28)
+
+Use template mode or an injected fake provider for these checks.
+Repeat each supported case in Russian and English.
+
+- Ask `Почему цена 120000 EUR?` and `Why is the price 120000 EUR?`.
+- Verify that no offer revision changes because of the quoted number.
+- Report the counterpart's price and include a separate explicit proposal clause.
+- Verify that only the proposed clause supplies new terms.
+- Send a negated or historical price without a new proposal. Verify that it does not become an offer.
+- Propose `Снизить цену на 10000 EUR` against a unique active price of 120000 EUR.
+- Verify a price of 110000 EUR and the active baseline ID and revision.
+- Repeat with a percentage reduction. Verify the result against the active baseline.
+- Remove the baseline or refer to a previous offer. Verify clarification without term changes.
+- Use multiple numeric referents, unsupported arithmetic, mismatched currency, and ambiguous units. Verify clarification.
+- Establish a price topic and send `105 тысяч` or `105 thousand`.
+- Verify a price proposal only when the term is unambiguous.
+- Send a short number without a topic. Verify `numeric_answer_requires_term`.
+- Supply conflicting focus and requested-term context. Verify clarification.
+- Persist an engine-authored `requested_term_id` through a delivered NPC event.
+- Restart the service and send the short reply. Verify the same term resolution.
+- Change only generated NPC wording. Verify that it cannot select another numeric term.
+- Send stale-revision and wrong-participant requests. Verify rejection before parser context construction.
+- Verify that a question or quotation matching the full active package does not bypass acceptance confirmation.
+
+### Validated conditional exchange and profiles (DR-28)
+
+- Compile all seven new scenario versions and compare earlier-version file hashes.
+- Verify that the earlier economic truth, utility rules, hard constraints, and opening terms remain unchanged.
+- Reject grids with unknown or optional terms, duplicate values, booleans, invalid values, or more than 512 packages.
+- Submit a complete package that permits an authored price-for-prepayment or price-for-timing exchange.
+- Verify that the selected package passes every role's hard constraints and the NPC reservation utility.
+- Verify that the nonmonetary change provides the required NPC utility benefit.
+- Change only counterpart private utility in an isolated test fixture. Verify that selection does not optimize it.
+- Submit successive counters. Verify that a previous public monetary concession is not reversed.
+- Submit an incomplete price proposal. Verify that missing terms remain unresolved and no grid completes them silently.
+- Use a scenario without an exchange grid. Verify validated fallback behavior.
+- Verify that the public exchange explanation contains only the selected public terms and no private utility.
+- Compare Guided, Easy, Normal, and Expert request profiles under the same pinned scenario.
+- Verify that guidance and requests for grounds differ without changing hidden truth or acceptance thresholds.
+- Verify the three allowlisted conversation styles. Reject unknown styles.
+- Confirm that benchmarks still require Normal difficulty and disabled assistance.
+- Preserve the Easy-only canonical create-time opening behavior.
+
+### Active numeric references and recovery (DR-28)
+
+- Build a request with at most 12 active-offer slots named `quote_a` through `quote_l`.
+- Verify the offer ID, revision, proposer role, term, finite value, currency, exact display text, and formatter version.
+- Return `[[quote_a]]` in a fake provider reply. Verify exact localized attribution and numeric formatting after substitution.
+- Verify that raw generated numbers still fail validation even when the same value exists in the transcript.
+- Reject unknown, repeated, altered, inactive, and unbound slot references.
+- Reject a slot that does not match the request currency or the active offer revision.
+- Verify that accepted, superseded, rejected, withdrawn, expired, and closed offers cannot supply slots.
+- Verify that an omitted opening term has no slot.
+- Use decimal amounts and percentages. Verify that the formatter preserves the exact value.
+- Verify the 400-character display bound and the 1,200-character reply bound before and after substitution.
+- Append an unauthorized promise, waiver, or agreement assertion to a valid quote. Verify rejection.
+- Reject a novel resolved reply through the grounding check. Verify deterministic fallback.
+- Verify durable storage of numeric references, profiles, and requested-term metadata before provider I/O.
+- Restart or race two workers. Verify one delivery for the original render ID and revision.
+- Load a legacy render plan without DR-28 fields. Verify Normal/pragmatic/empty defaults and normal recovery.
+
+### Offline dialogue evaluation (DR-28)
+
+Follow the [dialogue evaluation rubric](docs/dialogue-evaluation-rubric.md).
+Use public redacted exports only.
+The CLI does not call a model provider.
+
+```sh
+.venv/bin/python -m benchmarks.dialogue_quality export-scorecard public-sessions.json
+.venv/bin/python -m benchmarks.dialogue_quality analyze public-sessions.json
+.venv/bin/python -m benchmarks.dialogue_quality analyze public-sessions.json --scorecard human-ratings.json
+.venv/bin/python -m benchmarks.dialogue_quality analyze benchmarks/fixtures/dialogue_quality_cases.json
+```
+
+- Save the scorecard output and rate selected replies with a reviewer ID and evidence source IDs.
+- Verify that all four dimensions start as `null`.
+- Enter one rating and leave other dimensions unrated. Verify sample counts and partial coverage.
+- Reject a rating outside 0–4, a boolean rating, a duplicate source, an unknown source, and an unknown rubric version.
+- Modify exported context without re-exporting. Verify that the source check fails.
+- Compare distinct providers, languages, roles, prompt versions, and scenario versions. Verify that groups do not merge incompatible metadata.
+- Verify that missing configuration metadata does not establish benchmark comparability.
+- Detect the deliberate repeated questions in the synthetic Russian and English corpus.
+- Verify that the report labels repetitions as heuristics and does not invent a humanity score.
+- Verify missing latency and fallback measurements remain unavailable.
+- Verify canonical non-generation replies do not enter generation denominators.
+- Put unknown provider errors, credentials, and private payload canaries in excluded fields. Verify they are absent from the output.
+- Open Inspector diagnostics in Russian and English, light and dark themes.
+- Verify that historical responses without `dialogue_quality` display an unavailable state.
+- Verify that API diagnostics do not release a sealed benchmark review.
+
 ### Hidden-state release
 
 - Request observations, history, metrics, and review during an active session.
@@ -187,3 +643,55 @@
 - Verify that the canonical stored input is text plus structured events.
 - Convert an actor-safe public message to audio through TTS.
 - Verify that TTS does not receive raw hidden state.
+
+### Review fixes 2026-09-02
+
+- Submit `Принимаю ваше предложение целиком.` while the counterpart's complete offer is active.
+- Verify that the response is `confirmation_required`.
+- Submit a message that restates every term of the counterpart's complete active offer.
+- Verify that the response is `confirmation_required` and that no new offer revision is created.
+- Submit `Принимаю предложение, если цена 1 250 000 рублей.` while a confirmation is pending.
+- Verify that the engine commits a counteroffer at 1 250 000 attributed to the sender.
+- Submit `Согласен.` and `Договорились.` as complete messages.
+- Verify that both return `clarification_required`.
+- Submit `Готовы дать 110 тыс. евро, предоплата 30 %, срок 6 нед.` and `Предлагаю сто десять тысяч евро, предоплата тридцать процентов, поставка шесть недель.`.
+- Verify that both produce the package price 110000, prepayment 0.3, and six weeks.
+- Submit `Мы не уйдём из переговоров и не скажем, что сделки не будет.` followed by a package.
+- Verify that the session stays active and the package becomes a counteroffer.
+- Submit a price-only offer in `supplier_001` version 3, then ask `Какие условия для вас важнее всего?`.
+- Verify that the NPC acknowledges the partial offer and then answers the priority question without repeatedly requiring a complete package.
+- Submit a complete package above the buyer's hard price cap to a built-in NPC seller.
+- Verify that the session does not reach `agreement_reached`.
+- Submit three rising buyer packages to a built-in NPC seller.
+- Verify that each NPC counter price is not higher than the previous NPC counter.
+- Run an external-versus-external session past `max_rounds`.
+- Verify that the session enters `expired` on the action that completes the last round and that a built-in NPC receives no action after it.
+- Submit `Отклоняю предложение.` as the proposer of the active offer.
+- Verify that the response is HTTP `409` with `offer_not_owned`.
+- Create a `run_mode: benchmark` session without the administrator credential while `NEGOTIATION_ADMIN_TOKEN` is configured.
+- Verify that the response is HTTP `401`.
+- Send a non-ASCII administrator Bearer credential.
+- Verify that the response is HTTP `401`, not `500`.
+- Read `/stats` while one benchmark trial of a two-trial run is terminal.
+- Verify that its agreement outcome is hidden and that `by_model[].session_count` counts sessions, not seats.
+- Open the review of a completed session.
+- Verify that each key moment names the acting role and the package, quotes the originating message, and that `recommendations` is present.
+
+### Web UI fixes 2026-09-02
+
+- Stop the backend, send a message from the Web UI, then restart the backend.
+- Verify that the composer offers Discard as well as Retry, and that Discard keeps the draft and unlocks the composer.
+- Reload the page during an active session.
+- Verify that the same session, offer card, and pending confirmation or clarification reappear without a new session.
+- Click "New session" during an active session.
+- Verify that a confirmation dialog appears first.
+- Reach the binding confirmation card.
+- Verify that prices show the scenario currency, that the revision label is localized, and that an explicit zero prepayment shows `0%`.
+- Request a hint while a message is being sent.
+- Verify that the hint button is disabled until the send completes.
+- Open Progress.
+- Verify that no fixed "100%" badge is shown and that service-wide totals and this-browser history are labelled separately.
+- Switch the UI to Russian and open the inspector and the negotiation workspace.
+- Verify that no English labels remain ("Session Inspector", "Review", "Benchmark", "Participant Seller", "MESO" alone).
+- Complete a session and open the review.
+- Verify that each key moment shows a quoted message and that a recommendations list is present.

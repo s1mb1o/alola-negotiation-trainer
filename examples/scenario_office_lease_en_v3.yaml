@@ -1,0 +1,158 @@
+$schema: ../schemas/scenario-v1.schema.json
+scenario:
+  id: office_lease_en
+  version: 3
+  title: Annual office lease
+  language: en
+  currency: RUB
+  authoring_status: {state: published, missing_required_definitions: []}
+  protocol: {pass_allowed: true, max_rounds: 12, max_consecutive_clarifications: 3}
+  scope:
+    commercial_terms: {depth: full}
+    move_in_planning: {depth: medium}
+    legal_drafting: {depth: excluded}
+  knowledge_model:
+    entities:
+      - id: seller.vacancy_cost
+        subject_role: seller
+        value_schema: money
+        truth: {source: authored, value: 180000}
+        knowledge_owner_roles: [seller]
+        discoverability: dialogue_evidence
+        sensitivity: private
+  term_model:
+    primitives:
+      numeric_term: {description: Deterministic numeric deal term}
+    capabilities:
+      package_construction:
+        primitives: [numeric_term]
+        validators: [json_schema_term_validator]
+    composition_rules:
+      complete_package:
+        root_type: package_offer
+        allowed_primitives: [numeric_term]
+        validator_ids: [json_schema_term_validator]
+    evaluation_rules:
+      deterministic_utility:
+        applies_to_roles: [buyer, seller]
+        input_types: [numeric_term]
+        expression: {type: compiled_value_functions, source: utility_model}
+  terms:
+    definitions:
+      annual_rent:
+        value_schema: {type: number, minimum: 1800000, maximum: 3000000}
+        evaluation_rule_ids: [deterministic_utility]
+      prepayment_fraction:
+        value_schema: {type: number, minimum: 0, maximum: 1}
+        evaluation_rule_ids: [deterministic_utility]
+      office_readiness_weeks:
+        value_schema: {type: integer, minimum: 1, maximum: 12}
+        evaluation_rule_ids: [deterministic_utility]
+    required_term_ids: [annual_rent, prepayment_fraction, office_readiness_weeks]
+    optional_term_ids: []
+  hard_constraints:
+    - id: buyer_annual_rent_cap
+      applies_to_role: buyer
+      expression: {op: lte, left: {term: annual_rent}, right: {const: 2600000}}
+      violation_code: buyer_budget_exceeded
+    - id: seller_annual_rent_floor
+      applies_to_role: seller
+      expression: {op: gte, left: {term: annual_rent}, right: {const: 2100000}}
+      violation_code: seller_floor_not_met
+  utility_model:
+    normalization: {minimum: 0, maximum: 100}
+    role_models:
+      buyer:
+        reservation_utility: 25
+        aggregation: weighted_sum
+        value_functions:
+          annual_rent: {weight: 0.80, type: linear, input_min: 1800000, input_max: 3000000, utility_at_min: 100, utility_at_max: 0}
+          prepayment_fraction: {weight: 0.10, type: linear, input_min: 0, input_max: 1, utility_at_min: 100, utility_at_max: 0}
+          office_readiness_weeks: {weight: 0.10, type: linear, input_min: 1, input_max: 12, utility_at_min: 100, utility_at_max: 0}
+      seller:
+        reservation_utility: 20
+        aggregation: weighted_sum
+        value_functions:
+          annual_rent: {weight: 0.80, type: linear, input_min: 1800000, input_max: 3000000, utility_at_min: 0, utility_at_max: 100}
+          prepayment_fraction: {weight: 0.15, type: linear, input_min: 0, input_max: 1, utility_at_min: 0, utility_at_max: 100}
+          office_readiness_weeks: {weight: 0.05, type: linear, input_min: 1, input_max: 12, utility_at_min: 0, utility_at_max: 100}
+  zopa:
+    expected_condition: non_empty
+    training_intent: Agree an annual rent from RUB 2100000 to RUB 2600000, the prepayment share, and the time until the office is ready for move-in.
+  review:
+    reveal_policy: {training: selected_hidden_facts, benchmark: after_complete_run_set}
+  compiler: {schema_version: 1, compiler_version: scenario-compiler-v1}
+  roles:
+    buyer:
+      company: Code Line LLC
+      brief:
+        objective: Lease an office for one year within the approved budget.
+        context: The company will continue paying for coworking space until move-in. A low prepayment preserves working capital.
+      dialogue_reasons:
+        - id: rental_budget
+          term_id: annual_rent
+          text: The rent must stay within our approved budget.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+        - id: working_capital
+          term_id: prepayment_fraction
+          text: A low prepayment preserves working capital.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: coworking_cost
+          term_id: office_readiness_weeks
+          text: We continue paying for coworking space until we can move in.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 17, description: Extend the coworking-space lease for another six months.}
+      constraints: {reservation_utility: 25, maximum_annual_rent: 2600000}
+      interests:
+        annual_rent: {weight: 0.80}
+        prepayment_fraction: {weight: 0.10}
+        office_readiness_weeks: {weight: 0.10}
+    seller:
+      company: Urban Spaces JSC
+      brief:
+        objective: Lease the vacant office for one year at an acceptable rate.
+        context: The company loses rental income while the office is vacant. Prepayment reduces late-payment risk. Urgent office preparation increases costs.
+      opening_offer: {annual_rent: 2850000, prepayment_fraction: 0.5, office_readiness_weeks: 10}
+      dialogue_reasons:
+        - id: acceptable_rent
+          term_id: annual_rent
+          text: An acceptable rental rate matters to us.
+          source_ref: brief.objective
+          disclose_when: on_topic_question
+        - id: payment_risk
+          term_id: prepayment_fraction
+          text: Prepayment reduces late-payment risk.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+        - id: preparation_cost
+          term_id: office_readiness_weeks
+          text: Urgent office preparation increases costs.
+          source_ref: brief.context
+          disclose_when: on_topic_question
+      batna: {utility: 12, description: Continue the tenant search into the next quarter.}
+      constraints: {reservation_utility: 20, minimum_annual_rent: 2100000}
+      interests:
+        annual_rent: {weight: 0.80}
+        prepayment_fraction: {weight: 0.15}
+        office_readiness_weeks: {weight: 0.05}
+  distractors:
+    - id: buyer_no_demand_rumor
+      type: outdated
+      content: An acquaintance claims that no other tenant has wanted this office for months.
+      truth_note: The landlord has other enquiries. The tenant does not know the exact demand.
+      audience_role: buyer
+      delivery_condition: {difficulty: expert}
+    - id: seller_unlimited_budget_rumor
+      type: wrong_opinion
+      content: A broker assumes that the tenant will pay any rate to secure this address.
+      truth_note: The tenant has a hard budget limit.
+      audience_role: seller
+      delivery_condition: {difficulty: expert}
+  assistance:
+    guided: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: true}
+    easy: {expose_actor_priorities: true, show_detected_signals: true, show_coaching: false}
+    normal: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false}
+    expert: {expose_actor_priorities: false, show_detected_signals: false, show_coaching: false, distractor_ids: [buyer_no_demand_rumor, seller_unlimited_budget_rumor]}
