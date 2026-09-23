@@ -275,6 +275,11 @@ def parse_supply_message(
     topic = _topic(text)
     base = {"source_revision": source_revision, "topic": topic}
     if re.fullmatch(
+        r"(?:прекращаю переговоры|ухожу из переговоров|выхожу из переговоров|отказываюсь от сделки|"
+        r"(?:i )?walk away|(?:i )?end negotiations|no deal)[.!]?", text
+    ):
+        return SupplyAction("withdraw", **base)
+    if re.fullmatch(
         r"(?:отменяю подтверждение|i cancel confirmation|не подтверждаю(?: принятие предложения)?|i do not confirm(?: acceptance of the offer)?|отменяю принятие|cancel acceptance)[.!]?",
         text,
     ):

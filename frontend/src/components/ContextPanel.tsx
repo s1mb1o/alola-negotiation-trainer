@@ -239,6 +239,15 @@ export function ContextPanel({
         </div>
       </section>
 
+      {observation.training?.preparation?.target && <section className="panel-card context-panel">
+        <header className="panel-heading"><span className="panel-icon"><Target size={18} aria-hidden="true" /></span>
+          <h2>{language === 'ru' ? 'Мой план' : 'My plan'}</h2>
+        </header>
+        <div className="panel-body"><p>{observation.training.preparation.target}</p>
+          <p className="field-note">{language === 'ru' ? 'Виден только вам.' : 'Visible only to you.'}</p>
+        </div>
+      </section>}
+
       {hintsEnabled && (
         <section className="panel-card assistance-panel" aria-labelledby="assistance-title">
           <header className="panel-heading">

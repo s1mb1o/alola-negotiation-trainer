@@ -16,6 +16,15 @@ Each implementation directory contains a local `CLAUDE.md` file.
 
 ## Dialogue documentation
 
+- [Human training guide](docs/human-training-guide.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md): implemented private preparation, shared background, social state, cached LLM coaching, checkpoint retry, and observed comparison. See the guide for verification limits.
+- [Training precedents and hackathon priorities](docs/research/lct2026-task9-training-precedents-2026-09-23.md): source-linked research and proposed preparation, coaching, retry, comparison, and pilot design. No implementation is authorized by this research.
+- [DR-34](docs/decisions/2026-09-23_prompt-language.md): English instructions for all application-owned LLM tasks. Runtime tasks were audited. External-agent prompt version is `natural-language-agent-v4`.
+- [DR-35](docs/decisions/2026-09-23_player-background.md): configurable player background known to the NPC, including successful prior deals. The bounded implementation is in DR-36.
+- [DR-33](docs/decisions/2026-09-23_goal-based-llm-review.md): final LLM analysis of goal progress and evidence-linked recommendations. The bounded implementation is in DR-36.
+- [Task 9 compliance assessment](docs/research/lct2026-task9-compliance-2026-09-23.md): requirement coverage, current evidence, and proposed preparation priorities for MEMORY and STATUS. This assessment does not authorize implementation.
+- [DR-31](docs/decisions/2026-09-23_human-first-negotiation.md): stored case-specific NPC greeting and human first live turn in human-versus-built-in-NPC training.
+- [DR-32](docs/decisions/2026-09-23_retrieved-reply-examples.md): deterministic search over prepared reply variants for NPC wording.
+- [Social state and LLM protection design](docs/social-state-and-llm-dialogue.md): broader MEMORY, STATUS, persona, and OWASP design. The implemented subset is defined by DR-36.
 - [Reference implementation guide](docs/reference-supply-guide.md): bounded RU/EN composite negotiation, source-bound confirmation, optional semantic normalization, and verification limits.
 - [Actual offline reference dialogue](docs/reports/2026-09-08-supply-offline-dialogue.md): four isolated API trajectories, not a live model ranking.
 
@@ -29,6 +38,11 @@ Each implementation directory contains a local `CLAUDE.md` file.
 - [Verification report](docs/reports/2026-09-06-conversation-continuity.md): completed checks and live-test limits.
 
 ## Commands
+
+The selected LLM is `qwen3.8-max` through the QwenCloud Token Plan endpoint.
+Use `QWENCLOUD_TOKEN_PLAN_API_KEY` from the user's `~/.zshrc` environment.
+Run `/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'` from the project root.
+The launcher pins the model, endpoint, and credential variable without storing the credential.
 
 See [COMMANDS.md](COMMANDS.md) for the local start, stop, restart, and status procedures.
 This Mac uses API port 8172 and UI port 8171. Do not stop the unrelated project on port 8170.
@@ -53,7 +67,7 @@ npm run build
 
 ## Security rules
 
-- Keep `OPENAI_API_KEY` and `QWEN_API_KEY` in the process environment.
+- Keep `OPENAI_API_KEY`, `QWEN_API_KEY`, and `QWENCLOUD_TOKEN_PLAN_API_KEY` in the process environment.
 - Do not send provider credentials to the browser or service API.
 - Do not write provider credentials to logs, histories, reports, or benchmark artifacts.
 - Derive every public observation from the authenticated participant.
@@ -61,6 +75,9 @@ npm run build
 
 ## Common mistakes
 
+- Write all application-owned LLM instructions and task templates in English. Keep Russian messages, exact quotes, and authored examples as separated task data. Request Russian participant-facing output for the MVP. Apply the rule to all model tasks and retry paths under DR-34.
+- Do not infer private player information from shared background. Under DR-35, the NPC receives only explicitly known facts. Prior successful deals do not establish a current agreement or a new economic constraint.
+- Do not turn the revision-0 NPC greeting into an offer, a hint, or a substantive turn. Keep the human as `next_actor` in human-versus-built-in-NPC training.
 - Do not use the create-session response for the next agent prompt after another participant acts. Fetch the authenticated participant view first.
 - Do not identify a participant by role text when `next_actor` contains an opaque participant ID. Resolve the ID through the session participant map.
 - Do not add an executable scenario that only passes JSON Schema validation. Run the publication compiler too.

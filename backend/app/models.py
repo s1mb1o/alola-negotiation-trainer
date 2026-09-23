@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .training import TrainingSetup
+
 
 class Difficulty(StrEnum):
     guided = "guided"
@@ -50,9 +52,15 @@ class CreateSessionRequest(BaseModel):
     trial_id: str | None = Field(default=None, min_length=1, max_length=128)
     benchmark_expected_trials: int | None = Field(default=None, ge=1, le=100_000)
     seed: int | None = None
+    training: TrainingSetup | None = None
 
     @model_validator(mode="after")
     def validate_participants(self) -> "CreateSessionRequest":
+        if self.training is not None and (
+            self.run_mode != RunMode.training
+            or sorted(str(item.controller) for item in self.participants) != ["built_in_npc", "human"]
+        ):
+            raise ValueError("Training context requires one human and one built-in NPC in training mode")
         if len(self.participants) != 2:
             raise ValueError("The MVP requires exactly two participants")
         roles = [participant.role for participant in self.participants]
@@ -100,6 +108,12 @@ class ErrorBody(BaseModel):
     error: str
     message: str
     revision: int | None = None
+
+
+class ForkRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source_revision: int = Field(ge=0)
+    idempotency_key: str = Field(min_length=1, max_length=200)
 
 
 TERMINAL_STATUSES = {

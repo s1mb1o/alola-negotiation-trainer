@@ -11,6 +11,8 @@ import type {
   SessionEnvelope,
   SessionReview,
   UiLanguage,
+  CoachingResult,
+  TrainingComparison,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1'
@@ -92,6 +94,7 @@ function normalizeScenario(raw: Record<string, unknown>): ScenarioSummary {
       ? raw.opening_kind
       : undefined,
     currency: typeof raw.currency === 'string' ? raw.currency : undefined,
+    training_terms: Array.isArray(raw.training_terms) ? raw.training_terms as ScenarioSummary['training_terms'] : [],
     description: typeof raw.description === 'string' ? raw.description : undefined,
     languages: rawLanguages.filter((value): value is 'ru' | 'en' => value === 'ru' || value === 'en'),
     duration_minutes: typeof raw.duration_minutes === 'number' ? raw.duration_minutes : undefined,
@@ -137,6 +140,20 @@ export function createSession(payload: CreateSessionRequest, token?: string): Pr
 
 export function getSession(sessionId: string, token: string): Promise<SessionEnvelope> {
   return apiRequest<SessionEnvelope>(`/sessions/${encodeURIComponent(sessionId)}`, { token })
+}
+
+export function requestCoaching(sessionId: string, token: string): Promise<CoachingResult> {
+  return apiRequest(`/sessions/${encodeURIComponent(sessionId)}/coaching`, { method: 'POST', token })
+}
+
+export function forkSession(sessionId: string, revision: number, idempotencyKey: string, token: string): Promise<SessionEnvelope> {
+  return apiRequest(`/sessions/${encodeURIComponent(sessionId)}/fork`, {
+    method: 'POST', token, body: JSON.stringify({ source_revision: revision, idempotency_key: idempotencyKey }),
+  })
+}
+
+export function getComparison(sessionId: string, token: string): Promise<TrainingComparison> {
+  return apiRequest(`/sessions/${encodeURIComponent(sessionId)}/comparison`, { token })
 }
 
 export function getObservation(sessionId: string, token: string): Promise<SessionEnvelope | Observation> {

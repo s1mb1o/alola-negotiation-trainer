@@ -1,7 +1,8 @@
 import { ArrowRight, BrainCircuit, Check, Clock3, KeyRound, Languages, LoaderCircle, MessagesSquare, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { translate } from '../i18n'
-import type { Difficulty, ScenarioSummary, SessionLanguage, UiLanguage } from '../types'
+import type { Difficulty, ScenarioSummary, SessionLanguage, UiLanguage, TrainingSetup } from '../types'
+import { TrainingSetupFields, defaultTraining } from './TrainingSetupFields'
 
 export interface SessionSetupValue {
   scenario: ScenarioSummary
@@ -10,6 +11,7 @@ export interface SessionSetupValue {
   hintsEnabled: boolean
   participantToken: string
   roleId: string
+  training?: TrainingSetup
 }
 
 interface SessionSetupProps {
@@ -49,6 +51,7 @@ export function SessionSetup({
   const [hintsEnabled, setHintsEnabled] = useState(true)
   const [participantToken, setParticipantToken] = useState(() => sessionStorage.getItem('negotiation.participant-token') ?? '')
   const [roleId, setRoleId] = useState('buyer')
+  const [training, setTraining] = useState<TrainingSetup>(defaultTraining)
 
   const selectedScenario = useMemo(
     () => scenarios.find((scenario) => scenario.scenario_id === scenarioId) ?? scenarios[0],
@@ -80,7 +83,7 @@ export function SessionSetup({
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
     if (!selectedScenario) return
-    onStart({ scenario: selectedScenario, sessionLanguage, difficulty, hintsEnabled, participantToken, roleId })
+    onStart({ scenario: selectedScenario, sessionLanguage, difficulty, hintsEnabled, participantToken, roleId, training })
   }
 
   return (
@@ -136,7 +139,10 @@ export function SessionSetup({
               <select
                 id="scenario"
                 value={selectedScenario?.scenario_id ?? ''}
-                onChange={(event) => setScenarioId(event.target.value)}
+                onChange={(event) => {
+                  setScenarioId(event.target.value)
+                  setTraining(value => ({ ...value, preparation: { ...value.preparation, targets: [] } }))
+                }}
                 disabled={loadingScenarios || scenarios.length === 0}
               >
                 {loadingScenarios && <option>{t('scenarioLoading')}</option>}
@@ -160,6 +166,8 @@ export function SessionSetup({
             </div>
             {usingFallback && <p className="field-note warning-note">{t('fallbackScenarioNote')}</p>}
           </div>
+
+          <TrainingSetupFields language={language} value={training} scenario={selectedScenario} onChange={setTraining} />
 
           <fieldset className="form-field fieldset-reset">
             <legend>{t('yourRole')}</legend>

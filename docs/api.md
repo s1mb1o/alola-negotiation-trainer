@@ -1,5 +1,37 @@
 # API Sketch
 
+## Human training loop (DR-36)
+
+The training configuration MUST be restricted to one human and one built-in NPC in training mode.
+The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
+The engine MUST validate finite numeric targets against the scenario's scalar term grammar.
+Only an agreed complete deal MAY satisfy a deal-term target.
+Free-text goals MUST NOT receive invented completion percentages.
+
+Social state MUST use bounded rapport, credibility, tension, and patience values.
+The classifier MAY propose at most two allowlisted events with exact message excerpts.
+The engine MUST apply validated changes once per committed revision.
+Positive relationship events MUST have cumulative caps.
+Classification failure MUST leave social state unchanged.
+Social values MUST NOT override economic acceptability or binding-confirmation rules.
+
+Coaching MUST require an explicit authenticated request after session termination.
+The reviewer MUST receive only the owner's permitted evidence, preparation, and economic baseline.
+Generation and grounding MUST run outside write transactions.
+The service MUST cache the validated result or an unavailable status.
+Active and sealed benchmark sessions MUST NOT initiate coaching.
+Model failure MUST preserve the deterministic report.
+Exact cited excerpts MUST be attached by the service.
+
+Retry MUST require a completed human training session and an existing immutable checkpoint.
+The child MUST restore the selected state and history boundary with fresh participant credentials.
+It MUST NOT inherit later history, parent credentials, render jobs, or idempotency results.
+The comparison MUST use the same role and identify observed results as informed practice.
+It MUST NOT claim causal skill improvement.
+Legacy sessions without checkpoints and benchmark sessions MUST NOT use this training fork.
+
+The API schemas, formulas, limits, and verification boundary are documented in the [human training guide](human-training-guide.md).
+
 ## Reference supply contract (DR-30)
 
 [DR-30](decisions/2026-09-08_reference-supply-implementation.md) and the [resolved contract](reference-supply-contract.md) define the opt-in implementation.
@@ -107,6 +139,10 @@ Existing privacy, confirmation, immutable-version, and durable-render boundaries
 
 ## Create session
 
+[DR-35](decisions/2026-09-23_player-background.md) requires configurable player background known to the NPC.
+The service MUST pin validated background and visibility at creation when that extension is implemented.
+The exact request fields remain an implementation decision. The example below does not claim this extension is available.
+
 ```http
 POST /sessions
 ```
@@ -135,6 +171,10 @@ POST /sessions
 
 This contract example uses published `supplier_001` version 5 in a human-versus-built-in-NPC session.
 It includes grounded motives, style, and exchange candidates under DR-28.
+
+The session language selects participant-facing text.
+[DR-34](decisions/2026-09-23_prompt-language.md) requires English application-owned LLM instructions independently of that language.
+Russian task data and exact quotes remain Russian.
 
 When `NEGOTIATION_ADMIN_TOKEN` is configured, a `run_mode: benchmark` session requires the administrator Bearer credential on this request. The service returns HTTP `401` with `administrator_unauthorized` otherwise. Training sessions need no credential. This gate stops an unauthenticated client from adding a session to a declared benchmark run and re-sealing its reviews.
 
@@ -196,7 +236,14 @@ Response:
       "constraints": {"maximum_price": 115000},
       "priorities": ["price", "delivery_weeks", "prepayment_fraction"]
     },
-    "conversation": [],
+    "conversation": [
+      {
+        "revision": 0,
+        "participant_id": "participant_seller",
+        "role": "seller",
+        "message": "Здравствуйте. Давайте обсудим «Поставка 100 промышленных компьютеров». Слушаю вас."
+      }
+    ],
     "active_offers": [
       {
         "offer_id": "offer_01",
@@ -234,7 +281,11 @@ The response preserves the partial active revision and does not create a pending
 
 The example above uses Normal difficulty.
 
-For Easy difficulty, the same built-in NPC opening role presents the partial opening position in the stored conversation:
+The built-in NPC greeting is stored at revision 0.
+The human remains `next_actor` and makes the first live negotiation move.
+The greeting does not state offer terms or give advice.
+
+An Easy human-versus-built-in-NPC session uses the same greeting:
 
 ```json
 {
@@ -249,30 +300,29 @@ For Easy difficulty, the same built-in NPC opening role presents the partial ope
         "revision": 0,
         "participant_id": "participant_seller",
         "role": "seller",
-        "message": "Добрый день. Предлагаю обсудить условия поставки промышленных компьютеров. Моя начальная позиция: цена 120 000 EUR. Остальные условия предлагаю обсудить."
+        "message": "Здравствуйте. Давайте обсудим «Поставка 100 промышленных компьютеров». Слушаю вас."
       }
     ]
   }
 }
 ```
 
-This `opening_position` presentation is not a committed turn.
+This greeting is not a committed turn.
 
 It does not change the active offer or `next_actor`.
 
-It states exactly the authored public term.
+It does not state the authored opening terms.
 
-It does not imply that the position is a complete package.
+The service records it once as `npc.greeting.delivered`.
 
-The service records it once as `npc.opening_utterance.delivered`.
-
-The event payload contains `speech_act: opening_position` and `opening_kind: opening_position`.
+The event payload contains `speech_act: greeting` and `substantive: false`.
 
 The initial `offer.created` event contains the same `unresolved_required_terms` list as the active offer projection.
 
 A repeated create-session idempotency request does not duplicate it.
 
-The service does not create this message when the opening role is human or external.
+The service creates this greeting when either human role is first.
+An Easy session with an external-agent next actor retains the canonical opening presentation.
 
 `role_brief` is an actor-safe participant projection.
 It contains the six fields shown in the example.
@@ -416,7 +466,10 @@ The service can render this wording with a deterministic template or an optional
 
 The renderer receives a dedicated allowlisted `NpcDialogueRequest`.
 
-The request contains only the approved speech act, approved public terms, approved qualitative disclosures, language, currency, participant-facing term identifiers, public `scenario_title`, `npc_role` identifier, `missing_term_labels`, engine-authored example replies, deterministic fallback, bounded public dialogue, `focused_term_ids`, `conversation_memory`, `approved_reasons`, delivered `disclosed_reasons`, `difficulty`, `conversation_style`, `requested_term_id`, and `numeric_references`.
+The request contains only the approved speech act, approved public terms, approved qualitative disclosures, language, currency, participant-facing term identifiers, public `scenario_title`, `npc_role` identifier, `missing_term_labels`, engine-authored example replies, retrieved wording examples, deterministic fallback, bounded public dialogue, `focused_term_ids`, `conversation_memory`, `approved_reasons`, delivered `disclosed_reasons`, `difficulty`, `conversation_style`, `requested_term_id`, and `numeric_references`.
+Retrieved wording examples are bounded and versioned.
+They do not authorize facts, terms, or actions.
+The durable render plan stores the selected examples for restart and replay.
 
 The request does not contain a raw observation, raw scenario source, role brief, raw session state, counterparty-private state, utility weights, reservation utility, BATNA utility, authored knowledge truth, distractor truth notes, constraints, private event payloads, reviews, participant credentials, provider credentials, or a list of forbidden secrets.
 
@@ -506,7 +559,7 @@ Absent focused-term and reason fields default to empty collections.
 `conversation_style` is `pragmatic`, `analytical`, or `relationship_focused`.
 These identifiers map to fixed provider instructions under `dialogue_profile` and `conversation_style`.
 They MUST NOT authorize new disclosures or change economic rules.
-The Easy canonical opening behavior remains unchanged.
+The Easy canonical opening behavior applies when the next actor is an external agent.
 
 `requested_term_id` is an authored participant-facing term or `null`.
 The engine selects this field before rendering.
@@ -829,7 +882,7 @@ Teaching mode may release selected information only after session completion and
 
 ## Fork session
 
-Status: not implemented in the current service. The endpoint is a specification target and currently returns HTTP `404`.
+Status: implemented for completed human-versus-NPC training with recorded checkpoints under DR-36.
 
 ```http
 POST /sessions/{id}/fork
@@ -838,9 +891,7 @@ POST /sessions/{id}/fork
 ```json
 {
   "idempotency_key": "fork_01J...",
-  "expected_revision": 12,
-  "source_revision": 7,
-  "configuration_overrides": {}
+  "source_revision": 7
 }
 ```
 
@@ -858,7 +909,11 @@ Response:
 
 The branch inherits offer status, pending protocol state, delivered participant information, and run configuration at that revision.
 
-An authorized training orchestrator may record model or policy overrides in `configuration_overrides`.
+The service MUST reject unknown fields, including `configuration_overrides` and `expected_revision`.
+The checkpoint is immutable and the parent is terminal.
+The initial response MUST deliver fresh participant credentials.
+Idempotent repeats MUST return the same child without redelivering credentials.
+The service MUST reject a missing checkpoint and MUST NOT reconstruct an estimated state.
 
 Forks support training, deliberate practice, and branch comparison.
 
@@ -1035,6 +1090,16 @@ Example response:
 ```
 
 `key_moments[].summary` names the acting role and the package in the session language. `key_moments[].detail` quotes the participant message that produced the event when one exists. `recommendations` lists actor-specific coaching sentences derived from the deterministic skill scores and the outcome. Both fields are optional for clients.
+
+[DR-33](decisions/2026-09-23_goal-based-llm-review.md) requires LLM analysis of goal progress and evidence-linked recommendations.
+The bounded implementation is available through `POST /sessions/{id}/coaching` under DR-36.
+`GET /sessions/{id}/review` returns its cached status and data in `training.coaching`.
+The route, schema, disclosure, and failure contracts are specified in the [human training guide](human-training-guide.md).
+The existing deterministic fields above do not implement that requirement.
+The extension MUST preserve engine-calculated metrics and the review release gate.
+An unavailable or invalid LLM analysis MUST leave the deterministic report available and identify the missing analysis.
+The implemented response extension is `training`.
+Under [DR-35](decisions/2026-09-23_player-background.md), the review MUST distinguish initial relationship advantages from behavior demonstrated during this session.
 
 An intentional no-ZOPA scenario can return a successful `walked_away` training outcome.
 

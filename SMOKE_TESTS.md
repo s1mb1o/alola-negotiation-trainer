@@ -1,5 +1,30 @@
 # Smoke Tests
 
+## Human training loop — 2026-09-24
+
+- Run `pytest backend/tests/test_training_loop.py clients/tests/test_training.py`.
+- Start a human session with shared history and a private goal.
+- Verify that NPC requests and the Admin projection omit the private goal.
+- Ask a personal question with a valid source-linked fixture. Repeat the same request key.
+- Verify one bounded social update and one saved event.
+- Complete a session. Request coaching twice and verify one cached job.
+- Inject provider failure and invalid evidence. Verify that the deterministic report remains available.
+- Retry a recorded decision. Verify fresh credentials, exact inherited history, and restored pending confirmation.
+- Complete the child and compare the same role's observed outcome.
+- Verify that benchmark and legacy sessions cannot use the training fork.
+- Run `npm test` and `npm run build` in `frontend`.
+- Inspect preparation, coaching failure, retry, and comparison in Russian and English.
+- Check that setup has no horizontal overflow and that dark and light themes remain readable.
+
+See the [implementation guide](docs/human-training-guide.md) for configuration, formulas, and limits.
+
+## Selected QwenCloud Token Plan launcher
+
+- Run `/bin/zsh -n scripts/run-qwen-api.zsh` to check shell syntax.
+- Run `/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh --help'` from the project root. Confirm that Uvicorn help appears without printing a credential or starting the service.
+- After verifying the existing API process and restarting it with the launcher, check `http://127.0.0.1:8172/api/v1/health`.
+- Confirm that the configuration uses `qwen3.8-max`, the Token Plan endpoint, and `QWENCLOUD_TOKEN_PLAN_API_KEY`. Do not print the key value.
+
 ## Implementation status — 2026-09-07
 
 The lists below define the full specification acceptance target.
@@ -7,6 +32,7 @@ They do not imply that every target is implemented.
 
 The current executable suite verifies these areas:
 
+- bounded, versioned prepared-reply search after NPC action selection; approved reason gating and durable prompt provenance;
 - seven current published scenario entries, immutable versions, and compiler rules;
 - the event example schema;
 - Player API actor authentication and hidden-state filtering;

@@ -9,8 +9,9 @@ import { OfferPanel } from './OfferPanel'
 import { ReviewPanel } from './ReviewPanel'
 import { TokenDialog } from './TokenDialog'
 import { TermsList } from './TermsList'
+import type { TrainingReviewActions } from './TrainingReviewPanel'
 
-interface NegotiationWorkspaceProps {
+interface NegotiationWorkspaceProps extends TrainingReviewActions {
   language: UiLanguage
   session: SessionEnvelope
   messages: TimelineMessage[]
@@ -65,6 +66,7 @@ export function NegotiationWorkspace({
   onDiscardMessage,
   onRetryReview,
   onNewSession,
+  ...trainingActions
 }: NegotiationWorkspaceProps) {
   const t = (key: string) => translate(language, key)
   const [accessOpen, setAccessOpen] = useState(false)
@@ -135,6 +137,7 @@ export function NegotiationWorkspace({
       {terminal ? (
         <div className="terminal-layout">
           <ReviewPanel
+            {...trainingActions}
             language={language}
             status={session.status}
             review={review}

@@ -173,6 +173,23 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE npc_render_jobs ADD COLUMN render_started_at TEXT;
     """,
+    """
+    CREATE TABLE training_checkpoints (
+        session_id TEXT NOT NULL REFERENCES sessions(id),
+        revision INTEGER NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        PRIMARY KEY(session_id, revision)
+    );
+    CREATE TABLE training_reviews (
+        session_id TEXT PRIMARY KEY REFERENCES sessions(id),
+        participant_id TEXT NOT NULL REFERENCES participants(id),
+        source_revision INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('pending', 'complete', 'unavailable')),
+        result_json TEXT NOT NULL DEFAULT '{}',
+        started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        completed_at TEXT
+    );
+    """,
 )
 
 

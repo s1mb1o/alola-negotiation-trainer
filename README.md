@@ -11,12 +11,19 @@ The executable scenarios and clients also support English.
 
 ## Implemented MVP
 
+The [human training loop](docs/human-training-guide.md) adds private preparation, shared player background, two NPC profiles, bounded social state, and goal-based LLM coaching.
+Completed sessions can restart from a recorded decision checkpoint with fresh credentials.
+The final report compares observed parent and child results.
+The [implementation plan](docs/plans/06_human-training-loop.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md) define the delivered scope.
+Qwen `qwen3.8-max` is the selected live model.
+Full coaching quality remains unvalidated on live Qwen dialogues.
+
 - FastAPI exposes the role-neutral Player API.
 - SQLite stores immutable scenario versions, sessions, participant credentials, offers, messages, events, reviews, and benchmark metadata.
 - SQLite uses WAL mode.
 - The engine validates deal terms, hard constraints, offer revisions, turn ownership, and terminal transitions.
 - The built-in NPC uses a deterministic action policy and an optional provider-backed dialogue renderer.
-- In Easy training, a built-in NPC opening role presents exactly its authored public opening terms before the player's first turn.
+- In human-versus-built-in-NPC training, the NPC greets the player without stating offer terms. The human makes the first live negotiation move.
 - A scenario can use a complete `opening_offer` or a partial `opening_position` with unresolved required terms.
 - The service never inserts a placeholder value for an omitted opening-position term.
 - An explicit zero remains a real term value.
@@ -55,20 +62,22 @@ Earlier published versions remain available for explicit-version sessions and re
 The service never uses an LLM as the source of truth for deal validity, utility, hidden facts, or hard constraints.
 
 See the Russian [NPC dialogue guide](docs/npc-dialogue-guide.md) for examples, scenario versions, authoring rules, and verification steps.
+Prepared NPC reply variants live in [reply_examples_v1.json](backend/data/reply_examples_v1.json). The engine filters them by case, role, language, and action before the renderer sees them.
 
 ## Run locally
 
 See [COMMANDS.md](COMMANDS.md) for complete start, stop, restart, and status commands for this Mac's API on port 8172 and UI on port 8171.
-The generic defaults below use API port 8170. Use the documented override when that port belongs to another project.
+The selected local launcher uses API port 8172. Bare Uvicorn and CLI examples elsewhere can retain the generic port 8170.
 
 Use Python 3.11 or later and Node.js 22 or later.
 
-For LLM dialogue, keep `OPENAI_API_KEY` in the shell environment and select the provider explicitly.
-This mode makes paid API requests.
+The selected LLM is `qwen3.8-max` through QwenCloud Token Plan.
+The local launcher reads `QWENCLOUD_TOKEN_PLAN_API_KEY` from the interactive zsh environment and uses API port `8172`.
+This command loads `~/.zshrc`. Provider-backed dialogue uses the configured Token Plan.
 
 ```sh
 uv sync --all-groups
-NEGOTIATION_NPC_PROVIDER=openai uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8170
+/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
 ```
 
 Use `NEGOTIATION_NPC_PROVIDER=template` for offline tests without provider requests.
@@ -79,12 +88,12 @@ Start the Web UI in another terminal.
 ```sh
 cd frontend
 npm ci
-npm run dev -- --port 8171
+VITE_API_BASE=http://127.0.0.1:8172/api/v1 npm run dev -- --port 8171 --strictPort
 ```
 
 Open `http://127.0.0.1:8171`.
 
-The development UI proxies `/api` to `http://127.0.0.1:8170`.
+The development UI defaults to a proxy on `http://127.0.0.1:8170`. The command above explicitly selects API port 8172.
 
 If another project uses port 8170, start this backend on a free port.
 For backend port 8172, start the UI with `VITE_API_BASE=http://127.0.0.1:8172/api/v1 npm run dev -- --port 8171`.
@@ -226,7 +235,8 @@ It delivers one validated reply or deterministic fallback with compare-and-swap 
 Startup recovery delivers the precomputed fallback for an unfinished render job.
 Historical render plans remain readable without memory, reasons, numeric references, and profile fields.
 A create-time binding NPC action uses its canonical deterministic message in the create transaction and does not call a provider.
-An Easy create-time `opening_offer` or `opening_position` presentation follows the same provider-bypass rule.
+The human training greeting uses a deterministic template and does not call a provider.
+An Easy create-time `opening_offer` or `opening_position` presentation for an external-agent next actor also bypasses the provider.
 
 Set `OPENAI_API_KEY` securely in the service process environment before you use this exact OpenAI run command:
 
@@ -237,13 +247,14 @@ NEGOTIATION_NPC_API_KEY_ENV=OPENAI_API_KEY \
 uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8170
 ```
 
-Use this command for Qwen after you set `QWEN_API_KEY` securely:
+Use this command for the selected Qwen configuration after zsh exports `QWENCLOUD_TOKEN_PLAN_API_KEY`:
 
 ```sh
 NEGOTIATION_NPC_PROVIDER=qwen \
 NEGOTIATION_NPC_MODEL=qwen3.8-max \
-NEGOTIATION_NPC_API_KEY_ENV=QWEN_API_KEY \
-uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8170
+NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_TOKEN_PLAN_API_KEY \
+NEGOTIATION_NPC_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1 \
+uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8172
 ```
 
 The built-in NPC supports these environment variables:
@@ -278,7 +289,7 @@ uv run python -m benchmarks \
 
 Set the same `NEGOTIATION_ADMIN_TOKEN` for the backend and runner. The runner sends it on benchmark session creation, which the backend requires when the token is configured, and uses it to close failed trials.
 
-Provider calls retry rate limits, 5xx responses, timeouts, and connection errors with backoff. Use `--provider-max-attempts` and `--provider-retry-backoff` to change the defaults; the run configuration records both. The agent prompt version is `natural-language-agent-v3`; artifacts produced with version 2 are not directly comparable with new runs.
+Provider calls retry rate limits, 5xx responses, timeouts, and connection errors with backoff. Use `--provider-max-attempts` and `--provider-retry-backoff` to change the defaults; the run configuration records both. The agent prompt version is `natural-language-agent-v4`. It uses English instructions for Russian and English sessions. Identify prompt-version differences when comparing artifacts. Training social classification and coaching use one transport attempt per model call.
 
 The runner passes a seed only when the provider supports that parameter.
 A seed does not guarantee identical provider output.
@@ -398,3 +409,12 @@ The target authored-world and runtime-emergent-state model is specified in [docs
 - [Scenario schema](schemas/scenario-v1.schema.json)
 - [Event schema](schemas/negotiation-event-v1.schema.json)
 - [Accepted decisions](docs/decisions/2026-08-27_post-review-decisions.md)
+
+## Design proposals
+
+- [Social state, conversation memory, and LLM protection](docs/social-state-and-llm-dialogue.md): broader persona, STATUS, MEMORY, and OWASP design. DR-36 defines the implemented subset.
+
+## Hackathon research
+
+- [Task 9 verified insights and source map](docs/research/lct2026-task9-insights.md): official requirements, Telegram clarifications, deadlines, resources, and open questions.
+- [Task 9 Telegram monitoring ledger](docs/research/telegram-task9-monitor.md): message-level evidence and coverage state.

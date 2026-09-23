@@ -13,6 +13,7 @@ export type SessionStatus =
 export type JsonRecord = Record<string, unknown>
 
 export interface ScenarioSummary {
+  training_terms?: Array<{ term_id: string; label: string }>
   scenario_id: string
   version: number
   title: string
@@ -127,6 +128,7 @@ export interface ConversationEntry {
 }
 
 export interface Observation {
+  training?: TrainingSetup
   negotiation_contract_version?: string
   role_brief?: string | RoleBriefView
   conversation?: Array<ConversationEntry | string>
@@ -219,6 +221,7 @@ export interface SessionEnvelope {
 }
 
 export interface CreateSessionRequest {
+  training?: TrainingSetup
   idempotency_key: string
   scenario_id: string
   scenario_version: number
@@ -270,6 +273,7 @@ export interface ReviewRecommendation {
 }
 
 export interface SessionReview {
+  training?: TrainingReview
   outcome: OutcomeReview
   skills?: SkillReview
   key_moments?: KeyMoment[]
@@ -460,3 +464,61 @@ export interface TimelineMessage {
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark'
+
+export interface TrainingSetup {
+  profile: 'concise_skeptical' | 'sociable'
+  relationship: 'first_meeting' | 'successful_history'
+  shared_background: string
+  personal_detail: boolean
+  preparation: {
+    target: string
+    unacceptable_result: string
+    available_trades: string
+    information_to_discover: string
+    targets: Array<{ term_id: string; operator: 'lte' | 'gte' | 'eq'; value: number }>
+  }
+}
+
+export interface CoachingEvidence {
+  excerpt_truncated?: boolean
+  ref: string
+  source_revision: number
+  text: string
+  role: string
+  is_player: boolean
+}
+
+export interface CoachingResult {
+  evidence_truncated?: boolean
+  status: 'not_requested' | 'pending' | 'complete' | 'unavailable'
+  summary?: string
+  goal_assessment?: string
+  cards?: Array<{
+    observation: string; recommendation: string; alternative_phrase: string; next_practice: string
+    evidence: CoachingEvidence[]; alternative_is_hypothesis: boolean
+  }>
+}
+
+export interface TrainingReview {
+  preparation: TrainingSetup['preparation']
+  goal_comparison: Array<{ term_id: string; operator: string; value: number; actual: number | null; gap: number | null; status: string }>
+  initial_social: Record<string, number>
+  final_social: Record<string, number>
+  offer_history: Array<{ source_revision: number; event_id: string; type: string; terms: JsonRecord }>
+  evidence: CoachingEvidence[]
+  checkpoints: Array<{ source_revision: number }>
+  parent_session_id?: string | null
+  informed_practice: boolean
+  skill_scores_validated: boolean
+  coaching: CoachingResult
+}
+
+export interface TrainingComparison {
+  before: OutcomeReview
+  after: OutcomeReview
+  utility_delta: number
+  source_revision: number
+  informed_practice: boolean
+  same_scenario_version: boolean
+  same_initial_conditions_at_checkpoint: boolean
+}

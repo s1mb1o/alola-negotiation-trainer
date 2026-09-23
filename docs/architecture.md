@@ -1,5 +1,43 @@
 # Architecture
 
+## Human training loop (DR-36)
+
+The opt-in human training flow MUST support private preparation, pinned shared background, bounded social state, actor-safe LLM review, checkpoint retry, and observed outcome comparison.
+Private preparation MUST NOT enter NPC context or public administrative projections.
+The engine MUST retain authority over economic results and social transitions.
+Model failure MUST preserve the deterministic report and committed state.
+The exact contracts and release rules are defined in [DR-36](decisions/2026-09-24_training-loop.md).
+
+The training configuration MUST be restricted to one human and one built-in NPC in training mode.
+The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
+The engine MUST validate finite numeric targets against the scenario's scalar term grammar.
+Only an agreed complete deal MAY satisfy a deal-term target.
+Free-text goals MUST NOT receive invented completion percentages.
+
+Social state MUST use bounded rapport, credibility, tension, and patience values.
+The classifier MAY propose at most two allowlisted events with exact message excerpts.
+The engine MUST apply validated changes once per committed revision.
+Positive relationship events MUST have cumulative caps.
+Classification failure MUST leave social state unchanged.
+Social values MUST NOT override economic acceptability or binding-confirmation rules.
+
+Coaching MUST require an explicit authenticated request after session termination.
+The reviewer MUST receive only the owner's permitted evidence, preparation, and economic baseline.
+Generation and grounding MUST run outside write transactions.
+The service MUST cache the validated result or an unavailable status.
+Active and sealed benchmark sessions MUST NOT initiate coaching.
+Model failure MUST preserve the deterministic report.
+Exact cited excerpts MUST be attached by the service.
+
+Retry MUST require a completed human training session and an existing immutable checkpoint.
+The child MUST restore the selected state and history boundary with fresh participant credentials.
+It MUST NOT inherit later history, parent credentials, render jobs, or idempotency results.
+The comparison MUST use the same role and identify observed results as informed practice.
+It MUST NOT claim causal skill improvement.
+Legacy sessions without checkpoints and benchmark sessions MUST NOT use this training fork.
+
+The API schemas, formulas, limits, and verification boundary are documented in the [human training guide](human-training-guide.md).
+
 ## Reference supply contract (DR-30)
 
 [DR-30](decisions/2026-09-08_reference-supply-implementation.md) and the [resolved contract](reference-supply-contract.md) define the opt-in implementation.
@@ -186,6 +224,29 @@ The canonical transcript remains text. The canonical history remains the structu
 
 The MVP conversation language is Russian. Scenario, session, prompt, and rendering contracts carry language metadata so that later versions can add languages without changing domain identifiers.
 
+All application-owned LLM instructions and task templates MUST be written in English.
+The MVP player-facing dialogue, hints, and final review MUST be in Russian.
+Russian messages, quotes, authored text, and examples MAY remain in their original language as clearly separated task data.
+The rule applies to every application-owned model task and retry path.
+See [DR-34](decisions/2026-09-23_prompt-language.md) for the runtime prompt audit and external-agent version change.
+
+### Initial player background (DR-35)
+
+Status: accepted requirement. Bounded implementation delivered under [DR-36](decisions/2026-09-24_training-loop.md).
+
+The scenario or authorized training setup MUST allow explicit player background known to the NPC.
+The session MUST pin the validated background and its visibility at creation.
+The NPC MUST receive only background explicitly marked as known to it.
+Background MUST NOT create a current-session agreement or override economic constraints.
+
+The service validates setup against scenario capabilities and records the initial context with source identifiers.
+The permitted NPC projection remains distinct from the player's private brief.
+Authored rules MAY initialize social state. The LLM MUST NOT invent initial social values.
+Historical relationship facts MUST remain distinct from current-session offers and confirmations.
+Replay and benchmark configuration MUST retain the pinned background and initialization rules.
+The [human training guide](human-training-guide.md) defines the implemented schema, persistence, and renderer projection.
+See [DR-35](decisions/2026-09-23_player-background.md).
+
 ---
 
 ## Modular monolith for MVP
@@ -229,7 +290,13 @@ The compiler and service do not synthesize a value for an omitted term.
 
 An explicit zero remains a real value.
 
-For Easy training, a built-in NPC opening role also delivers one canonical opening message at revision 0.
+For human-versus-built-in-NPC training, the NPC delivers one case-specific greeting at revision 0.
+
+The human remains `next_actor` and makes the first live negotiation move.
+
+The greeting states no deal terms or advice.
+
+For Easy training with an external-agent next actor, a built-in NPC opening role delivers one canonical opening message at revision 0.
 
 The speech act is `opening_offer` for a complete opening offer and `opening_position` for a partial opening position.
 
@@ -464,6 +531,10 @@ A non-binding approved reply option does not contain a number, date, percentage,
 Novel non-binding wording MAY reference a numeric term only through the DR-28 quote-slot contract below.
 
 For a non-binding speech act, an external provider MAY generate new wording.
+The service MAY retrieve up to four prepared, case-specific reply examples before generation.
+The examples MUST match the engine-selected speech act and permitted disclosures.
+They MUST remain wording context and MUST NOT become a source of truth or policy authority.
+The durable render plan MUST store the selected examples and library version.
 
 `approved_reply_options` provide examples and fallback candidates.
 
@@ -790,6 +861,30 @@ The engine returns `clarification_required` for ambiguous meaning.
 The terminal states are `agreement_reached`, `walked_away`, `expired`, `aborted`, and `technical_failure`.
 
 See `docs/offer-session-protocol.md` for the normative state machine.
+
+---
+
+## Goal-based final review (DR-33)
+
+Status: accepted requirement. Bounded implementation delivered under [DR-36](decisions/2026-09-24_training-loop.md).
+
+The terminal training review MUST include LLM analysis of progress toward the participant's recorded goals and actionable recommendations.
+The engine MUST supply the authoritative outcome, constraints, utility, and any numeric goal-progress measures.
+Each evaluative claim and recommendation MUST reference supporting session evidence or an authored goal or rule.
+The review MUST distinguish observed results from hypotheses about alternative actions.
+The review MUST enforce actor-specific disclosure permissions and the benchmark run-set release gate.
+An unavailable or invalid LLM analysis MUST leave the deterministic outcome report available and identify the missing analysis.
+
+The review task is separate from the NPC rendering task.
+It MAY use the same provider and model.
+The service MUST build the permitted review projection before model submission.
+The reviewer MUST NOT modify session state or deterministic scores.
+Transcript content MUST remain untrusted data in the review prompt.
+The service MUST validate evidence references, numeric claims, and disclosure scope before delivery.
+The review call MUST occur outside a database write transaction.
+The [human training guide](human-training-guide.md) defines the implemented cache and API extension.
+
+See [DR-33](decisions/2026-09-23_goal-based-llm-review.md) and [the review design](social-state-and-llm-dialogue.md#71-final-goal-based-review-dr-33).
 
 ---
 

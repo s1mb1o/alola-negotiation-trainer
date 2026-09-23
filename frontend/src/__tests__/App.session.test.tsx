@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest'
 import App from '../App'
 import { ApiError } from '../api'
-import type { HintView, ScenarioSummary, SessionEnvelope } from '../types'
+import type { HintView, ScenarioSummary, SessionEnvelope, SessionReview } from '../types'
+import { defaultTraining } from '../components/TrainingSetupFields'
 import { supplyProposal, supplyPublication } from './supplyFixtures'
 
 const apiMocks = vi.hoisted(() => ({
@@ -15,6 +16,9 @@ const apiMocks = vi.hoisted(() => ({
   makeIdempotencyKey: vi.fn((prefix: string) => `${prefix}-stable-key`),
   requestHint: vi.fn(),
   sendMessage: vi.fn(),
+  requestCoaching: vi.fn(),
+  forkSession: vi.fn(),
+  getComparison: vi.fn(),
 }))
 
 vi.mock('../api', async (importOriginal) => ({
@@ -113,6 +117,33 @@ function deferred<T>() {
 }
 
 describe('session persistence', () => {
+  it('coaches only on request and switches to a retry with fresh participant credentials', async () => {
+    const user = userEvent.setup()
+    const report: SessionReview = { outcome: { agreement: false }, training: {
+      preparation: defaultTraining().preparation, goal_comparison: [], initial_social: { rapport: 45 }, final_social: { rapport: 45 },
+      offer_history: [], evidence: [], checkpoints: [{ source_revision: 0 }], informed_practice: false,
+      skill_scores_validated: false, coaching: { status: 'not_requested' },
+    } }
+    apiMocks.createSession.mockResolvedValue({ ...createdSession, status: 'walked_away', next_actor: null })
+    apiMocks.getReview.mockResolvedValue(report)
+    apiMocks.requestCoaching.mockResolvedValue({ status: 'complete' })
+    apiMocks.forkSession.mockResolvedValue({ ...createdSession, session_id: 'sess_child', participant_token: 'fresh-child-token',
+      observation: { participant_id: 'child-buyer', role: 'buyer', conversation: [] }, next_actor: 'child-buyer' })
+    render(<App />)
+    await startSession(user)
+    await screen.findByRole('button', { name: 'Получить разбор' })
+    expect(apiMocks.requestCoaching).not.toHaveBeenCalled()
+    expect(apiMocks.createSession.mock.calls[0][0].training).toMatchObject({ relationship: 'first_meeting' })
+    await user.click(screen.getByRole('button', { name: 'Получить разбор' }))
+    await waitFor(() => expect(apiMocks.requestCoaching).toHaveBeenCalledWith('sess_session_test', 'participant-token'))
+    await user.click(screen.getByRole('button', { name: 'Начать повтор' }))
+    await screen.findByText('sess_child')
+    expect(apiMocks.forkSession).toHaveBeenCalledWith('sess_session_test', 0, 'fork-stable-key', 'participant-token')
+    expect(sessionStorage.getItem(TOKEN_KEY)).toBe('fresh-child-token')
+    expect(JSON.parse(sessionStorage.getItem(ACTIVE_SESSION_KEY) ?? '{}').session_id).toBe('sess_child')
+    expect(screen.queryByRole('button', { name: 'Получить разбор' })).not.toBeInTheDocument()
+  })
+
   it('stores the session identity in sessionStorage after creation', async () => {
     const user = userEvent.setup()
     apiMocks.createSession.mockResolvedValue(createdSession)

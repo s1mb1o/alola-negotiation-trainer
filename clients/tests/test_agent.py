@@ -29,15 +29,15 @@ def _context_from_prompt(prompt: str) -> dict:
 
 
 class NegotiationAgentPromptTest(unittest.TestCase):
-    def test_prompt_version_is_v3(self):
-        self.assertEqual(PROMPT_VERSION, "natural-language-agent-v3")
+    def test_prompt_version_is_v4(self):
+        self.assertEqual(PROMPT_VERSION, "natural-language-agent-v4")
 
     def test_ru_and_en_prompts_limit_each_message_to_one_package(self):
         cases = {
             "ru": (
-                "не более одного полного пакета условий",
-                "Не предлагайте альтернативные пакеты",
-                "условные пакеты «если…, то…»",
+                "at most one complete package",
+                "Do not present alternative packages",
+                "if/then conditional packages",
             ),
             "en": (
                 "at most one complete package",

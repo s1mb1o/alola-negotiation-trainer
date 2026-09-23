@@ -1,6 +1,6 @@
 # Service commands
 
-Last checked: 2026-09-08.
+Last checked: 2026-09-23.
 These commands are for local development on macOS with zsh.
 Use two terminal tabs: one for the API and one for the Web UI.
 
@@ -41,7 +41,24 @@ Run exactly one of the following API commands.
 Keep the terminal open while the service runs.
 The commands use the installed virtual environment. They do not need activation.
 
-### Natural dialogue with OpenAI
+### Selected model: QwenCloud Token Plan
+
+The selected built-in NPC model is `qwen3.8-max`.
+The launcher reads `QWENCLOUD_TOKEN_PLAN_API_KEY` from its process environment.
+The interactive zsh command below loads the user's `~/.zshrc` first.
+The key stays in memory. The launcher does not copy it to a file or print it.
+
+```zsh
+/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
+```
+
+The launcher selects the exact endpoint:
+`https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`.
+It starts this project's API on `127.0.0.1:8172` with one worker.
+Stop an existing verified project API process before using the launcher.
+Provider-backed dialogue uses the configured Token Plan when generation is requested.
+
+### Alternative: natural dialogue with OpenAI
 
 Use a zsh session that already exports `OPENAI_API_KEY`.
 Do not paste the key into the command or repository.
@@ -56,17 +73,17 @@ NEGOTIATION_NPC_TEMPERATURE= \
 .venv/bin/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8172 --workers 1
 ```
 
-### Natural dialogue with Qwen
+### Equivalent explicit Qwen command
 
-Use a zsh session that already exports `QWEN_API_KEY`.
+Use a zsh session that already exports `QWENCLOUD_TOKEN_PLAN_API_KEY` from `~/.zshrc`.
 This configuration selects the built-in NPC's Qwen Token Plan endpoint.
 It does not use the external-agent client's `QWEN_BASE_URL` setting.
 
 ```zsh
 NEGOTIATION_NPC_PROVIDER=qwen \
 NEGOTIATION_NPC_MODEL=qwen3.8-max \
-NEGOTIATION_NPC_API_KEY_ENV=QWEN_API_KEY \
-NEGOTIATION_NPC_BASE_URL= \
+NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_TOKEN_PLAN_API_KEY \
+NEGOTIATION_NPC_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1 \
 NEGOTIATION_NPC_TEMPERATURE= \
 .venv/bin/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8172 --workers 1
 ```

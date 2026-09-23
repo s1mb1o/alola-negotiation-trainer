@@ -4,6 +4,9 @@ import {
   ApiError,
   apiErrorCode,
   createSession,
+  forkSession,
+  getComparison,
+  requestCoaching,
   getAggregateStats,
   getReview,
   getSession,
@@ -30,6 +33,7 @@ import type {
   ThemePreference,
   TimelineMessage,
   UiLanguage,
+  TrainingComparison,
 } from './types'
 import {
   aggregateReviewHistory,
@@ -108,6 +112,14 @@ export default function App() {
   const [requestingHint, setRequestingHint] = useState(false)
   const [review, setReview] = useState<SessionReview>()
   const [reviewLoading, setReviewLoading] = useState(false)
+  const [trainingBusy, setTrainingBusy] = useState(false)
+  const [trainingError, setTrainingError] = useState<string>()
+  const [comparison, setComparison] = useState<TrainingComparison>()
+  const forkAttempt = useRef<{ sessionId: string; revision: number; key: string } | undefined>(undefined)
+  useEffect(() => {
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [session?.session_id, session?.status])
   const [reviewError, setReviewError] = useState<string>()
   const [remoteStats, setRemoteStats] = useState<AggregateStatsResponse>()
   const [statsLoading, setStatsLoading] = useState(false)
@@ -206,6 +218,7 @@ export default function App() {
           hintsEnabled: normalized.hints_enabled ?? stored.hints_enabled,
           participantToken: token,
           roleId,
+          training: normalized.observation.training,
         })
         // `pending_confirmation` and `clarification` travel inside the envelope, so the
         // confirmation card or clarification notice reappears with the restored session.
@@ -262,6 +275,7 @@ export default function App() {
         difficulty: value.difficulty,
         hints_enabled: value.hintsEnabled,
         run_mode: 'training',
+        training: value.training,
       } as const
       const fingerprint = JSON.stringify(createRequest)
       const attempt = pendingCreateAttempt?.fingerprint === fingerprint
@@ -288,6 +302,8 @@ export default function App() {
       setSession({ ...response, observation: response.observation ?? {}, language: response.language ?? value.sessionLanguage })
       setMessages(extractTimeline({ ...response, observation: response.observation ?? {} }))
       setReview(undefined)
+      setComparison(undefined)
+      setTrainingError(undefined)
       setReviewError(undefined)
       setMessageError(undefined)
       navigateToView('training')
@@ -436,6 +452,14 @@ export default function App() {
       setReview(result)
       storeReview(session.session_id, sessionConfig?.scenario.title ?? session.session_id, result)
       setStatsVersion((value) => value + 1)
+      if (result.training?.parent_session_id) {
+        try {
+          const compared = await getComparison(session.session_id, token)
+          if (sessionGeneration.current === generation) setComparison(compared)
+        } catch (error) {
+          if (sessionGeneration.current === generation) setTrainingError(errorMessage(error, language))
+        }
+      }
     } catch (error) {
       if (sessionGeneration.current !== generation) return
       setReviewError(errorMessage(error, language))
@@ -447,6 +471,58 @@ export default function App() {
   useEffect(() => {
     if (session && isTerminalStatus(session.status) && !review && !reviewLoading && !reviewError) void fetchReview()
   }, [fetchReview, review, reviewError, reviewLoading, session])
+
+  const coachSession = async () => {
+    if (!session || trainingBusy) return
+    const generation = sessionGeneration.current
+    setTrainingBusy(true)
+    setTrainingError(undefined)
+    try {
+      await requestCoaching(session.session_id, token)
+      if (generation === sessionGeneration.current) await fetchReview()
+    } catch (error) {
+      if (generation === sessionGeneration.current) setTrainingError(errorMessage(error, language))
+    } finally {
+      if (generation === sessionGeneration.current) setTrainingBusy(false)
+    }
+  }
+
+  const retryDecision = async (revision: number) => {
+    if (!session || !sessionConfig || trainingBusy) return
+    const generation = sessionGeneration.current
+    setTrainingBusy(true)
+    setTrainingError(undefined)
+    const attempt = forkAttempt.current?.sessionId === session.session_id && forkAttempt.current.revision === revision
+      ? forkAttempt.current : { sessionId: session.session_id, revision, key: makeIdempotencyKey('fork') }
+    forkAttempt.current = attempt
+    try {
+      const response = await forkSession(session.session_id, revision, attempt.key, token)
+      if (generation !== sessionGeneration.current) return
+      const freshToken = extractParticipantToken(response, sessionConfig.roleId)
+      if (!freshToken) throw new ApiError(409, { error: 'participant_credential_unavailable' })
+      updateToken(freshToken)
+      setSessionConfig({ ...sessionConfig, participantToken: freshToken })
+      setOwnParticipantId(response.observation.participant_id ?? '')
+      setSession(response)
+      setMessages(extractTimeline(response))
+      setReview(undefined)
+      setReviewError(undefined)
+      setComparison(undefined)
+      setMessageError(undefined)
+      setPendingMessageAttempt(undefined)
+      setLastFailedMessage(undefined)
+      setBusy(false)
+      setWaitingForCounterpart(false)
+      forkAttempt.current = undefined
+      mutationInFlight.current = false
+      setTrainingBusy(false)
+      sessionGeneration.current += 1
+    } catch (error) {
+      if (generation === sessionGeneration.current) setTrainingError(errorMessage(error, language))
+    } finally {
+      if (generation === sessionGeneration.current) setTrainingBusy(false)
+    }
+  }
 
   const askForHint = async () => {
     if (!session || mutationInFlight.current || pendingMessageAttempt) return
@@ -511,6 +587,9 @@ export default function App() {
     clearActiveSession()
     setSession(undefined)
     setSessionConfig(undefined)
+    setTrainingBusy(false)
+    setTrainingError(undefined)
+    setComparison(undefined)
     setMessages([])
     setReview(undefined)
     setReviewError(undefined)
@@ -575,6 +654,11 @@ export default function App() {
           review={review}
           reviewLoading={reviewLoading}
           reviewError={reviewError}
+          trainingBusy={trainingBusy}
+          trainingError={trainingError}
+          comparison={comparison}
+          onCoaching={() => void coachSession()}
+          onFork={(revision) => void retryDecision(revision)}
           onSend={submitMessage}
           onRequestHint={askForHint}
           onTokenChange={updateToken}

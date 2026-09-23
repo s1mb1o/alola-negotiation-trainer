@@ -13,11 +13,14 @@ from statistics import fmean
 from typing import Any
 
 from .db import Database
+from .training_service import TrainingServiceMixin
+from .training import initialize_training, training_observation, npc_training_context, apply_social
 from .supply_protocol import SupplyProtocolMixin, supply_current, supply_envelope
 from .supply import is_supply_scenario, supply_financial_summary
 from .dialogue_contracts import PublicNumericReference
 from .dialogue_quality import build_dialogue_quality
 from .negotiation_policy import select_counterproposal
+from .reply_retrieval import retrieve_reply_examples
 from .conversation import (
     build_conversation_memory,
     detected_topic_directive,
@@ -258,7 +261,7 @@ def _event_id() -> str:
     return "evt_" + uuid.uuid4().hex
 
 
-class NegotiationService(SupplyProtocolMixin):
+class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
     MAX_HINTS_PER_PARTICIPANT = 3
     MIN_PUBLIC_STATS_GROUP_SIZE = 2
 
@@ -269,11 +272,15 @@ class NegotiationService(SupplyProtocolMixin):
         dialogue_renderer: NpcDialogueRenderer | None = None,
         known_redaction_secrets: tuple[str, ...] = (),
         supply_extractor=None,
+        social_provider=None,
+        review_provider=None,
     ):
         self.database = database
         self.locks = SessionLockPool()
         self.dialogue_renderer = dialogue_renderer or TemplateNpcDialogueRenderer()
         self.supply_extractor = supply_extractor
+        self.social_provider = social_provider
+        self.review_provider = review_provider
         self._known_redaction_secrets = tuple(secret for secret in known_redaction_secrets if secret)
 
     # Scenario reads -----------------------------------------------------
@@ -282,7 +289,7 @@ class NegotiationService(SupplyProtocolMixin):
         with self.database.read_connection() as connection:
             if language is None:
                 rows = connection.execute(
-                    "SELECT current.public_json FROM scenario_versions AS current "
+                    "SELECT current.public_json, current.source_json FROM scenario_versions AS current "
                     "JOIN ("
                     "SELECT scenario_id, MAX(version) AS version "
                     "FROM scenario_versions GROUP BY scenario_id"
@@ -293,7 +300,7 @@ class NegotiationService(SupplyProtocolMixin):
                 ).fetchall()
             else:
                 rows = connection.execute(
-                    "SELECT current.public_json FROM scenario_versions AS current "
+                    "SELECT current.public_json, current.source_json FROM scenario_versions AS current "
                     "JOIN ("
                     "SELECT scenario_id, MAX(version) AS version "
                     "FROM scenario_versions GROUP BY scenario_id"
@@ -303,25 +310,35 @@ class NegotiationService(SupplyProtocolMixin):
                     "WHERE current.language = ? ORDER BY current.scenario_id",
                     (language,),
                 ).fetchall()
-        return [_loads(row["public_json"]) for row in rows]
+        return [self._scenario_training_metadata(row) for row in rows]
+
+    @staticmethod
+    def _scenario_training_metadata(row):
+        public = _loads(row["public_json"])
+        source = _loads(row["source_json"])
+        labels = participant_term_labels(source, source["language"])
+        public["training_terms"] = [{"term_id": key, "label": labels.get(key, key)}
+            for key, definition in source["terms"]["definitions"].items()
+            if definition.get("value_schema", {}).get("type") in {"number", "integer"}]
+        return public
 
     def get_scenario(self, scenario_id: str, version: int | None = None) -> dict[str, Any]:
         with self.database.read_connection() as connection:
             if version is None:
                 row = connection.execute(
-                    "SELECT public_json FROM scenario_versions WHERE scenario_id = ? "
+                    "SELECT public_json, source_json FROM scenario_versions WHERE scenario_id = ? "
                     "ORDER BY version DESC LIMIT 1",
                     (scenario_id,),
                 ).fetchone()
             else:
                 row = connection.execute(
-                    "SELECT public_json FROM scenario_versions "
+                    "SELECT public_json, source_json FROM scenario_versions "
                     "WHERE scenario_id = ? AND version = ?",
                     (scenario_id, version),
                 ).fetchone()
         if row is None:
             raise MissingResourceError("Scenario version was not found")
-        return _loads(row["public_json"])
+        return self._scenario_training_metadata(row)
 
     # Session creation --------------------------------------------------
 
@@ -392,6 +409,20 @@ class NegotiationService(SupplyProtocolMixin):
             spec_by_role = {item.role: item for item in request.participants}
             opening_role, opening_kind, opening_terms = authored_opening(scenario)
             next_role = next(role for role in scenario_roles if role != opening_role)
+            human_roles = [
+                role for role in scenario_roles if spec_by_role[role].controller == "human"
+            ]
+            npc_roles = [
+                role for role in scenario_roles if spec_by_role[role].controller == "built_in_npc"
+            ]
+            human_npc_training = (
+                str(request.run_mode) == "training"
+                and len(scenario_roles) == 2
+                and len(human_roles) == 1
+                and len(npc_roles) == 1
+            )
+            if human_npc_training:
+                next_role = human_roles[0]
             for role in scenario_roles:
                 spec = spec_by_role[role]
                 participant_id = f"participant_{session_id[5:]}_{role}"
@@ -454,6 +485,14 @@ class NegotiationService(SupplyProtocolMixin):
                 "completed_rounds": 0,
                 "delivered_distractors": delivered_distractors,
             }
+            if request.training is not None:
+                try:
+                    state["training"] = initialize_training(
+                        request.training, role_to_participant[human_roles[0]], scenario,
+                        lambda text: redact_untrusted_credentials(text, *self._known_redaction_secrets),
+                    )
+                except ValueError as exc:
+                    return ServiceResult(422, {"error": "invalid_training_target", "message": str(exc)})
             if is_supply_scenario(scenario):
                 self._supply_initialize(state, opening_participant, opening_role, opening_terms)
             run_metadata = {
@@ -566,11 +605,26 @@ class NegotiationService(SupplyProtocolMixin):
             next_actor_row = self._participant_row(connection, next_participant)
             initial_actions: list[dict[str, Any]] = []
             opening_actor_row = self._participant_row(connection, opening_participant)
+            if human_npc_training:
+                npc_row = self._participant_row(connection, role_to_participant[npc_roles[0]])
+                greeting = self._initial_npc_greeting(scenario["title"], request.language)
+                self._insert_message(
+                    connection, session_id, 0, npc_row, greeting, request.language
+                )
+                self._insert_event(
+                    connection,
+                    session_id,
+                    0,
+                    npc_row["id"],
+                    "npc.greeting.delivered",
+                    {"speech_act": "greeting", "substantive": False},
+                    {},
+                )
             if (
                 str(request.difficulty) == "easy"
                 and str(request.run_mode) == "training"
                 and opening_actor_row["controller"] == "built_in_npc"
-                and next_actor_row["controller"] != "built_in_npc"
+                and next_actor_row["controller"] == "external_agent"
             ):
                 opening_request = self._build_dialogue_request(
                     connection,
@@ -701,6 +755,7 @@ class NegotiationService(SupplyProtocolMixin):
                 record for record in participant_records if record["controller"] != "built_in_npc"
             )
             observer_row = self._participant_row(connection, observer_record["id"])
+            self._capture_training_checkpoint(connection, session_row, state)
             response = {
                 "session_id": session_id,
                 "revision": session_row["revision"],
@@ -1196,6 +1251,7 @@ class NegotiationService(SupplyProtocolMixin):
             # Optional semantic normalization runs outside a SQLite write transaction.
             # The transaction below rechecks authentication, revision, turn, and idempotency.
             extracted = self._supply_preextract(session_id, token, request, request_digest)
+            social_events = self._training_preclassify(session_id, token, request, request_digest)
             pending_payload: dict[str, Any] | None = None
             scope = ""
             with self.database.write_transaction() as connection:
@@ -1270,6 +1326,7 @@ class NegotiationService(SupplyProtocolMixin):
 
                     scenario = self._scenario_source(connection, session)
                     state = _loads(session["state_json"])
+                    self._capture_training_checkpoint(connection, session, state)
                     pending = state.get("pending_confirmation")
                     safe_message = redact_untrusted_credentials(
                         request.message, token, *self._known_redaction_secrets
@@ -1297,6 +1354,14 @@ class NegotiationService(SupplyProtocolMixin):
                         defer_builtin_npc=True,
                     )
                     current = self._session_row(connection, session_id)
+                    if int(current["revision"]) > initial_revision and state.get("training"):
+                        committed_state = _loads(current["state_json"])
+                        changes = apply_social(committed_state["training"], initial_revision + 1, social_events)
+                        if changes:
+                            self._insert_event(connection, session_id, initial_revision + 1, participant["id"],
+                                "training.social.updated", {}, {"changes": changes, "source_revision": initial_revision + 1})
+                        connection.execute("UPDATE sessions SET state_json = ? WHERE id = ?",
+                                           (_json(committed_state), session_id))
                     if extracted is not None and int(current["revision"]) > initial_revision:
                         self._insert_event(connection, session_id, int(current["revision"]), participant["id"],
                             "message.extracted", {"extractor_version": "supply-semantic-normalizer-v1",
@@ -2474,6 +2539,15 @@ class NegotiationService(SupplyProtocolMixin):
             dialogue_context=dialogue_context,
             approved_reply_options=options,
             fallback_text=fallback,
+            retrieved_reply_examples=retrieve_reply_examples(
+                scenario_id=str(scenario["id"]),
+                npc_role=str(npc["role"]),
+                language=str(session["language"]),
+                speech_act=speech_act,
+                player_message=player_message,
+                focused_term_ids=focused_terms,
+                approved_reasons=approved_reasons,
+            ),
             scenario_title=str(scenario["title"]),
             npc_role=str(npc["role"]),
             missing_term_labels=missing_labels,
@@ -2485,6 +2559,8 @@ class NegotiationService(SupplyProtocolMixin):
             conversation_style=scenario["roles"][npc["role"]].get("conversation_style", "pragmatic"),
             requested_term_id=requested_term_id,
             numeric_references=tuple(references),
+            training_context=npc_training_context(_loads(session["state_json"]).get("training", {}),
+                                                  str(session["language"]), player_message),
         )
 
     def _parse_context(self, connection: sqlite3.Connection, session: sqlite3.Row,
@@ -3052,6 +3128,13 @@ class NegotiationService(SupplyProtocolMixin):
 
             scenario = self._scenario_source(connection, session)
             state = _loads(session["state_json"])
+            if state.get("training") and plan.request.training_context.get("personal_fact") and re.search(
+                r"гуффи|goofy", rendered.text, re.I
+            ):
+                state["training"]["dog_disclosed"] = True
+                connection.execute("UPDATE sessions SET state_json = ? WHERE id = ?", (_json(state), plan.session_id))
+                session = self._session_row(connection, plan.session_id)
+            self._capture_training_checkpoint(connection, session, state)
             context = TransitionContext(
                 revision=int(session["revision"]),
                 round=int(session["round"]),
@@ -3310,6 +3393,7 @@ class NegotiationService(SupplyProtocolMixin):
             public["skill_score"] = own["skill_score"]
             public["recommendations"] = list(own.get("recommendations", []))
             public["assistance_usage"]["hints_used"] = own["hints_used"]
+            public.update(self._training_review_projection(connection, session, participant, public))
             return ServiceResult(200, public)
 
     def aggregate_stats(self) -> dict[str, Any]:
@@ -3685,7 +3769,10 @@ class NegotiationService(SupplyProtocolMixin):
                     language, row["type"], actor_role, payload, scenario
                 ),
             }
-            quote = quotes.get((row["participant_id"], int(row["session_revision"])))
+            # Revision zero contains an authored opening artifact and a social greeting.
+            # The greeting is not evidence that the NPC uttered or changed the opening terms.
+            quote = (quotes.get((row["participant_id"], int(row["session_revision"])))
+                     if int(row["session_revision"]) > 0 else None)
             if quote:
                 excerpt = " ".join(quote.split())
                 if len(excerpt) > 160:
@@ -3806,6 +3893,7 @@ class NegotiationService(SupplyProtocolMixin):
             "substantive_turn_count": session["substantive_turn_count"],
             "next_actor": session["next_participant_id"],
             "language": session["language"],
+            **({"training": training_observation(state["training"], participant["id"])} if state.get("training") else {}),
             **self._supply_observation(scenario, state),
         }
 
@@ -3962,6 +4050,12 @@ class NegotiationService(SupplyProtocolMixin):
         )
         if cursor.rowcount != 1:
             raise RuntimeError("Optimistic session revision update failed")
+
+    @staticmethod
+    def _initial_npc_greeting(title: str, language: str) -> str:
+        if language == "ru":
+            return f"Здравствуйте. Давайте обсудим «{title}». Слушаю вас."
+        return f'Hello. I am ready to discuss "{title}". Please go ahead.'
 
     @staticmethod
     def _insert_message(

@@ -1,7 +1,22 @@
 # Связный диалог с NPC
 
 Дата: 2026-09-07.
-Руководство описывает [DR-27](decisions/2026-09-06_conversation-continuity.md) и [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md).
+Руководство описывает [DR-27](decisions/2026-09-06_conversation-continuity.md), [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md) и [DR-32](decisions/2026-09-23_retrieved-reply-examples.md).
+
+## Подготовленные варианты ответа
+
+Файл [`backend/data/reply_examples_v1.json`](../backend/data/reply_examples_v1.json) содержит вопросы игрока и несколько вариантов ответа NPC.
+Для записи задайте `scenario_id`, `npc_role`, `language`, `speech_act`, `player_message` и массив `replies`.
+Запись MAY задать `focused_term_id`, `required_reason_id` или `supply_action`.
+Если задан `required_reason_id`, каждый ответ MUST содержать точный текст причины, которую движок разрешил раскрыть.
+Ответы MUST не содержать числовых обещаний, скрытых фактов и формулировок согласия.
+При изменении библиотеки создайте новую версию файла и обновите `LIBRARY_VERSION` и `LIBRARY_PATH` в `backend/app/reply_retrieval.py`.
+
+Поиск выполняется после выбора действия NPC.
+Он выбирает не более четырех вариантов для одного запроса генерации.
+Варианты служат образцами формулировки.
+Проверка ответа и неизменяемые формулировки обязательных действий сохраняются.
+Проверьте библиотеку командой `.venv/bin/python -m pytest -q backend/tests/test_reply_retrieval.py backend/tests/test_supply_dialogue.py`.
 Оно не заменяет нормативные требования API и протокола.
 
 ## Что изменилось

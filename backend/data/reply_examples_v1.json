@@ -1,0 +1,118 @@
+{
+  "version": "reply_examples_v1",
+  "examples": [
+    {
+      "id": "freight_ru_price_reason",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "general_answer",
+      "focused_term_id": "price",
+      "required_reason_id": "transport_cost",
+      "player_message": "Почему такая цена за перевозку?",
+      "replies": [
+        "Тариф должен покрывать топливо и работу перевозчика. Какая цена для вас приемлема?",
+        "Тариф должен покрывать топливо и работу перевозчика. Какой уровень цены вы предлагаете?",
+        "Тариф должен покрывать топливо и работу перевозчика. Что в цене вызывает у вас сомнения?"
+      ]
+    },
+    {
+      "id": "freight_en_price_reason",
+      "scenario_id": "freight_contract_en",
+      "npc_role": "seller",
+      "language": "en",
+      "speech_act": "general_answer",
+      "focused_term_id": "price",
+      "required_reason_id": "transport_cost",
+      "player_message": "Why is the freight price so high?",
+      "replies": [
+        "The rate must cover fuel and carrier operating costs. What price would work for you?",
+        "The rate must cover fuel and carrier operating costs. Which part of the price concerns you?",
+        "The rate must cover fuel and carrier operating costs. What price do you propose?"
+      ]
+    },
+    {
+      "id": "freight_ru_delivery_focus",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "focused_discussion",
+      "focused_term_id": "delivery_weeks",
+      "player_message": "Давайте обсудим срок доставки.",
+      "replies": [
+        "Давайте обсудим срок доставки. Какой график вам нужен?",
+        "Какой срок доставки вы предлагаете?",
+        "Расскажите, какой срок доставки вам подходит."
+      ]
+    },
+    {
+      "id": "freight_en_delivery_focus",
+      "scenario_id": "freight_contract_en",
+      "npc_role": "seller",
+      "language": "en",
+      "speech_act": "focused_discussion",
+      "focused_term_id": "delivery_weeks",
+      "player_message": "Let us discuss the delivery deadline.",
+      "replies": [
+        "Let us discuss the delivery schedule. What timing do you need?",
+        "What delivery timing would work for you?",
+        "Tell me which delivery schedule you have in mind."
+      ]
+    },
+    {
+      "id": "freight_ru_payment_focus",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "focused_discussion",
+      "focused_term_id": "prepayment_fraction",
+      "player_message": "Поговорим о предоплате.",
+      "replies": [
+        "Давайте обсудим предоплату. Какой порядок оплаты вам удобен?",
+        "Какой вариант предоплаты вы предлагаете?",
+        "Предоплата заслуживает отдельного обсуждения. Что вас в ней беспокоит?"
+      ]
+    },
+    {
+      "id": "freight_ru_budget_concern",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "acknowledge_information",
+      "player_message": "Наш бюджет на перевозку ограничен.",
+      "replies": [
+        "Понимаю, что бюджет для вас важен. Какую цену вы рассматриваете?",
+        "Давайте обсудим стоимость с учетом вашего бюджета. На какой уровень вы ориентируетесь?",
+        "Вы обозначили ограничение по бюджету. Какую цену вы предлагаете?"
+      ]
+    },
+    {
+      "id": "supply_ru_price_question",
+      "scenario_id": "supplier_integration_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "acknowledge_information",
+      "supply_action": "propose",
+      "player_message": "Можно снизить цену? Бюджет ограничен.",
+      "replies": [
+        "Давайте обсудим стоимость. Какой бюджет вы рассматриваете?",
+        "Вижу, что цена для вас важна. Какие условия вы предлагаете?",
+        "Расскажите, какой уровень цены вы имеете в виду."
+      ]
+    },
+    {
+      "id": "supply_en_price_question",
+      "scenario_id": "supplier_integration_en",
+      "npc_role": "seller",
+      "language": "en",
+      "speech_act": "acknowledge_information",
+      "supply_action": "propose",
+      "player_message": "Can you lower the price? Our budget is limited.",
+      "replies": [
+        "Let us discuss the price. What budget do you have in mind?",
+        "I hear your concern about price. What terms do you propose?",
+        "Tell me which price level you are considering."
+      ]
+    }
+  ]
+}

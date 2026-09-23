@@ -84,7 +84,8 @@ This prevents negotiation from ending before reserve or diagnostic terms are dis
 
 For this opt-in protocol, initialization creates preliminary revision 1 at session revision 0 from exactly the authored opening artifact.
 It does not create an accept-enabled formal opening offer.
-The Easy opening presentation remains canonical, contains only authored terms, and does not call an LLM.
+In human-versus-built-in-NPC training, the NPC gives a neutral case-specific greeting instead of presenting the authored opening terms.
+When an external agent is `next_actor`, the Easy opening presentation remains canonical and does not call an LLM.
 Historical scalar initialization still creates its existing opening offer revision.
 
 A preliminary proposal contains:

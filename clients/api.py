@@ -319,6 +319,7 @@ class NegotiationApiClient:
         trial_id: str | None = None,
         benchmark_expected_trials: int | None = None,
         seed: int | None = None,
+        training: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "idempotency_key": idempotency_key or new_idempotency_key("create"),
@@ -338,6 +339,8 @@ class NegotiationApiClient:
             payload["benchmark_expected_trials"] = benchmark_expected_trials
         if seed is not None:
             payload["seed"] = seed
+        if training is not None:
+            payload["training"] = dict(training)
         result = self._request("POST", "/api/v1/sessions", payload)
         if not isinstance(result, dict):
             raise ApiError("Session creation returned a non-object response")
@@ -376,6 +379,19 @@ class NegotiationApiClient:
 
     def review(self, session_id: str) -> JsonValue:
         return self._request("GET", f"/api/v1/sessions/{quote(session_id, safe='')}/review")
+
+    def coaching(self, session_id: str) -> JsonValue:
+        return self._request("POST", f"/api/v1/sessions/{quote(session_id, safe='')}/coaching", {})
+
+    def checkpoints(self, session_id: str) -> JsonValue:
+        return self._request("GET", f"/api/v1/sessions/{quote(session_id, safe='')}/checkpoints")
+
+    def comparison(self, session_id: str) -> JsonValue:
+        return self._request("GET", f"/api/v1/sessions/{quote(session_id, safe='')}/comparison")
+
+    def fork(self, session_id: str, source_revision: int, idempotency_key: str | None = None) -> JsonValue:
+        return self._request("POST", f"/api/v1/sessions/{quote(session_id, safe='')}/fork",
+                             {"source_revision": source_revision, "idempotency_key": idempotency_key or new_idempotency_key("fork")})
 
     def stats(self) -> JsonValue:
         return self._request("GET", "/api/v1/stats")

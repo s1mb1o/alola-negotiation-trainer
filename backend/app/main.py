@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from dataclasses import replace
+from copy import copy
 import os
 import secrets
 from typing import Annotated, AsyncIterator
@@ -18,6 +20,7 @@ from .models import (
     CloseSessionRequest,
     CreateSessionRequest,
     HintRequest,
+    ForkRequest,
     RunMode,
     SubmitMessageRequest,
 )
@@ -99,6 +102,16 @@ def _configured_dialogue_renderer(settings: Settings) -> NpcDialogueRenderer:
     return LlmNpcDialogueRenderer(text_provider)
 
 
+def _training_provider(renderer, max_output_tokens):
+    provider = getattr(renderer, "_text_provider", None)
+    if provider is None or not hasattr(provider, "config"):
+        return None
+    bounded = copy(provider)
+    bounded.config = replace(provider.config, max_output_tokens=max_output_tokens, max_attempts=1,
+                             timeout=min(provider.config.timeout, 45.0))
+    return bounded
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -126,6 +139,8 @@ def create_app(
             database,
             dialogue_renderer=renderer,
             supply_extractor=extractor,
+            social_provider=_training_provider(renderer, 350),
+            review_provider=_training_provider(renderer, 2200),
             known_redaction_secrets=(
                 configured.admin_token,
                 os.getenv(configured.npc_api_key_env, "") if configured.npc_api_key_env else "",
@@ -282,6 +297,26 @@ def create_app(
         negotiation_service: Annotated[NegotiationService, Depends(get_service)],
     ) -> JSONResponse:
         return _json_result(negotiation_service.get_review(session_id, token))
+
+    @router.post("/sessions/{session_id}/coaching")
+    def coaching(session_id: str, token: Annotated[str, Depends(get_participant_token)],
+                 service: Annotated[NegotiationService, Depends(get_service)]) -> JSONResponse:
+        return _json_result(service.request_coaching(session_id, token))
+
+    @router.get("/sessions/{session_id}/checkpoints")
+    def checkpoints(session_id: str, token: Annotated[str, Depends(get_participant_token)],
+                    service: Annotated[NegotiationService, Depends(get_service)]) -> JSONResponse:
+        return _json_result(service.get_training_checkpoints(session_id, token))
+
+    @router.post("/sessions/{session_id}/fork")
+    def fork_session(session_id: str, body: ForkRequest, token: Annotated[str, Depends(get_participant_token)],
+                     service: Annotated[NegotiationService, Depends(get_service)]) -> JSONResponse:
+        return _json_result(service.fork_training_session(session_id, token, body))
+
+    @router.get("/sessions/{session_id}/comparison")
+    def comparison(session_id: str, token: Annotated[str, Depends(get_participant_token)],
+                   service: Annotated[NegotiationService, Depends(get_service)]) -> JSONResponse:
+        return _json_result(service.compare_training(session_id, token))
 
     @router.post("/sessions/{session_id}/close")
     def close_session(

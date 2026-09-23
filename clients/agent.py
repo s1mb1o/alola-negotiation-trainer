@@ -9,7 +9,7 @@ from .api import redact_secrets
 from .providers import Generation, TextProvider
 
 
-PROMPT_VERSION = "natural-language-agent-v3"
+PROMPT_VERSION = "natural-language-agent-v4"
 
 # Soft limit for the serialized actor-safe context. Only public-history entries are dropped
 # to meet it; the observation and the protocol result are always sent in full.
@@ -137,11 +137,10 @@ class NegotiationAgent:
             )
         elif self.language.lower() == "ru":
             instructions += (
-                " Если вы делаете конкретное предложение, включите в сообщение не более одного "
-                "полного пакета условий. Не предлагайте альтернативные пакеты, варианты MESO или "
-                "условные пакеты «если…, то…». OfferSet/MESO пока не поддерживается. Можно естественно "
-                "задавать вопросы, объяснять один компромисс и обсуждать интересы, не формируя несколько "
-                "оферт."
+                " If you make a concrete proposal, include at most one complete package in the message. "
+                "Do not present alternative packages, MESO choices, or if/then conditional packages. "
+                "OfferSet/MESO is not supported yet. You may still ask a natural conversational question, "
+                "explain one trade-off, or discuss interests without making multiple offers."
                 " To accept a complete offer, write exactly: «Принимаю все условия предложения.» "
                 "When confirmation is required, write exactly: «Подтверждаю принятие полного предложения.»"
             )

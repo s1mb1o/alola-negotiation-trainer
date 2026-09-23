@@ -368,6 +368,8 @@ DR-26 preserves deterministic action selection, canonical messages, credential p
 
 Accepted on 2026-08-28.
 
+**Supersession note.** DR-31 replaces this presentation with a neutral greeting for human-versus-built-in-NPC training sessions. This rule remains in effect when the next actor is an external agent.
+
 **Decision.**
 - An Easy training session MUST present the authored opening offer in the transcript when the opening-offer participant uses the built-in NPC controller.
 - The service MUST use the canonical `opening_offer` template.
@@ -429,6 +431,8 @@ Accepted on 2026-08-28.
 - A scenario author omits an unannounced term instead of inserting `0`, `null`, an empty string, or another placeholder.
 
 **Risks.** A client can describe a partial opening position as a complete offer if it ignores `unresolved_required_terms`. Contract tests and UI tests must cover this case.
+
+**Supersession note.** DR-31 replaces the Easy opening presentation with a neutral greeting for human-versus-built-in-NPC training sessions. The authored opening artifact and unresolved-term rules remain in effect.
 
 ---
 

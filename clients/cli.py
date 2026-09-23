@@ -99,6 +99,9 @@ def _create_training_session(
             model=provider.config.model,
             prompt_version=PROMPT_VERSION,
         )
+    training_options = {}
+    if getattr(args, "training_file", None):
+        training_options["training"] = json.loads(Path(args.training_file).read_text(encoding="utf-8"))
     return api.create_session(
         scenario_id=args.scenario,
         scenario_version=args.scenario_version,
@@ -110,6 +113,7 @@ def _create_training_session(
         difficulty=args.difficulty,
         hints_enabled=not args.no_hints,
         run_mode="training",
+        **training_options,
     )
 
 
@@ -128,11 +132,18 @@ def command_play(api: NegotiationApiClient, args: argparse.Namespace) -> int:
     session_id = str(created["session_id"])
     token = _participant_token(args.participant_token_env, created, args.role)
     participant_api = api.with_participant_token(token)
+    return _play_existing_plain(participant_api, created, args.role, token)
+
+
+def _play_existing_plain(participant_api, created, role=None, token=None):
+    session_id = str(created["session_id"])
+    role = role or created.get("observation", {}).get("role", "player")
+    token = token or participant_api.participant_token
     current: Mapping[str, Any] = created
     _print_json(redact_secrets(created, (token,)))
     while response_status(current) not in TERMINAL_STATUSES:
         try:
-            message = input(f"{args.role}> ").strip()
+            message = input(f"{role}> ").strip()
         except EOFError:
             print()
             return 0
@@ -261,6 +272,17 @@ def command_simple(api: NegotiationApiClient, args: argparse.Namespace) -> int:
         _print_json(participant_api.history(args.session_id))
     elif args.command == "review":
         _print_json(participant_api.review(args.session_id))
+    elif args.command in {"coach", "checkpoints", "compare"}:
+        method = {"coach": participant_api.coaching, "checkpoints": participant_api.checkpoints,
+                  "compare": participant_api.comparison}[args.command]
+        _print_json(method(args.session_id))
+    elif args.command == "retry":
+        created = participant_api.fork(args.session_id, args.source_revision, args.idempotency_key)
+        fresh = extract_participant_credentials(created)
+        if not fresh:
+            raise ApiError("Retry credentials were already delivered. Use the original retry process or a new idempotency key.")
+        child_api = api.with_participant_token(next(iter(fresh.values())))
+        return _play_existing_plain(child_api, created)
     elif args.command == "export":
         print(participant_api.export_session(args.session_id, args.output))
     else:
@@ -324,6 +346,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--difficulty", choices=("guided", "easy", "normal", "expert"), default="normal"
     )
     play.add_argument("--no-hints", action="store_true")
+    play.add_argument("--training-file", help="JSON file with shared context and private preparation")
 
     agent = subparsers.add_parser("agent", help="Run one external agent against the built-in NPC")
     _add_session_options(agent)
@@ -352,10 +375,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     self_play.add_argument("--output")
 
-    for name in ("history", "review"):
+    for name in ("history", "review", "coach", "checkpoints", "compare", "retry"):
         command = subparsers.add_parser(name)
         command.add_argument("session_id")
         command.add_argument("--participant-token-env", default="NEGOTIATION_PARTICIPANT_TOKEN")
+        if name == "retry":
+            command.add_argument("--source-revision", required=True, type=int)
+            command.add_argument("--idempotency-key")
     export = subparsers.add_parser("export", help="Export safe history and final review")
     export.add_argument("session_id")
     export.add_argument("output")

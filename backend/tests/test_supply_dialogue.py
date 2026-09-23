@@ -37,6 +37,12 @@ def test_service_renders_supply_preliminary_proposals_with_llm(settings):
         assert npc["action"] == "propose"
         assert npc["dialogue_renderer"]["mode"] == "llm"
         assert npc["message"].startswith(prose + "\n\n")
+        prompt = json.loads(provider.calls[0]["messages"][0]["content"])
+        assert len(prompt["retrieved_reply_examples"]) == 3
+        assert all(
+            item["library_version"] == "reply_examples_v1"
+            for item in prompt["retrieved_reply_examples"]
+        )
 
 
 def test_supply_pending_render_recovers_without_new_llm_calls(settings, monkeypatch):
@@ -141,7 +147,9 @@ def test_supply_llm_paragraphs_preserve_engine_block_and_do_not_receive_private_
         "proposed_action",
         "fallback_prose",
         "immutable_package",
+        "retrieved_reply_examples",
         "untrusted_conversation",
+        "training_context",
     }
 
 

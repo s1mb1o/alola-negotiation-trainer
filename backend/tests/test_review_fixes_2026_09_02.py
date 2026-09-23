@@ -277,7 +277,7 @@ def test_external_sessions_expire_at_max_rounds(client: TestClient) -> None:
     assert messages == 24
 
 
-def test_npc_gets_no_extra_action_after_the_human_completes_the_last_round(
+def test_npc_and_human_complete_the_last_round_once(
     client: TestClient,
 ) -> None:
     session, tokens = _create(client, "h4-npc", hints_enabled=False, human_role="seller")
@@ -309,7 +309,7 @@ def test_npc_gets_no_extra_action_after_the_human_completes_the_last_round(
         if action["participant_id"].endswith("_buyer")
     ]
     assert len(human_actions) == 1
-    assert npc_actions == []
+    assert len(npc_actions) == 1
 
 
 # --- NPC conversation -------------------------------------------------------

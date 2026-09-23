@@ -36,7 +36,7 @@ def _supplier_payload(key: str, *, difficulty: str = "easy") -> dict[str, Any]:
     return payload
 
 
-def test_easy_builtin_opening_role_presents_offer_without_consuming_turn(
+def test_builtin_npc_greets_without_taking_the_first_negotiation_turn(
     client: TestClient,
 ) -> None:
     response = client.post(
@@ -68,10 +68,13 @@ def test_easy_builtin_opening_role_presents_offer_without_consuming_turn(
     assert len(conversation) == 1
     assert conversation[0]["revision"] == 0
     assert conversation[0]["role"] == "seller"
-    assert "условия поставки промышленных компьютеров" in conversation[0]["message"]
-    assert "120\xa0000 €" in conversation[0]["message"]
-    assert "0%" in conversation[0]["message"]
-    assert "8 недель" in conversation[0]["message"]
+    assert conversation[0]["message"] == (
+        "Здравствуйте. Давайте обсудим «Поставка 100 промышленных компьютеров». "
+        "Слушаю вас."
+    )
+    assert "120\xa0000 €" not in conversation[0]["message"]
+    assert "0%" not in conversation[0]["message"]
+    assert "8 недель" not in conversation[0]["message"]
     assert body["observation"]["assistance"]["detected_signals"] == []
     assert body["observation"]["assistance"]["probable_interests"] == []
 
@@ -81,12 +84,14 @@ def test_easy_builtin_opening_role_presents_offer_without_consuming_turn(
         headers=bearer(token),
     ).json()
     event = next(
-        item for item in history["events"] if item["type"] == "npc.opening_utterance.delivered"
+        item for item in history["events"] if item["type"] == "npc.greeting.delivered"
     )
     assert event["session_revision"] == 0
-    assert event["payload"]["speech_act"] == "opening_offer"
+    assert event["payload"]["speech_act"] == "greeting"
     assert event["payload"]["substantive"] is False
-    assert event["payload"]["dialogue_renderer"]["mode"] == "template"
+    assert not any(
+        item["type"] == "npc.opening_utterance.delivered" for item in history["events"]
+    )
 
     with client.app.state.database.read_connection() as connection:
         state = json.loads(
@@ -104,7 +109,7 @@ def test_easy_builtin_opening_role_presents_offer_without_consuming_turn(
         )
 
 
-def test_easy_opening_is_idempotent_and_first_player_turn_starts_the_round(
+def test_greeting_is_idempotent_and_first_player_turn_starts_the_round(
     client: TestClient,
 ) -> None:
     payload = _supplier_payload("easy-opening-idempotent")
@@ -124,7 +129,7 @@ def test_easy_opening_is_idempotent_and_first_player_turn_starts_the_round(
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM events WHERE session_id = ? "
-                "AND type = 'npc.opening_utterance.delivered'",
+                "AND type = 'npc.greeting.delivered'",
                 (first["session_id"],),
             ).fetchone()[0]
             == 1
@@ -147,17 +152,19 @@ def test_easy_opening_is_idempotent_and_first_player_turn_starts_the_round(
 
 
 @pytest.mark.parametrize("difficulty", ["guided", "normal", "expert"])
-def test_automatic_opening_is_easy_only(client: TestClient, difficulty: str) -> None:
+def test_greeting_is_available_at_every_difficulty(client: TestClient, difficulty: str) -> None:
     created = client.post(
         "/api/v1/sessions",
         json=_supplier_payload(f"no-opening-{difficulty}", difficulty=difficulty),
     ).json()
 
     assert created["revision"] == 0
-    assert created["observation"]["conversation"] == []
+    assert created["observation"]["conversation"][0]["message"].startswith("Здравствуйте.")
+    assert created["substantive_turn_count"] == 0
+    assert created["next_actor"].endswith("_buyer")
 
 
-def test_easy_does_not_speak_for_external_or_human_opening_role(client: TestClient) -> None:
+def test_greeting_requires_human_and_builtin_npc(client: TestClient) -> None:
     both_external = _supplier_payload("easy-both-external")
     both_external["participants"] = [
         {"role": "buyer", "controller": "external_agent"},
@@ -172,12 +179,39 @@ def test_easy_does_not_speak_for_external_or_human_opening_role(client: TestClie
         {"role": "seller", "controller": "human"},
     ]
     created = client.post("/api/v1/sessions", json=human_seller).json()
-    assert not any(message["revision"] == 0 for message in created["observation"]["conversation"])
-    assert created["revision"] == 1
-    assert len(created["committed_actions"]) == 1
+    assert created["revision"] == 0
+    assert created["next_actor"].endswith("_seller")
+    assert created["committed_actions"] == []
+    assert created["observation"]["conversation"][0]["role"] == "buyer"
+    assert created["observation"]["conversation"][0]["message"].startswith("Здравствуйте.")
+
+    first_turn = client.post(
+        f"/api/v1/sessions/{created['session_id']}/messages",
+        headers=bearer(created["participant_token"]),
+        json={
+            "message": "Здравствуйте. Какие условия вы хотите обсудить?",
+            "idempotency_key": "human-seller-first-turn",
+            "expected_revision": 0,
+        },
+    )
+    assert first_turn.status_code == 200
+    assert first_turn.json()["committed_actions"][0]["participant_id"].endswith("_seller")
 
 
-def test_easy_opening_bypasses_injected_llm_renderer(settings: Any) -> None:
+def test_easy_external_agent_retains_canonical_opening(client: TestClient) -> None:
+    payload = _supplier_payload("easy-external-opening")
+    payload["participants"][0]["controller"] = "external_agent"
+
+    created = client.post("/api/v1/sessions", json=payload).json()
+
+    assert created["revision"] == 0
+    assert created["next_actor"].endswith("_buyer")
+    message = created["observation"]["conversation"][0]["message"]
+    assert "120\xa0000 €" in message
+    assert "0%" in message
+
+
+def test_greeting_bypasses_injected_llm_renderer(settings: Any) -> None:
     renderer = SpyRenderer()
     with TestClient(create_app(settings, npc_dialogue_renderer=renderer)) as client:
         created = client.post(
@@ -187,10 +221,11 @@ def test_easy_opening_bypasses_injected_llm_renderer(settings: Any) -> None:
 
     assert renderer.calls == 0
     message = created["observation"]["conversation"][0]["message"]
-    assert "120\xa0000 €" in message
+    assert "120\xa0000 €" not in message
+    assert "Поставка 100 промышленных компьютеров" in message
 
 
-def test_easy_opening_offer_is_localized_in_english(client: TestClient) -> None:
+def test_greeting_is_localized_in_english(client: TestClient) -> None:
     payload = create_payload(
         "easy-opening-english",
         difficulty="easy",
@@ -202,8 +237,7 @@ def test_easy_opening_offer_is_localized_in_english(client: TestClient) -> None:
 
     assert created["revision"] == 0
     message = created["observation"]["conversation"][0]["message"]
-    assert "freight terms" in message
-    assert "My opening offer" in message
-    assert "RUB 480,000" in message
-    assert "prepayment of 40%" in message
-    assert "delivery timeline of 6 weeks" in message
+    assert message == (
+        'Hello. I am ready to discuss "Urgent freight contract". Please go ahead.'
+    )
+    assert "RUB 480,000" not in message

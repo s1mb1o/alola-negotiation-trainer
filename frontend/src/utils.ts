@@ -201,12 +201,15 @@ export function readReviewHistory(): StoredSessionReview[] {
 }
 
 export function storeReview(sessionId: string, scenarioTitle: string, review: SessionReview): void {
+  // Keep private preparation, exact dialogue, and coaching on the authenticated server.
+  const summary = { ...review }
+  delete summary.training
   const history = readReviewHistory().filter((item) => item.session_id !== sessionId)
   history.unshift({
     session_id: sessionId,
     scenario_title: scenarioTitle,
     finished_at: new Date().toISOString(),
-    review,
+    review: summary,
   })
   localStorage.setItem(REVIEW_HISTORY_KEY, JSON.stringify(history.slice(0, 50)))
 }

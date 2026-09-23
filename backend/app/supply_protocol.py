@@ -9,6 +9,8 @@ import uuid
 
 from .dialogue import NpcDialogueRequest, redact_untrusted_credentials
 from .engine import ParsedAction, offer_is_acceptable, offer_is_bindable
+from .reply_retrieval import retrieve_reply_examples
+from .training import npc_training_context
 from .scenarios import canonical_json, digest
 from .supply import (
     is_supply_scenario,
@@ -201,12 +203,22 @@ class SupplyProtocolMixin:
             dialogue_context=self._dialogue_context(connection, session["id"], npc["id"]),
             approved_reply_options=(fallback,),
             fallback_text=fallback,
+            retrieved_reply_examples=retrieve_reply_examples(
+                scenario_id=str(scenario["id"]),
+                npc_role=str(npc["role"]),
+                language=str(session["language"]),
+                speech_act="acknowledge_information",
+                player_message=player_message,
+                supply_action=action,
+            ),
             scenario_title=scenario["title"],
             npc_role=npc["role"],
             difficulty=session["difficulty"],
             render_contract="supply-dialogue-v1",
             package_block=block,
             supply_action=action,
+            training_context=npc_training_context(json.loads(session["state_json"]).get("training", {}),
+                                                  session["language"], player_message),
         )
 
     def _supply_commit_proposal(self, connection, session, actor, scenario, state, context, terms):

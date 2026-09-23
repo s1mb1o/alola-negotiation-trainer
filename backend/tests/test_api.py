@@ -238,10 +238,11 @@ def test_human_can_play_opening_offer_role(client: TestClient) -> None:
     )
     assert created.status_code == 201
     body = created.json()
-    assert body["revision"] == 1
+    assert body["revision"] == 0
     assert body["next_actor"].endswith("_seller")
     assert body["observation"]["role"] == "seller"
-    assert body["committed_actions"][0]["action"] in {"reject", "counter_offer", "accept"}
+    assert body["committed_actions"] == []
+    assert body["observation"]["conversation"][0]["role"] == "buyer"
 
 
 def test_administrative_close_requires_admin_token(client: TestClient) -> None:

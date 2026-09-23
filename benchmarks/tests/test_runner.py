@@ -44,11 +44,11 @@ class BenchmarkRunnerTest(unittest.TestCase):
         self.assertFalse(summary["configuration"]["seed_schedule"]["reproducibility_guaranteed"])
         self.assertEqual(summary["configuration"]["generation"]["max_output_tokens"], 500)
         self.assertEqual(
-            summary["configuration"]["generation"]["prompt_version"], "natural-language-agent-v3"
+            summary["configuration"]["generation"]["prompt_version"], "natural-language-agent-v4"
         )
         self.assertIn('"status": "technical_failure"', trial)
         self.assertIn('"max_output_tokens": 500', trial)
-        self.assertIn('"prompt_version": "natural-language-agent-v3"', trial)
+        self.assertIn('"prompt_version": "natural-language-agent-v4"', trial)
         self.assertIn("provider unavailable", trial)
         self.assertIn('"handling": "unsupported_not_sent"', trial)
         self.assertIn('"seat_seeds"', trial)

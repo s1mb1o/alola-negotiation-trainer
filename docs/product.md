@@ -1,5 +1,43 @@
 # Product Model
 
+## Human training loop (DR-36)
+
+The opt-in human training flow MUST support private preparation, pinned shared background, bounded social state, actor-safe LLM review, checkpoint retry, and observed outcome comparison.
+Private preparation MUST NOT enter NPC context or public administrative projections.
+The engine MUST retain authority over economic results and social transitions.
+Model failure MUST preserve the deterministic report and committed state.
+The exact contracts and release rules are defined in [DR-36](decisions/2026-09-24_training-loop.md).
+
+The training configuration MUST be restricted to one human and one built-in NPC in training mode.
+The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
+The engine MUST validate finite numeric targets against the scenario's scalar term grammar.
+Only an agreed complete deal MAY satisfy a deal-term target.
+Free-text goals MUST NOT receive invented completion percentages.
+
+Social state MUST use bounded rapport, credibility, tension, and patience values.
+The classifier MAY propose at most two allowlisted events with exact message excerpts.
+The engine MUST apply validated changes once per committed revision.
+Positive relationship events MUST have cumulative caps.
+Classification failure MUST leave social state unchanged.
+Social values MUST NOT override economic acceptability or binding-confirmation rules.
+
+Coaching MUST require an explicit authenticated request after session termination.
+The reviewer MUST receive only the owner's permitted evidence, preparation, and economic baseline.
+Generation and grounding MUST run outside write transactions.
+The service MUST cache the validated result or an unavailable status.
+Active and sealed benchmark sessions MUST NOT initiate coaching.
+Model failure MUST preserve the deterministic report.
+Exact cited excerpts MUST be attached by the service.
+
+Retry MUST require a completed human training session and an existing immutable checkpoint.
+The child MUST restore the selected state and history boundary with fresh participant credentials.
+It MUST NOT inherit later history, parent credentials, render jobs, or idempotency results.
+The comparison MUST use the same role and identify observed results as informed practice.
+It MUST NOT claim causal skill improvement.
+Legacy sessions without checkpoints and benchmark sessions MUST NOT use this training fork.
+
+The API schemas, formulas, limits, and verification boundary are documented in the [human training guide](human-training-guide.md).
+
 ## Reference supply contract (DR-30)
 
 [DR-30](decisions/2026-09-08_reference-supply-implementation.md) and the [resolved contract](reference-supply-contract.md) define the opt-in implementation.
@@ -79,6 +117,11 @@ The CLI is a required interface for operation, testing, and agent runs.
 
 The MVP conversation language is Russian.
 
+All application-owned LLM instructions and task templates MUST be written in English.
+The MVP player-facing dialogue, hints, and final review MUST be in Russian.
+Russian messages, quotes, authored text, and examples MAY remain in their original language as clearly separated task data.
+See [DR-34](decisions/2026-09-23_prompt-language.md) for the runtime prompt audit and external-agent version change.
+
 Structured state, utility models, and events must not depend on Russian text labels.
 
 Each scenario and session must identify its language. The contracts must allow additional languages later.
@@ -96,6 +139,14 @@ Audio is not the source of truth. The canonical history contains text and struct
 ## Player start state
 
 The player receives a role brief, not a complete mathematical utility function.
+
+The scenario or authorized training setup MUST allow explicit player background known to the NPC.
+The session MUST pin the validated background and its visibility at creation.
+The NPC MUST receive only background explicitly marked as known to it.
+Background MUST NOT create a current-session agreement or override economic constraints.
+Prior successful deals can support familiarity and authored initial trust.
+The review MUST distinguish initial relationship advantages from behavior demonstrated during this session.
+See [DR-35](decisions/2026-09-23_player-background.md) and the implemented scope in [DR-36](decisions/2026-09-24_training-loop.md).
 
 Information should be divided into four categories.
 
@@ -261,16 +312,15 @@ Example:
 
 Shows:
 
-- one canonical built-in-NPC presentation of the authored public opening artifact at session start;
+- one case-specific built-in-NPC greeting at the start of human training sessions;
 - clear own priorities;
 - confirmed or probable counterparty interests;
 - no direct recommended wording.
 
-The opening presentation states exactly the terms in the authored opening artifact.
-
-It describes a partial `opening_position` as a position, not as a complete package.
-
+The greeting does not state offer terms or give negotiation advice.
 It does not consume a turn or change the deal state.
+The human makes the first live negotiation move.
+An Easy session with an external-agent next actor retains the canonical opening presentation.
 
 ### Normal
 
@@ -319,6 +369,21 @@ Benchmark trials disable hints and training assistance.
 ---
 
 ## Training feedback
+
+### Goal-based final review (DR-33)
+
+Status: accepted requirement. Bounded implementation delivered under [DR-36](decisions/2026-09-24_training-loop.md).
+
+The terminal training review MUST include LLM analysis of progress toward the participant's recorded goals and actionable recommendations.
+The engine MUST supply the authoritative outcome, constraints, utility, and any numeric goal-progress measures.
+Each evaluative claim and recommendation MUST reference supporting session evidence or an authored goal or rule.
+The review MUST distinguish observed results from hypotheses about alternative actions.
+The review MUST enforce actor-specific disclosure permissions and the benchmark run-set release gate.
+An unavailable or invalid LLM analysis MUST leave the deterministic outcome report available and identify the missing analysis.
+
+See [DR-33](decisions/2026-09-23_goal-based-llm-review.md) and [the review design](social-state-and-llm-dialogue.md#71-final-goal-based-review-dr-33).
+
+### Separate assessment dimensions
 
 Separate:
 

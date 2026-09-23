@@ -3,8 +3,9 @@ import { identifierLabel, translate } from '../i18n'
 import type { SessionReview, SessionStatus, UiLanguage } from '../types'
 import { formatNumber } from '../utils'
 import { FinancialSummary } from './FinancialSummary'
+import { TrainingReviewPanel, type TrainingReviewActions } from './TrainingReviewPanel'
 
-interface ReviewPanelProps {
+interface ReviewPanelProps extends TrainingReviewActions {
   language: UiLanguage
   status: SessionStatus
   review?: SessionReview
@@ -27,6 +28,7 @@ export function ReviewPanel({
   error,
   onRetry,
   onNewSession,
+  ...trainingActions
 }: ReviewPanelProps) {
   const t = (key: string) => translate(language, key)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
@@ -89,12 +91,12 @@ export function ReviewPanel({
           <strong>{outcomeScore === undefined ? '—' : formatNumber(outcomeScore, locale, 0)}</strong>
           <div className="score-track"><span style={{ width: `${Math.min(100, outcomeScore ?? 0)}%` }} /></div>
         </article>
-        <article className="score-card">
+        {!review.training && <article className="score-card">
           <span><Sparkles size={19} aria-hidden="true" /></span>
           <small>{t('skillScore')}</small>
           <strong>{skillScore === undefined ? '—' : formatNumber(skillScore, locale, 0)}</strong>
           <div className="score-track"><span style={{ width: `${Math.min(100, skillScore ?? 0)}%` }} /></div>
-        </article>
+        </article>}
         <article className="score-card">
           <span><Lightbulb size={19} aria-hidden="true" /></span>
           <small>{t('hintsUsed')}</small>
@@ -110,10 +112,19 @@ export function ReviewPanel({
 
       <FinancialSummary summary={review.outcome.financial_summary} language={language} />
 
+      {review.training && <>
+        <TrainingReviewPanel language={language} data={review.training} {...trainingActions} />
+        <p className="field-note">{language === 'ru'
+          ? 'Баллы навыков ниже — эвристическая диагностика, без подтверждённой оценки компетенции.'
+          : 'The skill scores below are heuristic diagnostics, not a validated competence assessment.'}</p>
+      </>}
+
       <div className="review-detail-grid">
         <section className="review-section skill-review">
           <header>
-            <div><TrendingUp size={18} aria-hidden="true" /><h3>{t('skills')}</h3></div>
+            <div><TrendingUp size={18} aria-hidden="true" /><h3>{review.training
+              ? language === 'ru' ? 'Эвристическая диагностика' : 'Heuristic diagnostics'
+              : t('skills')}</h3></div>
             <small>{t('scoreRange')}</small>
           </header>
           {skillEntries.length > 0 ? (
@@ -163,7 +174,9 @@ export function ReviewPanel({
 
         {Boolean(review.recommendations?.length) && (
           <section className="review-section recommendations-review">
-            <header><div><Lightbulb size={18} aria-hidden="true" /><h3>{t('recommendations')}</h3></div></header>
+            <header><div><Lightbulb size={18} aria-hidden="true" /><h3>{review.training
+              ? language === 'ru' ? 'Подсказки по диагностике' : 'Diagnostic suggestions'
+              : t('recommendations')}</h3></div></header>
             <div className="recommendation-list">
               {review.recommendations?.map((item, index) => (
                 <article key={`${item.skill}-${index}`}>

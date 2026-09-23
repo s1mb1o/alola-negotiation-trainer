@@ -142,9 +142,25 @@ The compiler and service MUST NOT infer, copy, default, or substitute a value fo
 
 An explicit zero is a real term value. It is not `UNSPECIFIED`.
 
-The other participant is `next_actor`.
+In a human-versus-built-in-NPC training session, the human is `next_actor`.
 
-In an Easy training session, a built-in NPC opening role MUST present the authored public opening terms in the transcript.
+The authored opening artifact remains structured session state.
+
+The built-in NPC sends one deterministic greeting at `session_revision = 0` before the human's first message.
+
+The greeting MUST refer to the public scenario title and MUST use the session language.
+
+The greeting MUST NOT state deal terms or give negotiation advice.
+
+The greeting MUST NOT commit an action or change the session revision, round, substantive-turn count, active offer, or `next_actor`.
+
+The event log records one `npc.greeting.delivered` event.
+
+A create-session idempotency replay MUST NOT duplicate the greeting or event.
+
+For other session types, the other participant remains `next_actor`.
+
+In an Easy training session with an external-agent next actor, a built-in NPC opening role MUST present the authored public opening terms in the transcript.
 
 The presentation uses a deterministic canonical template.
 
@@ -173,6 +189,13 @@ A create-session idempotency replay MUST NOT duplicate the message or event.
 The service MUST NOT synthesize an opening message for a human or external-agent opening role.
 
 ## Public message model
+
+For a non-binding NPC speech act, the service MAY retrieve prepared reply examples from a versioned local library.
+Retrieval MUST occur after the engine selects the action and permitted disclosures.
+The service MUST filter examples by scenario, role, language, speech act, and required approval.
+Retrieved text MUST remain a wording example and MUST NOT change the action, terms, or disclosure policy.
+The durable render plan MUST retain the exact selected examples and library version.
+Canonical binding speech acts MUST NOT use retrieved wording.
 
 Human participants and external-agent participants submit natural-language messages.
 
@@ -652,7 +675,7 @@ The durable `NpcDialogueRequest` includes `difficulty`, `conversation_style`, `r
 `conversation_style` MUST be `pragmatic`, `analytical`, or `relationship_focused`.
 The provider receives fixed instructions as `dialogue_profile` and `conversation_style`.
 These profiles MUST NOT alter economic truth or disclosure permissions.
-The existing Easy canonical opening rule remains unchanged.
+The Easy canonical opening rule applies when the next actor is an external agent.
 
 `requested_term_id` MUST be an authored participant-facing identifier or `null`.
 The engine MUST select it before rendering.
@@ -800,6 +823,14 @@ A terminal session rejects every later participant mutation.
 
 ## Branching
 
+The implemented DR-36 fork MUST require a terminal human-versus-NPC training session.
+The source revision MUST identify an existing immutable human-decision checkpoint.
+The child MUST receive fresh participant credentials and remapped participant and event references.
+The child MUST NOT inherit later history, parent credentials, render jobs, or idempotency records.
+Benchmark sessions and legacy sessions without checkpoints MUST NOT use this fork.
+The service MUST preserve profile, preparation, shared background, and social state at the checkpoint.
+See [DR-36](decisions/2026-09-24_training-loop.md) and the [implementation guide](human-training-guide.md).
+
 A fork identifies an exact source session revision.
 
 The fork API uses `source_revision`.
@@ -816,15 +847,15 @@ The child state includes `next_actor`, pending clarification, and pending accept
 
 The child inherits the parent scenario version and run configuration by default.
 
-An authorized orchestrator MAY override model or policy configuration for a training comparison.
-
-The child session records every override.
+The current fork MUST NOT accept model or policy overrides.
 
 The child starts with `session_revision` equal to `source_revision`.
 
-The first child-local event uses `source_revision + 1`.
+The lineage marker uses `source_revision` and does not consume a negotiation turn.
+The first child-local negotiation event uses `source_revision + 1`.
 
-Lineage history identifies the source session for every inherited event.
+The lineage marker identifies the parent session and the selected history boundary.
+Copied structured event references use new child event identifiers.
 
 A fork is not eligible as an independent benchmark trial.
 

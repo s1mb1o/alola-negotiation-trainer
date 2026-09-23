@@ -61,7 +61,7 @@ def test_compiler_keeps_opening_offer_complete_and_rejects_two_openings() -> Non
         compile_scenario(empty_position, Path("empty-position.yaml"))
 
 
-def test_easy_opening_position_contains_only_authored_terms(client: TestClient) -> None:
+def test_easy_greeting_does_not_present_partial_opening_terms(client: TestClient) -> None:
     response = client.post(
         "/api/v1/sessions",
         json=_supplier_v3_payload("partial-opening-position"),
@@ -83,10 +83,10 @@ def test_easy_opening_position_contains_only_authored_terms(client: TestClient) 
     ]
     message = body["observation"]["conversation"][0]["message"]
     assert message == (
-        "Добрый день. Предлагаю обсудить условия поставки промышленных компьютеров. "
-        "Моя начальная позиция: цена 120\u00a0000 €. "
-        "Остальные условия предлагаю обсудить."
+        "Здравствуйте. Давайте обсудим «Поставка 100 промышленных компьютеров». "
+        "Слушаю вас."
     )
+    assert "120\u00a0000 €" not in message
     assert "0%" not in message
     assert "8 недель" not in message
     assert "предоплат" not in message.casefold()
@@ -102,10 +102,10 @@ def test_easy_opening_position_contains_only_authored_terms(client: TestClient) 
         "delivery_weeks",
     ]
     opener_event = next(
-        event for event in history["events"] if event["type"] == "npc.opening_utterance.delivered"
+        event for event in history["events"] if event["type"] == "npc.greeting.delivered"
     )
-    assert opener_event["payload"]["speech_act"] == "opening_position"
-    assert opener_event["payload"]["opening_kind"] == "opening_position"
+    assert opener_event["payload"]["speech_act"] == "greeting"
+    assert opener_event["payload"]["substantive"] is False
 
 
 def test_partial_opening_position_cannot_bind(client: TestClient) -> None:

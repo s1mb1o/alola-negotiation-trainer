@@ -456,16 +456,16 @@ def test_user_reported_sequence_receives_distinct_contextual_replies(settings: S
     )
 
 
-def test_initial_rejection_is_explicit_and_binding_text_is_canonical(settings: Settings) -> None:
+def test_human_opening_role_gets_first_turn_without_initial_rejection(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         payload = create_payload("explicit-rejection", human_role="seller")
         response = client.post("/api/v1/sessions", json=payload)
     assert response.status_code == 201
-    action = response.json()["committed_actions"][-1]
-    assert action["action"] == "reject"
-    assert action["speech_act"] == "offer_rejection"
-    assert "Отклоняю" in action["message"]
-    assert action["dialogue_renderer"]["mode"] == "template"
+    body = response.json()
+    assert body["revision"] == 0
+    assert body["next_actor"].endswith("_seller")
+    assert body["committed_actions"] == []
+    assert body["observation"]["conversation"][0]["role"] == "buyer"
 
 
 def test_binding_npc_action_bypasses_an_injected_renderer(settings: Settings) -> None:
@@ -720,7 +720,8 @@ def test_restart_recovers_pending_job_once_with_deterministic_fallback(settings:
             ).fetchone()
 
     assert repeated.status_code == 200
-    assert len(messages) == 2
+    assert len(messages) == 3
+    assert messages[0]["session_revision"] == 0
     assert intent_count == 1
     assert job["status"] == "delivered"
     assert json.loads(job["renderer_metadata_json"])["failure_reason"] == "restart_recovery"
