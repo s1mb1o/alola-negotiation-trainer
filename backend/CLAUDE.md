@@ -9,6 +9,13 @@ Read [`../CLAUDE.md`](../CLAUDE.md) and [`../AGENTS.md`](../AGENTS.md) first.
 - Return only actor-safe observations, histories, hints, and reviews.
 - Add a backend integration test for each API contract change.
 - Use an isolated temporary database in tests.
+- Keep OpenAPI response contracts in `app/api_contracts.py` synchronized with routes and requests.
+- Use explicit operation IDs and Bearer security dependencies. Preserve actor access checks.
+- Run `pytest backend/tests/test_openapi.py`. The shared test client also validates actual JSON responses.
+- See the [OpenAPI guide](../docs/openapi-guide.md) for schema generation, examples, and validation.
+- `/llm-debug` uses the trace API under DR-40, DR-41, and DR-44. Loopback clients with a loopback host and matching Origin can read without a credential. Other requests require an administrator credential. Capture complete outgoing requests and retry attempts. Redact credentials before storage. Evict whole records at 200 calls or 64 MiB. Keep records in process memory. Exclude benchmark calls. Never add traces to player responses or session history.
+- DR-46 separates dialogue, control, and review model profiles. Keep the engine authoritative. Route NPC prose to the dialogue provider. Route grounding and social classification to the control provider. Route final coaching to the review provider.
+- DR-50 permits provider-backed revision-zero wording only for a scenario version with `dialogue_strategy`. Run provider I/O before the create-session write transaction. Require exact engine-owned placeholders for the title, optional player name, and selected opening terms. Never pass the private role brief or private economics to the opening renderer.
 
 ## Built-in NPC validation
 

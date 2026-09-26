@@ -62,6 +62,26 @@ class ApiClientTest(unittest.TestCase):
         self.assertNotIn("actor", payload)
         self.assertNotIn("action", payload)
 
+    def test_hint_request_uses_actor_token_and_current_revision(self):
+        transport = RecordingTransport()
+        client = NegotiationApiClient(
+            "http://test", participant_token="actor-token", transport=transport
+        )
+        client.request_hint("sess/1", expected_revision=4, idempotency_key="hint-4")
+        method, url, payload, headers, _ = transport.calls[-1]
+        self.assertEqual(method, "POST")
+        self.assertEqual(url, "http://test/api/v1/sessions/sess%2F1/hints")
+        self.assertEqual(payload, {"idempotency_key": "hint-4", "expected_revision": 4})
+        self.assertEqual(headers["Authorization"], "Bearer actor-token")
+
+    def test_scenario_read_uses_the_pinned_version(self):
+        transport = RecordingTransport()
+        client = NegotiationApiClient("http://test", transport=transport)
+        client.get_scenario("freight/contract", 3)
+        method, url, _, _, _ = transport.calls[-1]
+        self.assertEqual(method, "GET")
+        self.assertEqual(url, "http://test/api/v1/scenarios/freight%2Fcontract/versions/3")
+
     def test_benchmark_metadata_has_no_api_keys(self):
         transport = RecordingTransport()
         client = NegotiationApiClient("http://test", transport=transport)

@@ -40,7 +40,7 @@ def test_service_renders_supply_preliminary_proposals_with_llm(settings):
         prompt = json.loads(provider.calls[0]["messages"][0]["content"])
         assert len(prompt["retrieved_reply_examples"]) == 3
         assert all(
-            item["library_version"] == "reply_examples_v1"
+            item["library_version"] == "reply_examples_v2"
             for item in prompt["retrieved_reply_examples"]
         )
 

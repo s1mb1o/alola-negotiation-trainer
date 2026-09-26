@@ -146,17 +146,31 @@ In a human-versus-built-in-NPC training session, the human is `next_actor`.
 
 The authored opening artifact remains structured session state.
 
-The built-in NPC sends one deterministic greeting at `session_revision = 0` before the human's first message.
+The built-in NPC sends one opening message at `session_revision = 0` before the human's first message.
 
 The greeting MUST refer to the public scenario title and MUST use the session language.
 
-The greeting MUST NOT state deal terms or give negotiation advice.
+For a scenario version without `dialogue_strategy`, `first_meeting` MUST use the neutral greeting.
+
+For a scenario version without `dialogue_strategy`, `successful_history` MUST use one of the bounded authored relationship-aware greetings.
+
+The service MUST select that greeting with a stable session-scoped digest.
+
+The greeting MAY signal prior familiarity or collaboration.
+
+It MUST NOT invent a historical term, concession, promise, event, or current agreement.
+
+For a scenario version with `dialogue_strategy`, the opening MAY state only engine-formatted terms selected from the authored opening artifact.
+
+The grounded opening MUST use exact engine-owned placeholders before the engine inserts the title, optional player name, and public terms.
+
+The grounded opening MUST NOT create or change a term, concession, commitment, agreement, or lifecycle action.
 
 The greeting MUST NOT commit an action or change the session revision, round, substantive-turn count, active offer, or `next_actor`.
 
 The event log records one `npc.greeting.delivered` event.
 
-A create-session idempotency replay MUST NOT duplicate the greeting or event.
+A create-session idempotency replay MUST NOT duplicate the opening message or event.
 
 For other session types, the other participant remains `next_actor`.
 
@@ -644,6 +658,14 @@ Topic extraction MUST use participant text and engine-authored metadata.
 It MUST NOT parse generated NPC prose into negotiation state.
 A reply, claim, question, or postponed topic MUST NOT become an agreement or ground truth.
 
+Under [DR-49](decisions/2026-09-26_public-position-restatement.md), a direct request for the NPC terms MUST use the latest public position authored by that NPC.
+A supported short follow-up MAY resolve against bounded recent dialogue about deal terms.
+A request that names one authored term MUST retain the existing term-question and public-quote behavior.
+The restatement MUST preserve the exact public term values.
+It MUST NOT change offer lifecycle state.
+An inactive position MUST remain historical and non-binding.
+The restatement MUST NOT expose private constraints, utility, reservation utility, BATNA, or private role facts.
+
 A role MAY define `dialogue_reasons` in a new immutable scenario version.
 Each reason MUST contain `id`, `term_id`, `text`, `source_ref`, and `disclose_when`.
 `source_ref` MUST reference that role's `brief.objective` or `brief.context`.
@@ -704,7 +726,7 @@ The existing atomic render claim, compare-and-swap delivery, and same-session pe
 
 ## Built-in NPC dialogue failure handling
 
-Opening presentation, binding acceptance, rejection, and complete counteroffer messages use canonical deterministic templates.
+Opening presentation, binding acceptance, rejection, complete counteroffer, and public-position restatement messages use canonical deterministic templates.
 
 These canonical messages do not call a dialogue provider.
 
@@ -822,6 +844,30 @@ The evaluator can generate a review for every terminal state.
 A terminal session rejects every later participant mutation.
 
 ## Branching
+
+An active human training session MAY rewind to an eligible earlier NPC message.
+
+The source revision MUST identify a stored built-in-NPC message and an immutable owner-decision checkpoint.
+
+Rewind MUST create a child session with the exact checkpoint state and fresh credentials.
+
+The source session MUST remain immutable.
+
+The root training lineage MUST permit no more than three rewinds.
+
+The rewind usage count MUST remain outside checkpoint snapshots.
+
+An idempotency replay MUST NOT consume another rewind.
+
+After the third rewind, every new rewind in the lineage MUST fail.
+
+Player-side reply assistance MUST use only the authenticated actor-safe projection and the player's private preparation.
+
+Reply assistance MUST NOT modify session state.
+
+The generated text MUST enter the normal message command before it can affect negotiation state.
+
+The parser and engine remain authoritative for the generated player message.
 
 The implemented DR-36 fork MUST require a terminal human-versus-NPC training session.
 The source revision MUST identify an existing immutable human-decision checkpoint.

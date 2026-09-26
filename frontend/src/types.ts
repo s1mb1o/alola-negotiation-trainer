@@ -128,7 +128,7 @@ export interface ConversationEntry {
 }
 
 export interface Observation {
-  training?: TrainingSetup
+  training?: TrainingObservation
   negotiation_contract_version?: string
   role_brief?: string | RoleBriefView
   conversation?: Array<ConversationEntry | string>
@@ -454,6 +454,7 @@ export interface AdminSessionListResponse {
 
 export interface TimelineMessage {
   id: string
+  revision?: number
   participantId?: string
   role: string
   action?: string
@@ -468,6 +469,7 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 export interface TrainingSetup {
   profile: 'concise_skeptical' | 'sociable'
   relationship: 'first_meeting' | 'successful_history'
+  player_name: string
   shared_background: string
   personal_detail: boolean
   preparation: {
@@ -477,6 +479,43 @@ export interface TrainingSetup {
     information_to_discover: string
     targets: Array<{ term_id: string; operator: 'lte' | 'gte' | 'eq'; value: number }>
   }
+}
+
+export interface SocialAxes {
+  rapport: number
+  credibility: number
+  tension: number
+  patience: number
+}
+
+export interface TrainingSocialState {
+  values: SocialAxes
+  delta: SocialAxes
+  source_revision: number
+}
+
+export interface TrainingRewindStatus {
+  limit: number
+  used: number
+  remaining: number
+  available: boolean
+  eligible_source_revisions: number[]
+}
+
+export type TrainingObservation = Omit<TrainingSetup, 'preparation'> & {
+  version: string
+  preparation?: TrainingSetup['preparation']
+  social_state?: TrainingSocialState
+  rewind?: TrainingRewindStatus
+}
+
+export interface AssistedReplyResponse {
+  session_id: string
+  revision: number
+  message: string
+  prompt_version: string
+  provider?: string | null
+  model?: string | null
 }
 
 export interface CoachingEvidence {

@@ -1,7 +1,10 @@
 # DR-31. NPC greeting before the human's first negotiation turn
 
 Date: 2026-09-23.
-Status: accepted by the user.
+Status: partially superseded by [DR-50](2026-09-26_grounded-goal-directed-dialogue.md).
+
+DR-50 supersedes deterministic provider bypass and the prohibition on public term restatement for a new scenario version that defines `dialogue_strategy`.
+This record remains authoritative for older scenario versions.
 
 ## Decision
 

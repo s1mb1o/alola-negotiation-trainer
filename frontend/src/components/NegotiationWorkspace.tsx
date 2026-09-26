@@ -7,6 +7,7 @@ import { ChatPanel } from './ChatPanel'
 import { ContextPanel } from './ContextPanel'
 import { OfferPanel } from './OfferPanel'
 import { ReviewPanel } from './ReviewPanel'
+import { SocialIndicators } from './SocialIndicators'
 import { TokenDialog } from './TokenDialog'
 import { TermsList } from './TermsList'
 import type { TrainingReviewActions } from './TrainingReviewPanel'
@@ -27,12 +28,16 @@ interface NegotiationWorkspaceProps extends TrainingReviewActions {
   /** The counterpart reply is still being prepared and the message is retried automatically. */
   waitingForCounterpart?: boolean
   requestingHint: boolean
+  assisting?: boolean
+  rewindingRevision?: number
   error?: string
   failedMessageText?: string
   review?: SessionReview
   reviewLoading: boolean
   reviewError?: string
   onSend: (message: string) => void
+  onRewind?: (revision: number) => void
+  onAnswerForMe?: () => void
   onRequestHint: () => void
   onTokenChange: (token: string) => void
   onRetryMessage?: () => void
@@ -54,12 +59,16 @@ export function NegotiationWorkspace({
   locked = false,
   waitingForCounterpart = false,
   requestingHint,
+  assisting = false,
+  rewindingRevision,
   error,
   failedMessageText,
   review,
   reviewLoading,
   reviewError,
   onSend,
+  onRewind,
+  onAnswerForMe,
   onRequestHint,
   onTokenChange,
   onRetryMessage,
@@ -155,9 +164,14 @@ export function NegotiationWorkspace({
           <details className="terminal-transcript panel-card">
             <summary>{t('conversation')} <span>{messages.length}</span></summary>
             <ChatPanel
+              key={session.session_id}
               language={language}
               sessionLanguage={session.language ?? 'ru'}
               messages={messages}
+              roleBrief={session.observation.role_brief}
+              contextItems={session.observation.context}
+              scenarioTitle={scenarioTitle}
+              currency={session.observation.currency}
               ownParticipantId={ownParticipantId}
               ownRoleId={ownRoleId}
               isMyTurn={false}
@@ -169,18 +183,14 @@ export function NegotiationWorkspace({
         </div>
       ) : (
         <div className="workspace-grid">
-          <ContextPanel
-            language={language}
-            observation={session.observation}
-            hintsEnabled={hintsEnabled}
-            requestingHint={requestingHint}
-            busy={busy}
-            onRequestHint={onRequestHint}
-          />
           <ChatPanel
+            key={session.session_id}
             language={language}
             sessionLanguage={session.language ?? 'ru'}
             messages={messages}
+            roleBrief={session.observation.role_brief}
+            contextItems={session.observation.context}
+            scenarioTitle={scenarioTitle}
             ownParticipantId={ownParticipantId}
             ownRoleId={ownRoleId}
             isMyTurn={isMyTurn}
@@ -194,18 +204,35 @@ export function NegotiationWorkspace({
             publication={session.pending_offer_publication ?? undefined}
             error={error}
             failedText={failedMessageText}
+            currentRevision={session.revision}
+            rewind={session.observation.training?.rewind}
+            rewindingRevision={rewindingRevision}
+            assisting={assisting}
             onSend={onSend}
+            onRewind={onRewind}
+            onAnswerForMe={onAnswerForMe}
             onRetry={onRetryMessage}
             onDiscard={onDiscardMessage}
           />
-          <OfferPanel
-            language={language}
-            offers={session.observation.active_offers ?? []}
-            preliminaryProposals={session.observation.preliminary_proposals}
-            financialSummary={session.observation.financial_summary}
-            currentPublicTerms={session.observation.current_public_terms}
-            currency={session.observation.currency}
-          />
+          <div className="workspace-sidebar">
+            <OfferPanel
+              language={language}
+              offers={session.observation.active_offers ?? []}
+              preliminaryProposals={session.observation.preliminary_proposals}
+              financialSummary={session.observation.financial_summary}
+              currentPublicTerms={session.observation.current_public_terms}
+              currency={session.observation.currency}
+            />
+            <ContextPanel
+              language={language}
+              observation={session.observation}
+              hintsEnabled={hintsEnabled}
+              requestingHint={requestingHint}
+              busy={busy || locked || assisting || rewindingRevision !== undefined}
+              onRequestHint={onRequestHint}
+            />
+            <SocialIndicators language={language} state={session.observation.training?.social_state} />
+          </div>
         </div>
       )}
 

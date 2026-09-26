@@ -1,0 +1,300 @@
+{
+  "version": "reply_examples_v2",
+  "examples": [
+    {
+      "id": "freight_ru_price_reason",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "general_answer",
+      "focused_term_id": "price",
+      "required_reason_id": "transport_cost",
+      "player_message": "Почему такая цена за перевозку?",
+      "replies": [
+        "Тариф должен покрывать топливо и работу перевозчика. Какая цена для вас приемлема?",
+        "Тариф должен покрывать топливо и работу перевозчика. Какой уровень цены вы предлагаете?",
+        "Тариф должен покрывать топливо и работу перевозчика. Что в цене вызывает у вас сомнения?"
+      ]
+    },
+    {
+      "id": "freight_en_price_reason",
+      "scenario_id": "freight_contract_en",
+      "npc_role": "seller",
+      "language": "en",
+      "speech_act": "general_answer",
+      "focused_term_id": "price",
+      "required_reason_id": "transport_cost",
+      "player_message": "Why is the freight price so high?",
+      "replies": [
+        "The rate must cover fuel and carrier operating costs. What price would work for you?",
+        "The rate must cover fuel and carrier operating costs. Which part of the price concerns you?",
+        "The rate must cover fuel and carrier operating costs. What price do you propose?"
+      ]
+    },
+    {
+      "id": "freight_ru_delivery_focus",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "focused_discussion",
+      "focused_term_id": "delivery_weeks",
+      "player_message": "Давайте обсудим срок доставки.",
+      "replies": [
+        "Давайте обсудим срок доставки. Какой график вам нужен?",
+        "Какой срок доставки вы предлагаете?",
+        "Расскажите, какой срок доставки вам подходит."
+      ]
+    },
+    {
+      "id": "freight_en_delivery_focus",
+      "scenario_id": "freight_contract_en",
+      "npc_role": "seller",
+      "language": "en",
+      "speech_act": "focused_discussion",
+      "focused_term_id": "delivery_weeks",
+      "player_message": "Let us discuss the delivery deadline.",
+      "replies": [
+        "Let us discuss the delivery schedule. What timing do you need?",
+        "What delivery timing would work for you?",
+        "Tell me which delivery schedule you have in mind."
+      ]
+    },
+    {
+      "id": "freight_ru_payment_focus",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "focused_discussion",
+      "focused_term_id": "prepayment_fraction",
+      "player_message": "Поговорим о предоплате.",
+      "replies": [
+        "Давайте обсудим предоплату. Какой порядок оплаты вам удобен?",
+        "Какой вариант предоплаты вы предлагаете?",
+        "Предоплата заслуживает отдельного обсуждения. Что вас в ней беспокоит?"
+      ]
+    },
+    {
+      "id": "freight_ru_budget_concern",
+      "scenario_id": "freight_contract_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "acknowledge_information",
+      "player_message": "Наш бюджет на перевозку ограничен.",
+      "replies": [
+        "Понимаю, что бюджет для вас важен. Какую цену вы рассматриваете?",
+        "Давайте обсудим стоимость с учетом вашего бюджета. На какой уровень вы ориентируетесь?",
+        "Вы обозначили ограничение по бюджету. Какую цену вы предлагаете?"
+      ]
+    },
+    {
+      "id": "supply_ru_price_question",
+      "scenario_id": "supplier_integration_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "speech_act": "acknowledge_information",
+      "supply_action": "propose",
+      "player_message": "Можно снизить цену? Бюджет ограничен.",
+      "replies": [
+        "Давайте обсудим стоимость. Какой бюджет вы рассматриваете?",
+        "Вижу, что цена для вас важна. Какие условия вы предлагаете?",
+        "Расскажите, какой уровень цены вы имеете в виду."
+      ]
+    },
+    {
+      "id": "supply_en_price_question",
+      "scenario_id": "supplier_integration_en",
+      "npc_role": "seller",
+      "language": "en",
+      "speech_act": "acknowledge_information",
+      "supply_action": "propose",
+      "player_message": "Can you lower the price? Our budget is limited.",
+      "replies": [
+        "Let us discuss the price. What budget do you have in mind?",
+        "I hear your concern about price. What terms do you propose?",
+        "Tell me which price level you are considering."
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_price_reason",
+      "speech_act": "general_answer",
+      "player_message": "Почему подписка стоит так дорого?",
+      "replies": [
+        "Стоимость подписки должна покрывать работу платформы и команды внедрения. Что вызывает сомнения: сама цена или объём работ?",
+        "Стоимость подписки должна покрывать работу платформы и команды внедрения. Как вы оцениваете эту цену относительно вашего бюджета?"
+      ],
+      "required_reason_id": "platform_cost",
+      "focused_term_id": "price",
+      "player_message_variants": [
+        "Из чего складывается стоимость подписки?",
+        "Почему такая высокая цена?"
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_payment_reason",
+      "speech_act": "general_answer",
+      "player_message": "Почему вам важна предоплата?",
+      "replies": [
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Что вас больше беспокоит в авансе?",
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Какой порядок оплаты вам удобнее обсудить?"
+      ],
+      "required_reason_id": "implementation_financing",
+      "player_message_variants": [
+        "Зачем вам аванс?",
+        "В чём смысл предоплаты?"
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_launch_reason",
+      "speech_act": "general_answer",
+      "player_message": "Почему вам важен срок запуска?",
+      "replies": [
+        "Срочный запуск усложняет распределение команды между проектами. Что определяет желаемый срок с вашей стороны?",
+        "Срочный запуск усложняет распределение команды между проектами. С чем связана срочность запуска у вас?"
+      ],
+      "required_reason_id": "team_planning",
+      "player_message_variants": [
+        "Почему быстрый запуск вызывает сложности?",
+        "Что мешает запустить платформу быстрее?"
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_tradeoff",
+      "speech_act": "general_answer",
+      "player_message": "Что для вас важнее — размер предоплаты или срок запуска?",
+      "replies": [
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами. Какую связку аванса и срока вы предлагаете обсудить?",
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами. Что для вас критичнее в таком обмене — сохранить средства или ускорить запуск?",
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами. С какого сочетания оплаты и запуска начнём обсуждение?"
+      ],
+      "required_reason_ids": [
+        "implementation_financing",
+        "team_planning"
+      ],
+      "player_message_variants": [
+        "Где возможен обмен уступками по авансу и запуску?",
+        "Как связаны оплата и срок внедрения?",
+        "Что приоритетнее: аванс или быстрый запуск?"
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_dog_name",
+      "speech_act": "general_answer",
+      "player_message": "Как зовут вашу собаку?",
+      "replies": [
+        "Гуффи. Спасибо, что спросили! На чём хотите сосредоточиться в обсуждении подписки?",
+        "Его зовут Гуффи. Приятно, что вы поинтересовались. Что для вас главное в этой сделке?",
+        "Гуффи! Вернёмся к подписке: с какого вопроса начнём?"
+      ],
+      "required_training_context": {
+        "personal_fact": "У вас есть собака по кличке Гуффи."
+      },
+      "player_message_variants": [
+        "Как кличка вашего пса?",
+        "Как зовут пёсика?"
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_prior_deals",
+      "speech_act": "general_answer",
+      "player_message": "Помните нашу прошлую успешную сделку?",
+      "replies": [
+        "Да, у нас уже есть хороший опыт совместной работы. Какие задачи хотите решить сейчас?",
+        "Приятно снова работать с вами. Что для вас главное в обсуждении новой подписки?"
+      ],
+      "required_training_context": {
+        "relationship": "You and the player completed successful deals before this session. No specific past terms are provided."
+      },
+      "player_message_variants": [
+        "Рад снова поработать с вами: прошлую сделку вспоминаю с удовольствием.",
+        "Мы уже успешно работали вместе, рад новой встрече."
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_price_focus",
+      "speech_act": "focused_discussion",
+      "player_message": "Давайте сначала обсудим цену подписки.",
+      "replies": [
+        "Начнём с цены. На какой уровень вы ориентируетесь?",
+        "Хорошо, обсудим цену подписки. Что в ней вызывает затруднения?"
+      ],
+      "focused_term_id": "price",
+      "player_message_variants": [
+        "Сначала разберём стоимость, а оплату обсудим позже."
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_launch_focus",
+      "speech_act": "focused_discussion",
+      "player_message": "Давайте обсудим срок запуска.",
+      "replies": [
+        "Начнём с запуска. Что определяет желаемый срок с вашей стороны?",
+        "Обсудим запуск. Какая дата вам нужна и с чем она связана?"
+      ],
+      "focused_term_id": "delivery_weeks",
+      "player_message_variants": [
+        "Сначала поговорим о сроке внедрения."
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_budget_concern",
+      "speech_act": "acknowledge_information",
+      "player_message": "Наш бюджет на подписку ограничен.",
+      "replies": [
+        "Какой бюджет вы рассматриваете для подписки?",
+        "Что для вас важнее сохранить при ограниченном бюджете: срок запуска или порядок оплаты?"
+      ],
+      "player_message_variants": [
+        "Нам сложно выделить средства на эту подписку."
+      ]
+    },
+    {
+      "scenario_id": "saas_subscription_ru",
+      "npc_role": "seller",
+      "language": "ru",
+      "id": "saas_ru_tradeoff_priorities",
+      "speech_act": "qualitative_interest_answer",
+      "player_message": "Что для вас важнее — размер предоплаты или срок запуска?",
+      "replies": [
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами. Какую связку аванса и срока вы предлагаете обсудить?",
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами. Что для вас критичнее в таком обмене — сохранить средства или ускорить запуск?",
+        "Аванс уменьшает потребность финансировать внедрение своими средствами. Срочный запуск усложняет распределение команды между проектами. С какого сочетания оплаты и запуска начнём обсуждение?"
+      ],
+      "required_reason_ids": [
+        "implementation_financing",
+        "team_planning"
+      ],
+      "player_message_variants": [
+        "Где возможен обмен уступками по авансу и запуску?",
+        "Как связаны оплата и срок внедрения?",
+        "Что приоритетнее: аванс или быстрый запуск?"
+      ]
+    }
+  ]
+}

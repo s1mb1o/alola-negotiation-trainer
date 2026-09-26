@@ -1,5 +1,21 @@
 # Architecture
 
+## Required OpenAPI documentation (DR-37)
+
+The service MUST generate an OpenAPI 3.1 document from route declarations and typed API contracts.
+The service MUST publish the document at `/openapi.json` and interactive Swagger UI at `/docs`.
+The document MUST cover every implemented canonical REST operation under `/api/v1`.
+The contracts MUST describe requests, successful responses, errors, authentication, and actor access restrictions.
+API changes MUST update the schema and relevant examples in the same change.
+Automated checks MUST validate the document, operation coverage, and unique operation IDs.
+Contract tests MUST check representative successful and error responses against the documented schemas.
+Swagger UI MUST use the same access controls and validation as other clients.
+Examples MUST NOT expose real credentials or hidden session state.
+The full contract is defined in [DR-37](decisions/2026-09-24_openapi-documentation.md) and the [API specification](api.md).
+The implementation uses typed HTTP projections in `backend/app/api_contracts.py` and route metadata in `backend/app/main.py`.
+The shared backend test client validates actual response bodies, including direct `JSONResponse` results.
+See the [OpenAPI guide](openapi-guide.md).
+
 ## Human training loop (DR-36)
 
 The opt-in human training flow MUST support private preparation, pinned shared background, bounded social state, actor-safe LLM review, checkpoint retry, and observed outcome comparison.
@@ -20,6 +36,11 @@ The engine MUST apply validated changes once per committed revision.
 Positive relationship events MUST have cumulative caps.
 Classification failure MUST leave social state unchanged.
 Social values MUST NOT override economic acceptability or binding-confirmation rules.
+
+The active player observation MUST expose the current four-axis social projection only to the training owner under [DR-45](decisions/2026-09-26_live-social-indicators.md).
+The projection MUST include the latest aggregate engine-applied delta and its source revision.
+It MUST NOT expose classifier evidence or another participant's private state.
+The Web UI MUST render the projection as accessible live indicators in the supporting column.
 
 Coaching MUST require an explicit authenticated request after session termination.
 The reviewer MUST receive only the owner's permitted evidence, preparation, and economic baseline.
@@ -126,7 +147,8 @@ Difficulty and style MUST NOT change hidden truth, utility, hard constraints, or
 Benchmark sessions MUST use Normal difficulty and disabled assistance.
 
 Dialogue quality MUST remain separate from utility and agreement rate.
-Admin diagnostics MUST use public transcript, public renderer events, and bounded telemetry only.
+Admin Session Inspector diagnostics MUST use public transcript, public renderer events, and bounded telemetry only.
+The separate privileged LLM trace window follows DR-40 below.
 They MUST distinguish exact repetition, question repetition, latency, fallback rate, and categorized validation failures.
 Missing telemetry MUST remain unavailable rather than zero.
 Heuristics MUST NOT be presented as proof of relevance or factual correctness.
@@ -225,6 +247,12 @@ The canonical transcript remains text. The canonical history remains the structu
 The MVP conversation language is Russian. Scenario, session, prompt, and rendering contracts carry language metadata so that later versions can add languages without changing domain identifiers.
 
 All application-owned LLM instructions and task templates MUST be written in English.
+All application-owned LLM instructions and task templates MUST use STE-style English.
+Use short, active sentences with one instruction or idea per sentence.
+Use consistent terms and explicit references.
+Preserve exact identifiers, schema keys, source quotes, protocol phrases, and requirement keywords.
+See [DR-43](decisions/2026-09-24_ste-system-prompts.md) for the migration and prompt versions.
+This convention does not claim formally checked ASD-STE100 compliance.
 The MVP player-facing dialogue, hints, and final review MUST be in Russian.
 Russian messages, quotes, authored text, and examples MAY remain in their original language as clearly separated task data.
 The rule applies to every application-owned model task and retry path.
@@ -290,11 +318,57 @@ The compiler and service do not synthesize a value for an omitted term.
 
 An explicit zero remains a real value.
 
-For human-versus-built-in-NPC training, the NPC delivers one case-specific greeting at revision 0.
+For human-versus-built-in-NPC training, the NPC delivers one case-specific opening message at revision 0.
 
 The human remains `next_actor` and makes the first live negotiation move.
 
-The greeting states no deal terms or advice.
+An older scenario version without `dialogue_strategy` uses one bounded relationship-aware template.
+
+The template can signal familiarity or collaboration.
+
+It does not invent prior terms, concessions, promises, or current agreements.
+
+An opening role can define an actor-safe `dialogue_strategy` in a new immutable scenario version.
+
+The strategy contains shared scenario context, optional successful-history context, an opening goal, a conversation goal, and identifiers for authored opening terms.
+
+The opening renderer receives no role brief, BATNA, utility value, hard constraint, or private economic fact.
+
+When the dialogue route uses a Character model, the service uses the control route for this structured opening task.
+
+Later in-character dialogue continues to use the Character route.
+
+The engine formats the selected public opening terms.
+
+The model MUST use an exact placeholder for these terms.
+
+The engine replaces this placeholder after validation.
+
+The opening can state the exact public position and authored operational context.
+
+The opening asks one question that advances the authored opening goal.
+
+Provider execution occurs before the session write transaction.
+
+Provider or validation failure uses a deterministic grounded fallback.
+
+The opening message remains non-substantive.
+
+It does not change the active offer, session revision, round, turn count, or `next_actor`.
+
+An idempotent create retry returns the stored message without another provider call.
+
+Active dialogue rewind creates a new child session from an immutable checkpoint after an NPC message.
+
+The source session remains unchanged.
+
+A durable root-lineage counter permits three rewinds and stays outside checkpoint snapshots.
+
+Player-side reply assistance receives only the authenticated actor-safe projection and private learner preparation.
+
+It returns text without changing state.
+
+The Web UI submits that text through the normal message operation.
 
 For Easy training with an external-agent next actor, a built-in NPC opening role delivers one canonical opening message at revision 0.
 
@@ -535,8 +609,32 @@ The service MAY retrieve up to four prepared, case-specific reply examples befor
 The examples MUST match the engine-selected speech act and permitted disclosures.
 They MUST remain wording context and MUST NOT become a source of truth or policy authority.
 The durable render plan MUST store the selected examples and library version.
+Under [DR-38](decisions/2026-09-24_context-gated-reply-rag.md), an entry MAY require up to two current approved reasons.
+Each selected reply MUST contain each required reason text verbatim.
+An entry MAY require exact `personal_fact` or `relationship` values from the NPC-safe `training_context`.
+Player text and shared background MUST NOT satisfy these gates.
+Bounded local matching MAY use up to four additional patterns and sentence fragments.
+Selection MUST take one reply per matching entry before additional variants and MUST deduplicate reply text.
+The four-example limit and existing output checks remain mandatory.
+Old plans MUST retain their stored examples when the corpus changes.
 
 `approved_reply_options` provide examples and fallback candidates.
+
+Under [DR-49](decisions/2026-09-26_public-position-restatement.md), a direct request for the NPC deal terms MUST return the latest public position authored by that NPC.
+The engine SHOULD resolve a supported short follow-up from bounded recent dialogue.
+It MUST use an active NPC offer, the latest NPC counteroffer, or the authored NPC opening position in that order.
+It MUST keep a request for one authored term on the existing term-question and public-quote route.
+The response MUST use the deterministic `public_position_restatement` speech act with exact engine-approved terms.
+The response MUST NOT create, reactivate, revise, accept, or reject an offer.
+The response MUST NOT disclose private constraints, utility, reservation utility, BATNA, or private role facts.
+
+Under [DR-39](decisions/2026-09-24_polite-topic-return.md), a recognized unrelated question without an approved personal fact MUST receive a polite acknowledgment and return to negotiation.
+The deterministic fallback MUST support this behavior without a model call and MUST be stored in the durable render plan.
+The engine MUST provide several fallback variants. It MUST prefer an unused variant in the recent NPC history, then the least recently used variant.
+The reply SHOULD restate the previous negotiation question or resume the current public topic.
+It MUST NOT invent or deny unknown personal facts, repeat historical prices, or imply agreement.
+Binding actions and mixed messages with negotiation content MUST retain their existing action handling.
+Existing output validators and disclosure gates remain mandatory.
 
 They do not restrict the vocabulary of generated replies.
 
@@ -564,7 +662,11 @@ Deterministic checks cannot prove arbitrary natural-language meaning.
 
 The service MUST NOT parse generated NPC prose back into negotiation state.
 
-`opening_offer`, `opening_position`, `offer_acceptance`, `offer_rejection`, and `complete_counteroffer` bypass the provider.
+Binding `opening_offer`, `opening_position`, `offer_acceptance`, `offer_rejection`, and `complete_counteroffer` messages bypass the provider.
+
+A revision-zero grounded opening can use a provider for wording under DR-50.
+
+The engine inserts its exact public-position values after validation.
 
 Each binding speech act uses the canonical deterministic template and canonical engine-approved terms.
 
@@ -578,7 +680,7 @@ Rule:
 
 > Policy decides WHAT. The renderer can select only an engine-approved way to say it.
 
-The current rendering decisions are DR-26, DR-27, and DR-28.
+The current rendering decisions are DR-26, DR-27, DR-28, and DR-50.
 
 ### Grounded request and persistence fields
 
@@ -933,6 +1035,24 @@ The built-in NPC renderer does not read ambient `QWEN_BASE_URL`.
 
 The service does not send `temperature` when `NEGOTIATION_NPC_TEMPERATURE` is empty.
 
+The service supports independent dialogue, control, and review provider profiles under DR-46.
+
+The dialogue provider writes non-binding NPC prose.
+
+The control provider checks novel prose, classifies social events, and performs optional semantic extraction.
+
+The review provider writes final coaching from the actor-safe evidence package.
+
+An unset control profile reuses the dialogue provider.
+
+An unset review profile reuses the control provider.
+
+The selected live launcher uses `qwen-flash-character`, `DeepSeek-V4-Flash-0731`, and `Qwen3.8-Max` through the QwenCloud Pay-as-you-go endpoint.
+
+The selected launcher disables thinking for bounded control and review JSON tasks.
+
+The Qwen adapter sends `enable_thinking` only when the selected profile defines it.
+
 The benchmark run configuration keeps model, provider, version, temperature, and seed metadata for reproducibility.
 
 The benchmark run configuration also keeps language, scenario digest, prompt versions, policy version, engine version, assistance configuration, and reveal policy.
@@ -963,6 +1083,41 @@ The review records each released item and its training purpose.
 A benchmark trial keeps hidden information sealed until the complete run set is finished.
 
 Author and administrator access uses a separate privileged projection.
+
+Under [DR-40](decisions/2026-09-24_llm-debug-window.md), the service MUST provide a separate LLM diagnostics page at `/llm-debug`.
+Under [DR-41](decisions/2026-09-24_local-llm-debug-access.md), the local page MUST load traces without sign-in.
+Both trace endpoints MUST allow a loopback client using a loopback host without a credential.
+A supplied `Origin` MUST match the API origin for this exemption. Other requests MUST require the administrator credential.
+The exemption MUST NOT apply to other administrator or Player API operations.
+The Player API MUST NOT include traces.
+Capture MUST require `NEGOTIATION_LLM_TRACE=true`. It MUST NOT require an administrator credential.
+The recorder MUST exclude benchmark calls.
+The recorder MUST redact known credentials before storage.
+It MUST mask credential header values and MUST NOT store raw provider exception messages.
+Under [DR-44](decisions/2026-09-25_complete-llm-requests.md), capture each outgoing request at the provider transport boundary.
+Show the method, resolved URL, redacted headers, complete JSON body, timeout, and attempt number.
+The recorder MUST NOT truncate retained prompts, messages, request bodies, or response text.
+The recorder MUST keep at most 200 records and 64 MiB of serialized trace data in process memory.
+It MUST evict complete records in start order when either limit is exceeded.
+An oversized record is evicted instead of being shortened.
+The recorder MUST NOT write trace contents to disk.
+Request observation MUST NOT mutate outgoing requests or interrupt negotiation on observer failure.
+Use separate observation contexts for concurrent calls.
+Application context limits still apply before submission.
+Provider-internal instructions and HTTP-library-generated headers are outside this trace.
+Trace responses MUST use `Cache-Control: no-store`. Trace operations MUST appear in OpenAPI.
+The trace window MUST NOT change engine decisions or session history.
+Under [DR-42](decisions/2026-09-24_llm-debug-links.md), `/llm-debug#<trace_id>` MUST address one trace.
+Instructions, each input message, and the response MUST have section links under that fragment.
+Direct navigation, reload, and browser history MUST restore selection. Polling MUST preserve it.
+An unavailable trace MUST show an explicit message. The page MUST NOT substitute another record.
+Links MUST contain only an opaque trace ID and an optional section ID. Trace retention and access rules remain unchanged.
+The implemented provider wrapper captures calls associated with existing training-session HTTP requests.
+It records a running entry before the call and a completed or error entry after it.
+Generation and grounding are separate calls. Transport retries remain inside one application call.
+Each retry has a complete request snapshot and a section link such as `/llm-debug#<trace_id>/request-0`.
+Records disappear on restart. The single-worker local launcher enables capture by default.
+See [the usage guide](llm-debug-guide.md) for authentication, bounds, and operational limits.
 
 The Admin Session Inspector uses a read-only administrator projection.
 

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.dialogue import NpcDialogueRequest, NpcDialogueResult
 from backend.app.main import create_app
+from backend.app.service import NegotiationService
 
 from .conftest import bearer, create_payload
 
@@ -151,6 +152,70 @@ def test_greeting_is_idempotent_and_first_player_turn_starts_the_round(
     assert body["round"] == 2
 
 
+def test_successful_history_uses_a_varied_relationship_aware_greeting(
+    client: TestClient,
+) -> None:
+    payload = _supplier_payload("successful-history-opening")
+    payload["training"] = {
+        "relationship": "successful_history",
+        "shared_background": "Мы успешно работали вместе.",
+    }
+
+    created = client.post("/api/v1/sessions", json=payload).json()
+
+    message = created["observation"]["conversation"][0]["message"]
+    assert "Поставка 100 промышленных компьютеров" in message
+    assert any(word in message.casefold() for word in ("снова", "продолжить"))
+    assert "120\xa0000 €" not in message
+    assert "0%" not in message
+    assert "8 недель" not in message
+    assert created["revision"] == 0
+    assert created["substantive_turn_count"] == 0
+    assert created["next_actor"].endswith("_buyer")
+
+
+def test_successful_history_greeting_selection_is_stable_and_varied() -> None:
+    title = "Контракт на срочную грузовую перевозку"
+    greetings = {
+        NegotiationService._initial_npc_greeting(
+            title,
+            "ru",
+            session_id=f"sess_relationship_{index}",
+            relationship="successful_history",
+        )
+        for index in range(24)
+    }
+    selected = NegotiationService._initial_npc_greeting(
+        title,
+        "ru",
+        session_id="sess_relationship_stable",
+        relationship="successful_history",
+    )
+
+    assert len(greetings) >= 4
+    assert all(title in greeting for greeting in greetings)
+    assert selected == NegotiationService._initial_npc_greeting(
+        title,
+        "ru",
+        session_id="sess_relationship_stable",
+        relationship="successful_history",
+    )
+    english = NegotiationService._initial_npc_greeting(
+        "Urgent freight contract",
+        "en",
+        session_id="sess_relationship_english",
+        relationship="successful_history",
+    )
+    assert "Urgent freight contract" in english
+    assert any(word in english.casefold() for word in ("again", "continue"))
+    assert NegotiationService._initial_npc_greeting(
+        title,
+        "ru",
+        session_id="sess_first_meeting",
+        relationship="first_meeting",
+    ) == f"Здравствуйте. Давайте обсудим «{title}». Слушаю вас."
+
+
 @pytest.mark.parametrize("difficulty", ["guided", "normal", "expert"])
 def test_greeting_is_available_at_every_difficulty(client: TestClient, difficulty: str) -> None:
     created = client.post(
@@ -214,9 +279,11 @@ def test_easy_external_agent_retains_canonical_opening(client: TestClient) -> No
 def test_greeting_bypasses_injected_llm_renderer(settings: Any) -> None:
     renderer = SpyRenderer()
     with TestClient(create_app(settings, npc_dialogue_renderer=renderer)) as client:
+        payload = _supplier_payload("easy-opening-template-only")
+        payload["training"] = {"relationship": "successful_history"}
         created = client.post(
             "/api/v1/sessions",
-            json=_supplier_payload("easy-opening-template-only"),
+            json=payload,
         ).json()
 
     assert renderer.calls == 0

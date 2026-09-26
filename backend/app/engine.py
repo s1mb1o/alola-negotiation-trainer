@@ -558,6 +558,69 @@ def _normalized(message: str) -> str:
     return " ".join(message.casefold().strip().split())
 
 
+_PUBLIC_POSITION_TOPIC = re.compile(
+    r"\b(?:услов\w*|огранич\w*|предложен\w*|позици\w*|параметр\w*|"
+    r"terms?|conditions?|limits?|offer|position)\b",
+    re.IGNORECASE,
+)
+_PUBLIC_POSITION_QUESTION = re.compile(
+    r"\b(?:какой|какая|какие|какое|какую|какого|каких|каким|каковы|каково|"
+    r"что|what|which)\b",
+    re.IGNORECASE,
+)
+_DIRECT_PUBLIC_POSITION_REQUEST = re.compile(
+    r"\b(?:назов(?:и|ите)|скаж(?:и|ите)|перечисл(?:и|ите)|"
+    r"озвуч(?:ь|ьте)|повтор(?:и|ите)|tell|list|state|repeat)\b",
+    re.IGNORECASE,
+)
+_COUNTERPART_REFERENCE = re.compile(
+    r"\b(?:у\s+вас|ваш\w*|сво\w*|вы|ты|you|your|yours)\b",
+    re.IGNORECASE,
+)
+_ELLIPTICAL_PUBLIC_POSITION_REQUEST = re.compile(
+    r"^(?:все|всё|все\s+их|everything|all(?:\s+of\s+them)?)$|"
+    r"\b(?:скаж\w*|назов\w*|перечисл\w*|озвуч\w*|повтор\w*|"
+    r"tell|say|list|state|repeat)\b",
+    re.IGNORECASE,
+)
+
+
+def requests_npc_public_position(
+    message: str,
+    *,
+    recent_messages: tuple[str, ...] = (),
+) -> bool:
+    """Detect a request to repeat the NPC's already published deal position."""
+
+    normalized = _normalized(message).strip(" .,!?:;\"'«»")
+    has_topic = bool(_PUBLIC_POSITION_TOPIC.search(normalized))
+    if has_topic and _DIRECT_PUBLIC_POSITION_REQUEST.search(normalized):
+        return True
+    if (
+        has_topic
+        and _PUBLIC_POSITION_QUESTION.search(normalized)
+        and _COUNTERPART_REFERENCE.search(normalized)
+    ):
+        return True
+    if re.search(
+        r"\b(?:какой|какая|какие|какое|какую|какого|каких|каким|каковы|каково|"
+        r"что)\b.{0,32}\bу\s+вас\b|\b(?:what|which)\b.{0,24}\byours\b",
+        normalized,
+        re.IGNORECASE,
+    ):
+        return True
+    if not _ELLIPTICAL_PUBLIC_POSITION_REQUEST.search(normalized):
+        return False
+    if not (
+        _COUNTERPART_REFERENCE.search(normalized)
+        or normalized in {"все", "всё", "все их", "everything", "all", "all of them"}
+        or re.search(r"\b(?:их|them)\b", normalized, re.IGNORECASE)
+    ):
+        return False
+    context = " ".join(_normalized(item) for item in recent_messages[-4:])
+    return bool(_PUBLIC_POSITION_TOPIC.search(context))
+
+
 def _contains_complete_phrase(normalized: str, phrase: str) -> bool:
     return bool(re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", normalized))
 
@@ -1220,6 +1283,18 @@ def npc_message_options(
         if language == "ru":
             return (f"Предлагаю обмен уступками: изменение цены связано с изменением условий «{trade}». Полный пакет: {package}.",)
         return (f"I propose a trade: the price change depends on changes to {trade}. The complete package is: {package}.",)
+    if speech_act == "public_position_restatement":
+        if language == "ru":
+            return (
+                f"Повторю мою последнюю публичную позицию: {package}.",
+                f"Мои последние названные условия: {package}.",
+                f"Моё последнее предложение было таким: {package}.",
+            )
+        return (
+            f"I will repeat my latest public position: {package}.",
+            f"My latest stated terms were: {package}.",
+            f"My latest offer was: {package}.",
+        )
     if requested_label:
         if language == "ru":
             lead = "Давайте разберём это по шагам." if difficulty in {"guided", "easy"} else "Продолжим обсуждение."

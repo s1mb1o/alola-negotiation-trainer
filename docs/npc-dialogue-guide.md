@@ -1,25 +1,108 @@
 # Связный диалог с NPC
 
 Дата: 2026-09-07.
-Руководство описывает [DR-27](decisions/2026-09-06_conversation-continuity.md), [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md) и [DR-32](decisions/2026-09-23_retrieved-reply-examples.md).
+Руководство описывает [DR-27](decisions/2026-09-06_conversation-continuity.md), [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md), [DR-32](decisions/2026-09-23_retrieved-reply-examples.md), [DR-38](decisions/2026-09-24_context-gated-reply-rag.md) и [DR-50](decisions/2026-09-26_grounded-goal-directed-dialogue.md).
+
+## Grounded opening and dialogue goal
+
+A new immutable scenario version MAY define `dialogue_strategy` on the authored opening role.
+The object MUST contain `shared_context`, `opening_goal`, `conversation_goal`, and `opening_term_ids`.
+It MAY contain `successful_history_context`.
+
+Write strategy instructions in STE-style English.
+Write participant-facing shared context in the scenario language.
+Do not add numeric values to strategy text.
+Reference only terms that exist in the authored opening artifact.
+Do not copy a private brief, BATNA, reservation utility, constraint, or target into the strategy.
+
+The opening model receives only actor-safe context and goals.
+When the configured dialogue model is a Character model, the control model writes this structured opening.
+Later in-character replies continue to use the Character model.
+It receives immutable tokens for the scenario title, optional player name, and public position.
+The model MUST use each required token exactly once.
+The engine replaces the tokens after validation.
+Provider failure returns the deterministic grounded fallback.
+
+Later `NpcDialogueRequest` objects contain `shared_scenario_context` and `conversation_goal`.
+The model MUST answer the latest player message first.
+The model SHOULD advance the conversation goal when the selected speech act permits this step.
+The goal supplies direction only.
+The engine remains the authority for the action, values, concessions, and offer lifecycle.
 
 ## Подготовленные варианты ответа
 
-Файл [`backend/data/reply_examples_v1.json`](../backend/data/reply_examples_v1.json) содержит вопросы игрока и несколько вариантов ответа NPC.
+Файл [`backend/data/reply_examples_v2.json`](../backend/data/reply_examples_v2.json) содержит 18 записей для перевозки, поставки компьютеров и подписки SaaS.
+Каждая запись содержит вопрос игрока и несколько вариантов ответа NPC.
+Версия 1 сохранена без изменений.
 Для записи задайте `scenario_id`, `npc_role`, `language`, `speech_act`, `player_message` и массив `replies`.
 Запись MAY задать `focused_term_id`, `required_reason_id` или `supply_action`.
 Если задан `required_reason_id`, каждый ответ MUST содержать точный текст причины, которую движок разрешил раскрыть.
+Для составного вопроса задайте `required_reason_ids` вместо `required_reason_id`.
+Массив MUST содержать не более двух идентификаторов.
+Каждый ответ MUST содержать точный текст каждой разрешённой причины.
+Поле `player_message_variants` MAY содержать до четырёх дополнительных формулировок вопроса.
+Поле `required_training_context` MAY требовать точные значения `personal_fact` или `relationship` из разрешённого контекста NPC.
+Текст игрока и `shared_background` MUST NOT разрешать эти факты.
+Например, ответ про Гуффи доступен только при разрешённом `personal_fact` с этой кличкой.
 Ответы MUST не содержать числовых обещаний, скрытых фактов и формулировок согласия.
 При изменении библиотеки создайте новую версию файла и обновите `LIBRARY_VERSION` и `LIBRARY_PATH` в `backend/app/reply_retrieval.py`.
 
 Поиск выполняется после выбора действия NPC.
 Он выбирает не более четырех вариантов для одного запроса генерации.
+Поиск сравнивает первые 500 символов сообщения и до восьми фрагментов с авторскими формулировками.
+Поиск сначала выбирает по одному ответу из подходящих записей.
+Затем поиск добавляет дополнительные варианты без повторов текста.
+Это локальный лексический RAG. Векторная база и внешний embedding API не используются.
 Варианты служат образцами формулировки.
 Проверка ответа и неизменяемые формулировки обязательных действий сохраняются.
-Проверьте библиотеку командой `.venv/bin/python -m pytest -q backend/tests/test_reply_retrieval.py backend/tests/test_supply_dialogue.py`.
-Оно не заменяет нормативные требования API и протокола.
+Проверьте библиотеку командой `.venv/bin/python -m pytest -q backend/tests/test_reply_retrieval.py backend/tests/test_reply_rag_smoke.py backend/tests/test_supply_dialogue.py`.
+Руководство не заменяет нормативные требования API и протокола.
+
+### Сравнение с примерами и без примеров
+
+Команда `.venv/bin/python -m backend.reply_rag_smoke` показывает план без создания сессий и вызовов модели.
+Режим `offline` проверяет четыре синтетических случая через тестового провайдера.
+Режим `live` использует `qwen-flash-character` для реплик NPC.
+Для проверок он использует `DeepSeek-V4-Flash-0731`.
+Для итогового разбора он использует `Qwen3.8-Max`.
+Лаунчер читает `QWENCLOUD_PAYGO_API_KEY` из окружения.
+Модель диалога можно заменить на `qwen-plus-character` через `NEGOTIATION_NPC_MODEL`.
+Запускайте live-проверку при разрешённой передаче синтетических данных выбранному провайдеру.
+
+```sh
+.venv/bin/python -m backend.reply_rag_smoke \
+  --mode live --max-provider-calls 16 \
+  --output benchmark-results/reply-rag-new-run.json
+```
+
+Каждый случай использует новую временную сессию `saas_subscription_ru`, версия 3.
+Движок выбирает действие и разрешённые факты через настоящий Player API.
+Оба варианта используют одинаковый `NpcDialogueRequest`.
+В варианте без RAG удаляются только `retrieved_reply_examples`.
+Основной промпт и `approved_reply_options` сохраняются.
+Порядок вариантов чередуется между случаями.
+Лимит включает генерацию и grounding. Повторные сетевые попытки отключены.
+Проверка не перезаписывает существующий результат.
+Она сохраняет доставленный текст, примеры, длительность, расход токенов и причины fallback.
+Это сравнение формулировок. Оно не измеряет обучение людей или качество экономической политики.
+См. [результат live-сравнения](reports/2026-09-24-reply-rag-comparison.md).
 
 ## Что изменилось
+
+Если игрок задаёт распознанный посторонний вопрос без разрешённого личного факта, NPC вежливо возвращает разговор к переговорам.
+Например: «Не совсем понимаю, как этот вопрос связан с нашей беседой. Давайте вернёмся к переговорам. Какие условия вы хотели бы обсудить?»
+Движок хранит шесть вариантов такой реплики.
+Выбор предпочитает ещё не использованный вариант в последних сообщениях NPC.
+После использования всех вариантов выбор предпочитает самый давний.
+Продолжение использует текущую публичную тему или тему предыдущего вопроса NPC.
+Запасная реплика не повторяет старые суммы и не утверждает, что у NPC есть или нет собака.
+Разрешённый личный факт по-прежнему доступен модели для короткого ответа.
+Сообщение с вопросом о собаке и предложением цены сохраняет обработку предложения.
+Распознавание ограничено типовыми личными вопросами и вопросами о погоде, спорте и политике.
+Это не универсальная классификация релевантности.
+См. [DR-39](decisions/2026-09-24_polite-topic-return.md).
+
+Для просмотра новых запросов и ответов модели используйте отдельное [окно LLM](llm-debug-guide.md).
 
 Парсер различает вопрос, цитату и предложение.
 Фраза «Почему цена 120000 EUR?» не меняет цену.
@@ -30,6 +113,14 @@
 Сервис не извлекает эту инструкцию из текста NPC.
 Грамматика парсера ограничена.
 Она не гарантирует понимание каждой разговорной формулировки.
+
+Прямой запрос условий NPC повторяет его последнюю публичную позицию.
+Короткое продолжение типа «все» или «просто скажи их» использует ограниченный недавний контекст.
+Ответ содержит точные публичные значения из движка.
+Ответ не создаёт и не возобновляет предложение.
+Историческая позиция остаётся исторической.
+Скрытые ограничения, utility, reservation utility и BATNA не раскрываются.
+См. [DR-49](decisions/2026-09-26_public-position-restatement.md).
 
 NPC учитывает явно выбранную тему разговора.
 Например, просьба обсудить только цену не требует немедленно назвать весь пакет условий.

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Обмен с LLM · Тренажёр переговоров</title>
+  <link rel="stylesheet" href="/llm-debug/llm-debug.css">
+  <script src="/llm-debug/llm-debug.js" defer></script>
+</head>
+<body>
+  <header><div><p class="eyebrow">Тренажёр переговоров / Диагностика</p><h1>Обмен с LLM</h1></div><span id="connection" role="status">Подключение…</span></header>
+  <main>
+    <section id="access" class="card" hidden>
+      <h2>Административный доступ</h2>
+      <p>Здесь видны внутренние запросы и ответы модели. Используйте ключ администратора, заданный для этого API.</p>
+      <form id="login"><label for="credential">Ключ администратора</label><div class="row"><input id="credential" type="password" autocomplete="off" required><button type="submit">Подключиться</button></div></form>
+      <p class="muted">Локальный запуск через <code>scripts/run-qwen-api.zsh</code> создаёт ключ, если он ещё не задан. На этом Mac скопируйте его командой:</p>
+      <pre class="command">pbcopy &lt; .local/llm-debug-admin-token</pre>
+      <p class="muted">Выполните команду из папки проекта. Если вы задали <code>NEGOTIATION_ADMIN_TOKEN</code> самостоятельно, используйте его значение. Ключ хранится в памяти этой вкладки до выхода или перезагрузки.</p>
+    </section>
+    <p id="error" role="alert" hidden></p>
+    <section id="viewer" hidden>
+      <div class="toolbar card"><label for="session">Сессия <input id="session" placeholder="Все сессии · или sess_…" spellcheck="false"></label><button id="refresh">Обновить</button><label class="check"><input id="auto" type="checkbox" checked> Обновлять автоматически</label><button id="logout" class="secondary">Выйти</button></div>
+      <p class="muted" id="retention">Последние 200 вызовов текущего процесса. Новые запросы появляются во время игры. После перезапуска журнал очищается.</p>
+      <p class="muted">«Ответ получен» означает ответ провайдера. Проверка может отклонить его: смотрите вызов «Проверка ответа». Шаблонные реплики не вызывают LLM. Benchmark-сессии здесь не записываются.</p>
+      <p class="muted">Полный запрос содержит адрес, заголовки и JSON, переданные приложением провайдеру. Промпты, сообщения и контекст не сокращаются в журнале. Значения ключей доступа скрыты. Внутренние инструкции провайдера и автоматически добавленные HTTP-заголовки приложению недоступны.</p>
+      <div class="split"><section class="card calls"><h2>Вызовы <span id="count">0</span></h2><div id="calls"></div></section><section class="card detail"><h2 id="detail-title">Выберите вызов</h2><div id="detail"></div></section></div>
+    </section>
+  </main>
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextvars import ContextVar
+from copy import deepcopy
 from dataclasses import dataclass, field
 import json
 import os
@@ -25,6 +27,10 @@ ProviderRequest = Callable[
     [str, Mapping[str, Any], Mapping[str, str], float],
     Mapping[str, Any],
 ]
+ProviderRequestObserver = Callable[[str, Mapping[str, Any], Mapping[str, str], float, int], None]
+provider_request_observer: ContextVar[ProviderRequestObserver | None] = ContextVar(
+    "provider_request_observer", default=None
+)
 
 # Tests replace this hook to avoid real delays.
 _sleep = time.sleep
@@ -63,6 +69,7 @@ class AgentModelConfig:
     base_url: str | None = None
     max_output_tokens: int = 500
     temperature: float | None = None
+    enable_thinking: bool | None = None
     seed: int | None = None
     timeout: float = 60.0
     max_attempts: int = DEFAULT_MAX_ATTEMPTS
@@ -193,6 +200,13 @@ def _request_with_retry(
     attempt = 0
     while True:
         attempt += 1
+        observer = provider_request_observer.get()
+        if observer is not None:
+            try:
+                observer(url, deepcopy(payload), dict(headers), config.timeout, attempt)
+            except Exception:
+                # Diagnostics cannot alter the request or interrupt the provider call.
+                pass
         try:
             return requester(url, payload, headers, config.timeout), attempt - 1
         except ProviderError as exc:
@@ -363,6 +377,8 @@ class QwenCloudProvider:
         }
         if self.config.temperature is not None:
             payload["temperature"] = self.config.temperature
+        if self.config.enable_thinking is not None:
+            payload["enable_thinking"] = self.config.enable_thinking
         if self.config.seed is not None:
             if not 0 <= self.config.seed <= 2**31 - 1:
                 raise ProviderError("Qwen seed must be between 0 and 2^31-1")
@@ -438,6 +454,7 @@ def provider_for(
     base_url: str | None = None,
     max_output_tokens: int = 500,
     temperature: float | None = None,
+    enable_thinking: bool | None = None,
     seed: int | None = None,
     timeout: float = 60.0,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
@@ -453,6 +470,7 @@ def provider_for(
             base_url=base_url,
             max_output_tokens=max_output_tokens,
             temperature=temperature,
+            enable_thinking=enable_thinking,
             seed=seed,
             timeout=timeout,
             max_attempts=max_attempts,
@@ -467,6 +485,7 @@ def provider_for(
             base_url=base_url,
             max_output_tokens=max_output_tokens,
             temperature=temperature,
+            enable_thinking=enable_thinking,
             seed=seed,
             timeout=timeout,
             max_attempts=max_attempts,

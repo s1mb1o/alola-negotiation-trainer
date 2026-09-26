@@ -264,6 +264,56 @@ def _validate_dialogue_reasons(roles: dict[str, Any], definitions: dict[str, Any
                 raise ScenarioError(f"{item_path}.text must be bounded plain nonnumeric text")
 
 
+def _validate_dialogue_strategy(
+    roles: dict[str, Any],
+    opening_role: str,
+    opening_terms: dict[str, Any],
+) -> None:
+    """Validate actor-safe dialogue goals separately from private role briefs."""
+
+    required = {"shared_context", "opening_goal", "conversation_goal", "opening_term_ids"}
+    optional = {"successful_history_context"}
+    for role, data in roles.items():
+        strategy = data.get("dialogue_strategy")
+        if strategy is None:
+            continue
+        path = f"roles.{role}.dialogue_strategy"
+        if role != opening_role:
+            raise ScenarioError(f"{path} is supported only for the authored opening role")
+        if (
+            not isinstance(strategy, dict)
+            or not required.issubset(strategy)
+            or set(strategy) - required - optional
+        ):
+            raise ScenarioError(f"{path} has invalid fields")
+        text_fields = required - {"opening_term_ids"} | (optional & set(strategy))
+        for field in text_fields:
+            value = strategy[field]
+            limit = 800 if field.endswith("context") else 500
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or len(value) > limit
+                or any(
+                    char.isnumeric()
+                    or unicodedata.category(char)[0] == "C"
+                    or unicodedata.category(char) == "Sc"
+                    or char == "%"
+                    for char in value
+                )
+                or _DIALOGUE_REASON_UNSAFE_STRUCTURE.search(value)
+            ):
+                raise ScenarioError(f"{path}.{field} must be bounded plain nonnumeric text")
+        term_ids = strategy["opening_term_ids"]
+        if (
+            not isinstance(term_ids, list)
+            or not 1 <= len(term_ids) <= 12
+            or len(set(term_ids)) != len(term_ids)
+            or any(term_id not in opening_terms for term_id in term_ids)
+        ):
+            raise ScenarioError(f"{path}.opening_term_ids must reference authored opening terms")
+
+
 def _validate_exchange_policy(scenario: dict[str, Any]) -> None:
     if "exchange_policy" not in scenario:
         return
@@ -328,6 +378,7 @@ def compile_scenario(document: dict[str, Any], path: Path) -> CompiledScenario:
 
     definitions = scenario["terms"]["definitions"]
     _validate_dialogue_reasons(roles, definitions)
+    _validate_dialogue_strategy(roles, opening_role, opening_terms)
     _validate_exchange_policy(scenario)
     label = "Opening offer" if opening_kind == "opening_offer" else "Opening position"
     unknown_terms = [term for term in opening_terms if term not in definitions]

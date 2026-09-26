@@ -817,6 +817,43 @@
         }
       }
     },
+    "dialogueStrategy": {
+      "type": "object",
+      "required": ["shared_context", "opening_goal", "conversation_goal", "opening_term_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "shared_context": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        },
+        "successful_history_context": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        },
+        "opening_goal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "conversation_goal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "opening_term_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        }
+      }
+    },
     "exchangePolicy": {
       "type": "object",
       "required": ["candidate_values"],
@@ -860,6 +897,9 @@
           "type": "array",
           "maxItems": 6,
           "items": {"$ref": "#/$defs/dialogueReason"}
+        },
+        "dialogue_strategy": {
+          "$ref": "#/$defs/dialogueStrategy"
         },
         "opening_offer": {
           "description": "A complete authored opening offer. Published scenarios must include every required term.",

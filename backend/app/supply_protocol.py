@@ -8,6 +8,7 @@ from typing import Any
 import uuid
 
 from .dialogue import NpcDialogueRequest, redact_untrusted_credentials
+from .dialogue_redirect import select_varied_fallback, topic_return_options
 from .engine import ParsedAction, offer_is_acceptable, offer_is_bindable
 from .reply_retrieval import retrieve_reply_examples
 from .training import npc_training_context
@@ -191,6 +192,20 @@ class SupplyProtocolMixin:
                 proposer_role=role,
             )
             action, text = decision.action, decision.text
+        training_context = npc_training_context(state.get("training", {}), session["language"], player_message)
+        context = self._dialogue_context(connection, session["id"], npc["id"])
+        if action == "inform":
+            # Use scalar topic aliases for wording only. The supply terms stay immutable.
+            labels = (
+                {"price": "цена", "prepayment_fraction": "условия оплаты", "delivery_weeks": "срок поставки"}
+                if session["language"] == "ru" else
+                {"price": "price", "prepayment_fraction": "payment terms", "delivery_weeks": "delivery timeline"}
+            )
+            options = topic_return_options(player_message, session["language"], labels, context, training_context)
+            if options:
+                text = select_varied_fallback(
+                    options, player_message, [turn.text.split("\n\n", 1)[0] for turn in context if turn.speaker == "npc"],
+                )
         block = format_supply_terms(scenario, terms, session["language"]) if terms else ""
         fallback = text + ("\n\n" + block if block else "")
         return NpcDialogueRequest(
@@ -200,7 +215,7 @@ class SupplyProtocolMixin:
             approved_terms=tuple(sorted(deepcopy(terms).items())),
             public_interest_labels=(),
             participant_facing_terms=(),
-            dialogue_context=self._dialogue_context(connection, session["id"], npc["id"]),
+            dialogue_context=context,
             approved_reply_options=(fallback,),
             fallback_text=fallback,
             retrieved_reply_examples=retrieve_reply_examples(
@@ -210,6 +225,7 @@ class SupplyProtocolMixin:
                 speech_act="acknowledge_information",
                 player_message=player_message,
                 supply_action=action,
+                training_context=training_context,
             ),
             scenario_title=scenario["title"],
             npc_role=npc["role"],
@@ -217,8 +233,7 @@ class SupplyProtocolMixin:
             render_contract="supply-dialogue-v1",
             package_block=block,
             supply_action=action,
-            training_context=npc_training_context(json.loads(session["state_json"]).get("training", {}),
-                                                  session["language"], player_message),
+            training_context=training_context,
         )
 
     def _supply_commit_proposal(self, connection, session, actor, scenario, state, context, terms):

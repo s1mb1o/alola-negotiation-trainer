@@ -38,13 +38,36 @@ class ParticipantSpec(BaseModel):
 
 
 class CreateSessionRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "idempotency_key": "demo-session-1",
+                    "scenario_id": "saas_subscription_ru",
+                    "scenario_version": 1,
+                    "language": "ru",
+                    "participants": [
+                        {"role": "buyer", "controller": "human"},
+                        {"role": "seller", "controller": "built_in_npc"},
+                    ],
+                    "difficulty": "normal",
+                    "hints_enabled": True,
+                    "run_mode": "training",
+                }
+            ]
+        },
+    )
 
     idempotency_key: str = Field(min_length=1, max_length=200)
     scenario_id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     scenario_version: int = Field(default=1, ge=1)
     language: Literal["ru", "en"] = "ru"
-    participants: list[ParticipantSpec]
+    participants: list[ParticipantSpec] = Field(
+        min_length=2,
+        max_length=2,
+        description="Exactly two distinct scenario roles. At least one controller must be external to the built-in NPC.",
+    )
     difficulty: Difficulty = Difficulty.normal
     hints_enabled: bool = True
     run_mode: RunMode = RunMode.training
@@ -58,9 +81,12 @@ class CreateSessionRequest(BaseModel):
     def validate_participants(self) -> "CreateSessionRequest":
         if self.training is not None and (
             self.run_mode != RunMode.training
-            or sorted(str(item.controller) for item in self.participants) != ["built_in_npc", "human"]
+            or sorted(str(item.controller) for item in self.participants)
+            != ["built_in_npc", "human"]
         ):
-            raise ValueError("Training context requires one human and one built-in NPC in training mode")
+            raise ValueError(
+                "Training context requires one human and one built-in NPC in training mode"
+            )
         if len(self.participants) != 2:
             raise ValueError("The MVP requires exactly two participants")
         roles = [participant.role for participant in self.participants]
@@ -82,7 +108,18 @@ class CreateSessionRequest(BaseModel):
 
 
 class SubmitMessageRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "message": "Какие условия для вас наиболее важны?",
+                    "idempotency_key": "demo-message-1",
+                    "expected_revision": 0,
+                }
+            ]
+        },
+    )
 
     message: str = Field(min_length=1, max_length=10_000)
     idempotency_key: str = Field(min_length=1, max_length=200)
@@ -90,14 +127,35 @@ class SubmitMessageRequest(BaseModel):
 
 
 class HintRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "idempotency_key": "demo-hint-1",
+                    "expected_revision": 0,
+                }
+            ]
+        },
+    )
 
     idempotency_key: str = Field(min_length=1, max_length=200)
     expected_revision: int = Field(ge=0)
 
 
 class CloseSessionRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "idempotency_key": "demo-close-1",
+                    "expected_revision": 0,
+                    "reason": "Учебная сессия закрыта.",
+                }
+            ]
+        },
+    )
 
     idempotency_key: str = Field(min_length=1, max_length=200)
     expected_revision: int = Field(ge=0)
@@ -111,8 +169,34 @@ class ErrorBody(BaseModel):
 
 
 class ForkRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "source_revision": 0,
+                    "idempotency_key": "demo-retry-1",
+                }
+            ]
+        },
+    )
     source_revision: int = Field(ge=0)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class AssistedReplyRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "expected_revision": 2,
+                    "idempotency_key": "demo-player-assist-1",
+                }
+            ]
+        },
+    )
+    expected_revision: int = Field(ge=0)
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 

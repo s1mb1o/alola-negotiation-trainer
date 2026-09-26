@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getAdminSession, isResumableRequestError, listAdminSessions, listScenarios } from '../api'
+import { ApiError, getAdminSession, isResumableRequestError, listAdminSessions, listScenarios, requestPlayerAssist, rewindSession } from '../api'
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -131,5 +131,41 @@ describe('request retry safety', () => {
   it('treats ordinary protocol errors as final results', () => {
     expect(isResumableRequestError(new ApiError(409, { error: 'revision_conflict' }))).toBe(false)
     expect(isResumableRequestError(new ApiError(422, { error: 'offer_not_bindable' }))).toBe(false)
+  })
+})
+
+describe('training action API', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('sends the selected checkpoint and expected revision to authenticated endpoints', async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      () => Promise.resolve(jsonResponse({ session_id: 'child' })),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await rewindSession('session/value', 6, 'rewind-key', 'participant-token')
+    await requestPlayerAssist('session/value', 9, 'assist-key', 'participant-token')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/sessions/session%2Fvalue/rewind',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ source_revision: 6, idempotency_key: 'rewind-key' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer participant-token' }),
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/sessions/session%2Fvalue/player-assist',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ expected_revision: 9, idempotency_key: 'assist-key' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer participant-token' }),
+      }),
+    )
   })
 })

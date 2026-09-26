@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.config import Settings
 from backend.app.main import create_app
+from .openapi_support import ResponseContractCheck
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +28,7 @@ def settings(tmp_path: Path) -> Settings:
 @pytest.fixture
 def client(settings: Settings) -> Iterator[TestClient]:
     with TestClient(create_app(settings)) as test_client:
+        test_client.event_hooks["response"].append(ResponseContractCheck(test_client.app))
         yield test_client
 
 

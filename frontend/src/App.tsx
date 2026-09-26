@@ -7,6 +7,7 @@ import {
   forkSession,
   getComparison,
   requestCoaching,
+  requestPlayerAssist,
   getAggregateStats,
   getReview,
   getSession,
@@ -15,6 +16,7 @@ import {
   listScenarios,
   makeIdempotencyKey,
   requestHint,
+  rewindSession,
   sendMessage,
 } from './api'
 import { AppHeader } from './components/AppHeader'
@@ -110,12 +112,16 @@ export default function App() {
   const [pendingMessageAttempt, setPendingMessageAttempt] = useState<PendingMessageAttempt>()
   const [lastFailedMessage, setLastFailedMessage] = useState<string>()
   const [requestingHint, setRequestingHint] = useState(false)
+  const [assisting, setAssisting] = useState(false)
+  const [rewindingRevision, setRewindingRevision] = useState<number>()
   const [review, setReview] = useState<SessionReview>()
   const [reviewLoading, setReviewLoading] = useState(false)
   const [trainingBusy, setTrainingBusy] = useState(false)
   const [trainingError, setTrainingError] = useState<string>()
   const [comparison, setComparison] = useState<TrainingComparison>()
   const forkAttempt = useRef<{ sessionId: string; revision: number; key: string } | undefined>(undefined)
+  const rewindAttempt = useRef<{ sessionId: string; revision: number; key: string } | undefined>(undefined)
+  const assistAttempt = useRef<{ sessionId: string; revision: number; key: string } | undefined>(undefined)
   useEffect(() => {
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
@@ -218,7 +224,14 @@ export default function App() {
           hintsEnabled: normalized.hints_enabled ?? stored.hints_enabled,
           participantToken: token,
           roleId,
-          training: normalized.observation.training,
+          training: normalized.observation.training?.preparation ? {
+            profile: normalized.observation.training.profile,
+            relationship: normalized.observation.training.relationship,
+            player_name: normalized.observation.training.player_name ?? '',
+            shared_background: normalized.observation.training.shared_background,
+            personal_detail: normalized.observation.training.personal_detail,
+            preparation: normalized.observation.training.preparation,
+          } : undefined,
         })
         // `pending_confirmation` and `clarification` travel inside the envelope, so the
         // confirmation card or clarification notice reappears with the restored session.
@@ -524,6 +537,100 @@ export default function App() {
     }
   }
 
+  const rewindDialogue = async (revision: number) => {
+    if (
+      !session
+      || !sessionConfig
+      || mutationInFlight.current
+      || pendingMessageAttempt
+      || trainingBusy
+    ) return
+    const generation = sessionGeneration.current
+    const attempt = rewindAttempt.current?.sessionId === session.session_id
+      && rewindAttempt.current.revision === revision
+      ? rewindAttempt.current
+      : { sessionId: session.session_id, revision, key: makeIdempotencyKey('rewind') }
+    rewindAttempt.current = attempt
+    mutationInFlight.current = true
+    setRewindingRevision(revision)
+    setMessageError(undefined)
+    try {
+      const response = await rewindSession(session.session_id, revision, attempt.key, token)
+      if (generation !== sessionGeneration.current) return
+      const freshToken = extractParticipantToken(response, sessionConfig.roleId)
+      if (!freshToken) throw new ApiError(409, { error: 'participant_credential_unavailable' })
+      const participant = response.participant_credentials?.find(
+        (item) => item.role === sessionConfig.roleId,
+      )
+      updateToken(freshToken)
+      setSessionConfig({ ...sessionConfig, participantToken: freshToken })
+      setOwnParticipantId(response.observation.participant_id ?? participant?.participant_id ?? '')
+      setSession(response)
+      setMessages(extractTimeline(response))
+      setReview(undefined)
+      setReviewError(undefined)
+      setComparison(undefined)
+      setTrainingError(undefined)
+      setMessageError(undefined)
+      setPendingMessageAttempt(undefined)
+      setLastFailedMessage(undefined)
+      setBusy(false)
+      setWaitingForCounterpart(false)
+      rewindAttempt.current = undefined
+      assistAttempt.current = undefined
+      forkAttempt.current = undefined
+      mutationInFlight.current = false
+      setRewindingRevision(undefined)
+      sessionGeneration.current += 1
+    } catch (error) {
+      if (generation !== sessionGeneration.current) return
+      if (error instanceof ApiError) rewindAttempt.current = undefined
+      setMessageError(errorMessage(error, language))
+    } finally {
+      if (generation === sessionGeneration.current) {
+        mutationInFlight.current = false
+        setRewindingRevision(undefined)
+      }
+    }
+  }
+
+  const answerForMe = async () => {
+    if (!session || mutationInFlight.current || pendingMessageAttempt || trainingBusy) return
+    const generation = sessionGeneration.current
+    const attempt = assistAttempt.current?.sessionId === session.session_id
+      && assistAttempt.current.revision === session.revision
+      ? assistAttempt.current
+      : { sessionId: session.session_id, revision: session.revision, key: makeIdempotencyKey('player-assist') }
+    assistAttempt.current = attempt
+    let submitted = false
+    mutationInFlight.current = true
+    setAssisting(true)
+    setMessageError(undefined)
+    try {
+      const reply = await requestPlayerAssist(
+        session.session_id,
+        session.revision,
+        attempt.key,
+        token,
+      )
+      if (generation !== sessionGeneration.current) return
+      assistAttempt.current = undefined
+      mutationInFlight.current = false
+      setAssisting(false)
+      submitted = true
+      submitMessage(reply.message)
+    } catch (error) {
+      if (generation !== sessionGeneration.current) return
+      if (error instanceof ApiError) assistAttempt.current = undefined
+      setMessageError(errorMessage(error, language))
+    } finally {
+      if (!submitted && generation === sessionGeneration.current) {
+        mutationInFlight.current = false
+        setAssisting(false)
+      }
+    }
+  }
+
   const askForHint = async () => {
     if (!session || mutationInFlight.current || pendingMessageAttempt) return
     const generation = sessionGeneration.current
@@ -599,6 +706,11 @@ export default function App() {
     setBusy(false)
     setWaitingForCounterpart(false)
     setRequestingHint(false)
+    setAssisting(false)
+    setRewindingRevision(undefined)
+    forkAttempt.current = undefined
+    rewindAttempt.current = undefined
+    assistAttempt.current = undefined
     setReviewLoading(false)
     setRestoring(false)
     navigateToView('training')
@@ -646,9 +758,11 @@ export default function App() {
           scenarioTitle={sessionConfig.scenario.title}
           hintsEnabled={sessionConfig.hintsEnabled}
           busy={busy || Boolean(pendingMessageAttempt)}
-          locked={requestingHint}
+          locked={requestingHint || assisting || rewindingRevision !== undefined}
           waitingForCounterpart={waitingForCounterpart}
           requestingHint={requestingHint}
+          assisting={assisting}
+          rewindingRevision={rewindingRevision}
           error={messageError}
           failedMessageText={failedMessageText}
           review={review}
@@ -659,6 +773,12 @@ export default function App() {
           comparison={comparison}
           onCoaching={() => void coachSession()}
           onFork={(revision) => void retryDecision(revision)}
+          onRewind={session.observation.training?.rewind
+            ? (revision) => void rewindDialogue(revision)
+            : undefined}
+          onAnswerForMe={session.observation.training
+            ? () => void answerForMe()
+            : undefined}
           onSend={submitMessage}
           onRequestHint={askForHint}
           onTokenChange={updateToken}

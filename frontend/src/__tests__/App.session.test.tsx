@@ -18,6 +18,8 @@ const apiMocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   requestCoaching: vi.fn(),
   forkSession: vi.fn(),
+  rewindSession: vi.fn(),
+  requestPlayerAssist: vi.fn(),
   getComparison: vi.fn(),
 }))
 
@@ -133,7 +135,7 @@ describe('session persistence', () => {
     await startSession(user)
     await screen.findByRole('button', { name: 'Получить разбор' })
     expect(apiMocks.requestCoaching).not.toHaveBeenCalled()
-    expect(apiMocks.createSession.mock.calls[0][0].training).toMatchObject({ relationship: 'first_meeting' })
+    expect(apiMocks.createSession.mock.calls[0][0].training).toMatchObject({ relationship: 'successful_history' })
     await user.click(screen.getByRole('button', { name: 'Получить разбор' }))
     await waitFor(() => expect(apiMocks.requestCoaching).toHaveBeenCalledWith('sess_session_test', 'participant-token'))
     await user.click(screen.getByRole('button', { name: 'Начать повтор' }))
@@ -411,6 +413,164 @@ describe('serialized mutations', () => {
     await screen.findByText('Здравствуйте.')
     await waitFor(() => expect(hintButton).toBeEnabled())
     expect(composer).toHaveFocus()
+  })
+})
+
+describe('bounded training actions', () => {
+  const activeTrainingSession: SessionEnvelope = {
+    ...createdSession,
+    revision: 4,
+    observation: {
+      participant_id: 'participant_buyer',
+      role: 'buyer',
+      conversation: [
+        {
+          id: 'npc-opening',
+          revision: 0,
+          participant_id: 'participant_seller',
+          role: 'seller',
+          message: 'Рад снова вас видеть. С чего начнём?',
+        },
+        {
+          id: 'player-one',
+          revision: 1,
+          participant_id: 'participant_buyer',
+          role: 'buyer',
+          message: 'Начнём со сроков.',
+        },
+        {
+          id: 'npc-two',
+          revision: 2,
+          participant_id: 'participant_seller',
+          role: 'seller',
+          message: 'Срок можно обсудить вместе с ценой.',
+        },
+      ],
+      training: {
+        ...defaultTraining(),
+        version: 'training-v1',
+        rewind: {
+          limit: 3,
+          used: 0,
+          remaining: 3,
+          available: true,
+          eligible_source_revisions: [0, 2],
+        },
+      },
+    },
+  }
+
+  it('returns to an eligible NPC message with a fresh child credential', async () => {
+    const user = userEvent.setup()
+    apiMocks.createSession.mockResolvedValue(activeTrainingSession)
+    apiMocks.rewindSession.mockResolvedValue({
+      ...activeTrainingSession,
+      session_id: 'sess_rewind_child',
+      revision: 0,
+      participant_token: 'fresh-rewind-token',
+      participant_credentials: [
+        { participant_id: 'participant_child_buyer', role: 'buyer', token: 'fresh-rewind-token' },
+      ],
+      next_actor: 'participant_child_buyer',
+      observation: {
+        ...activeTrainingSession.observation,
+        participant_id: 'participant_child_buyer',
+        conversation: [activeTrainingSession.observation.conversation?.[0] ?? ''],
+        training: {
+          ...activeTrainingSession.observation.training!,
+          rewind: {
+            limit: 3,
+            used: 1,
+            remaining: 2,
+            available: true,
+            eligible_source_revisions: [0],
+          },
+        },
+      },
+    })
+
+    render(<App />)
+    await startSession(user)
+    const rewindButtons = await screen.findAllByRole('button', { name: /Вернуться сюда/ })
+    expect(rewindButtons).toHaveLength(2)
+    expect(rewindButtons[0]).toHaveTextContent('3')
+    await user.click(rewindButtons[0])
+
+    await screen.findByText('sess_rewind_child')
+    expect(apiMocks.rewindSession).toHaveBeenCalledWith(
+      'sess_session_test', 0, 'rewind-stable-key', 'participant-token',
+    )
+    expect(sessionStorage.getItem(TOKEN_KEY)).toBe('fresh-rewind-token')
+    expect(screen.queryByText('Начнём со сроков.')).not.toBeInTheDocument()
+  })
+
+  it('uses the player-side model and submits its text through the normal message API', async () => {
+    const user = userEvent.setup()
+    const generated = 'Предлагаю сначала согласовать срок и затем обсудить цену.'
+    apiMocks.createSession.mockResolvedValue(activeTrainingSession)
+    apiMocks.requestPlayerAssist.mockResolvedValue({
+      session_id: activeTrainingSession.session_id,
+      revision: activeTrainingSession.revision,
+      message: generated,
+      prompt_version: 'player-assist-v1',
+      provider: 'qwen',
+      model: 'Qwen3.8-Max',
+    })
+    apiMocks.sendMessage.mockResolvedValue({
+      ...activeTrainingSession,
+      revision: 6,
+      observation: {
+        ...activeTrainingSession.observation,
+        conversation: [
+          ...(activeTrainingSession.observation.conversation ?? []),
+          {
+            id: 'player-assisted',
+            revision: 5,
+            participant_id: 'participant_buyer',
+            role: 'buyer',
+            message: generated,
+          },
+        ],
+      },
+    })
+
+    render(<App />)
+    await startSession(user)
+    await user.click(await screen.findByRole('button', { name: 'Ответь за меня' }))
+
+    await waitFor(() => expect(apiMocks.requestPlayerAssist).toHaveBeenCalledWith(
+      'sess_session_test', 4, 'player-assist-stable-key', 'participant-token',
+    ))
+    await waitFor(() => expect(apiMocks.sendMessage).toHaveBeenCalledWith(
+      'sess_session_test', generated, 4, 'message-stable-key', 'participant-token',
+    ))
+    expect(await screen.findByText(generated)).toBeInTheDocument()
+  })
+
+  it('shows exhausted rewind actions as disabled', async () => {
+    const user = userEvent.setup()
+    apiMocks.createSession.mockResolvedValue({
+      ...activeTrainingSession,
+      observation: {
+        ...activeTrainingSession.observation,
+        training: {
+          ...activeTrainingSession.observation.training!,
+          rewind: {
+            limit: 3,
+            used: 3,
+            remaining: 0,
+            available: false,
+            eligible_source_revisions: [0, 2],
+          },
+        },
+      },
+    })
+
+    render(<App />)
+    await startSession(user)
+    const exhausted = await screen.findAllByRole('button', { name: /Возвраты закончились/ })
+    expect(exhausted).toHaveLength(2)
+    expect(exhausted.every((button) => button.hasAttribute('disabled'))).toBe(true)
   })
 })
 

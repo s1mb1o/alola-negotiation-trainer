@@ -1,6 +1,8 @@
 .DS_Store
+/docs/sources/alabuga/Бизнес 9. Алабуга.mp4
 .env
 .env.*
+/.local/
 !.env.example
 .venv/
 __pycache__/

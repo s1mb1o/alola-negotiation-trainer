@@ -64,6 +64,7 @@ function normalizeEntry(entry: ConversationEntry | string, index: number): Timel
 
   return {
     id: entry.id ?? entry.event_id ?? `conversation-${index}-${entry.participant_id ?? entry.role ?? 'actor'}-${text}`,
+    revision: entry.revision,
     participantId: entry.participant_id,
     role: entry.role ?? entry.actor ?? 'counterpart',
     action: entry.action,

@@ -1,14 +1,18 @@
-import { AlertTriangle, AudioLines, Bot, LoaderCircle, Mic, MicOff, RotateCcw, Send, Square, UserRound, X } from 'lucide-react'
+import { AlertTriangle, AudioLines, Bot, History, LoaderCircle, Mic, MicOff, RotateCcw, Send, Sparkles, Square, UserRound, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { actionLabel, translate } from '../i18n'
-import type { Clarification, PendingConfirmation, PendingOfferPublication, SessionLanguage, TimelineMessage, UiLanguage } from '../types'
+import type { Clarification, Observation, PendingConfirmation, PendingOfferPublication, SessionLanguage, TimelineMessage, TrainingRewindStatus, UiLanguage } from '../types'
 import { ProtocolNotice } from './ProtocolNotice'
+import { RoleBriefContent } from './RoleBriefContent'
 import { useSpeechRecognition, useSpeechSynthesis } from './useWebSpeech'
 
 interface ChatPanelProps {
   language: UiLanguage
   sessionLanguage: SessionLanguage
   messages: TimelineMessage[]
+  roleBrief?: Observation['role_brief']
+  contextItems?: Observation['context']
+  scenarioTitle?: string
   ownParticipantId: string
   ownRoleId: string
   isMyTurn: boolean
@@ -26,7 +30,13 @@ interface ChatPanelProps {
   error?: string
   /** Text of the attempt that failed; it returns to the composer when the attempt is discarded. */
   failedText?: string
+  currentRevision?: number
+  rewind?: TrainingRewindStatus
+  rewindingRevision?: number
+  assisting?: boolean
   onSend: (message: string) => void
+  onRewind?: (revision: number) => void
+  onAnswerForMe?: () => void
   onRetry?: () => void
   onDiscard?: () => void
 }
@@ -51,6 +61,9 @@ export function ChatPanel({
   language,
   sessionLanguage,
   messages,
+  roleBrief,
+  contextItems,
+  scenarioTitle,
   ownParticipantId,
   ownRoleId,
   isMyTurn,
@@ -64,7 +77,13 @@ export function ChatPanel({
   publication,
   error,
   failedText,
+  currentRevision,
+  rewind,
+  rewindingRevision,
+  assisting = false,
   onSend,
+  onRewind,
+  onAnswerForMe,
   onRetry,
   onDiscard,
 }: ChatPanelProps) {
@@ -76,6 +95,10 @@ export function ChatPanel({
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
   const activity = busy || locked
   const inputDisabled = !isMyTurn || activity
+  const eligibleRevisions = useMemo(
+    () => new Set(rewind?.eligible_source_revisions ?? []),
+    [rewind?.eligible_source_revisions],
+  )
 
   const onTranscript = useCallback((text: string) => setDraft(text), [])
   const recognition = useSpeechRecognition(sessionLanguage, onTranscript)
@@ -88,8 +111,10 @@ export function ChatPanel({
 
   useEffect(() => {
     const timeline = timelineRef.current
+    // Keep the opening brief in view until the player starts the conversation.
+    if ((roleBrief || contextItems?.length) && !messages.some((message) => isOwnMessage(message, ownParticipantId, ownRoleId))) return
     if (timeline) timeline.scrollTop = timeline.scrollHeight
-  }, [messages, clarification, confirmation, publication])
+  }, [messages, clarification, confirmation, publication, roleBrief, contextItems, ownParticipantId, ownRoleId])
 
   // Return focus to the composer after a send or hint request completes.
   useEffect(() => {
@@ -143,6 +168,16 @@ export function ChatPanel({
       </header>
 
       <div className="chat-timeline" ref={timelineRef} aria-live="polite">
+        {(roleBrief || Boolean(contextItems?.length)) && (
+          <article className="chat-brief" aria-label={t('yourBrief')}>
+            <header className="chat-brief-heading">
+              <h3>{t('yourBrief')}</h3>
+              <span>{t('briefPrivate')}</span>
+            </header>
+            {scenarioTitle && <p className="chat-brief-scenario">{scenarioTitle}</p>}
+            <RoleBriefContent language={language} brief={roleBrief} currency={currency} contextItems={contextItems} />
+          </article>
+        )}
         {messages.length === 0 ? (
           <div className="chat-empty">
             <span className="chat-empty-mark"><Bot size={26} aria-hidden="true" /></span>
@@ -152,6 +187,12 @@ export function ChatPanel({
           const own = isOwnMessage(message, ownParticipantId, ownRoleId)
           const system = message.role.toLowerCase() === 'system'
           const label = system ? t('system') : own ? t('you') : t('counterpart')
+          const rewindEligible = !own
+            && !system
+            && message.revision !== undefined
+            && currentRevision !== undefined
+            && message.revision < currentRevision
+            && eligibleRevisions.has(message.revision)
           return (
             <article
               className={`chat-message ${own ? 'own' : 'counterpart'} ${system ? 'system-message' : ''} ${message.pending ? 'pending' : ''} ${message.failed ? 'failed' : ''}`}
@@ -175,6 +216,25 @@ export function ChatPanel({
                   <p>{message.text}</p>
                   {message.pending && <LoaderCircle className="spin message-spinner" size={14} aria-hidden="true" />}
                 </div>
+                {rewindEligible && (
+                  <button
+                    className="message-rewind-button"
+                    type="button"
+                    onClick={() => onRewind?.(message.revision as number)}
+                    disabled={activity || !rewind?.available || !onRewind}
+                    title={`${t('rewindRemaining')}: ${rewind?.remaining ?? 0}`}
+                  >
+                    {rewindingRevision === message.revision
+                      ? <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                      : <History size={13} aria-hidden="true" />}
+                    <span>{rewind?.remaining === 0
+                      ? t('rewindExhausted')
+                      : rewindingRevision === message.revision
+                        ? t('rewinding')
+                        : t('rewindHere')}</span>
+                    <b aria-label={`${t('rewindRemaining')}: ${rewind?.remaining ?? 0}`}>{rewind?.remaining ?? 0}</b>
+                  </button>
+                )}
               </div>
             </article>
           )
@@ -238,6 +298,19 @@ export function ChatPanel({
                     title={recognition.listening ? t('stopDictation') : t('startDictation')}
                   >
                     {recognition.listening ? <MicOff size={18} aria-hidden="true" /> : <Mic size={18} aria-hidden="true" />}
+                  </button>
+                )}
+                {onAnswerForMe && (
+                  <button
+                    className="assist-reply-button"
+                    type="button"
+                    onClick={onAnswerForMe}
+                    disabled={inputDisabled}
+                  >
+                    {assisting
+                      ? <LoaderCircle className="spin" size={15} aria-hidden="true" />
+                      : <Sparkles size={15} aria-hidden="true" />}
+                    <span>{assisting ? t('answeringForMe') : t('answerForMe')}</span>
                   </button>
                 )}
                 <small>{recognition.listening ? t('listening') : t('composerHint')}</small>

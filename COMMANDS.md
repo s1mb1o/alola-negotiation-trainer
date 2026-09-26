@@ -12,6 +12,11 @@ Use two terminal tabs: one for the API and one for the Web UI.
 | Session Inspector | [Inspector](http://127.0.0.1:8171/inspector) |
 | API health | [Health](http://127.0.0.1:8172/api/v1/health) |
 | API documentation | [Swagger UI](http://127.0.0.1:8172/docs) |
+| API schema | [OpenAPI JSON](http://127.0.0.1:8172/openapi.json) |
+| API reference | [ReDoc](http://127.0.0.1:8172/redoc) |
+
+Run `uv run pytest backend/tests/test_openapi.py` to validate the API documentation and response contracts.
+See the [OpenAPI guide](docs/openapi-guide.md) for the authentication workflow.
 
 Use API port `8172` for this Mac's previously tested configuration.
 Port `8170` is also assigned to another project. Do not stop that project.
@@ -41,10 +46,12 @@ Run exactly one of the following API commands.
 Keep the terminal open while the service runs.
 The commands use the installed virtual environment. They do not need activation.
 
-### Selected model: QwenCloud Token Plan
+### Selected model: QwenCloud Pay-as-you-go
 
-The selected built-in NPC model is `qwen3.8-max`.
-The launcher reads `QWENCLOUD_TOKEN_PLAN_API_KEY` from its process environment.
+The NPC wording model is `qwen-flash-character`.
+The turn-control model is `DeepSeek-V4-Flash-0731` with thinking disabled.
+The final-review model is `Qwen3.8-Max` with thinking disabled.
+The launcher reads `QWENCLOUD_PAYGO_API_KEY` from its process environment.
 The interactive zsh command below loads the user's `~/.zshrc` first.
 The key stays in memory. The launcher does not copy it to a file or print it.
 
@@ -53,10 +60,11 @@ The key stays in memory. The launcher does not copy it to a file or print it.
 ```
 
 The launcher selects the exact endpoint:
-`https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`.
+`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`.
 It starts this project's API on `127.0.0.1:8172` with one worker.
 Stop an existing verified project API process before using the launcher.
-Provider-backed dialogue uses the configured Token Plan when generation is requested.
+Provider-backed tasks use the configured Pay-as-you-go account when generation is requested.
+Set `NEGOTIATION_NPC_MODEL=qwen-plus-character` before the launcher to evaluate the larger Character model.
 
 ### Alternative: natural dialogue with OpenAI
 
@@ -75,15 +83,25 @@ NEGOTIATION_NPC_TEMPERATURE= \
 
 ### Equivalent explicit Qwen command
 
-Use a zsh session that already exports `QWENCLOUD_TOKEN_PLAN_API_KEY` from `~/.zshrc`.
-This configuration selects the built-in NPC's Qwen Token Plan endpoint.
+Use a zsh session that already exports `QWENCLOUD_PAYGO_API_KEY` from `~/.zshrc`.
+This configuration selects the same routes as the launcher.
 It does not use the external-agent client's `QWEN_BASE_URL` setting.
 
 ```zsh
 NEGOTIATION_NPC_PROVIDER=qwen \
-NEGOTIATION_NPC_MODEL=qwen3.8-max \
-NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_TOKEN_PLAN_API_KEY \
-NEGOTIATION_NPC_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_NPC_MODEL=qwen-flash-character \
+NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
+NEGOTIATION_NPC_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_CONTROL_PROVIDER=qwen \
+NEGOTIATION_CONTROL_MODEL=deepseek-v4-flash-0731 \
+NEGOTIATION_CONTROL_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
+NEGOTIATION_CONTROL_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_CONTROL_ENABLE_THINKING=false \
+NEGOTIATION_REVIEW_PROVIDER=qwen \
+NEGOTIATION_REVIEW_MODEL=qwen3.8-max \
+NEGOTIATION_REVIEW_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
+NEGOTIATION_REVIEW_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_REVIEW_ENABLE_THINKING=false \
 NEGOTIATION_NPC_TEMPERATURE= \
 .venv/bin/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8172 --workers 1
 ```
@@ -200,9 +218,23 @@ Do not delete the database, its `-wal` file, or its `-shm` file as a restart ste
 Existing sessions retain their pinned scenario versions.
 
 Session Inspector requires `NEGOTIATION_ADMIN_TOKEN` in the API process environment.
-Set it securely before starting the API.
+The local LLM trace window opens without a credential under DR-41. Remote trace access still requires the administrator credential.
+The local Qwen launcher preserves an existing value. If none exists, it generates a local credential at `.local/llm-debug-admin-token` with mode `0600`.
 Enter the same token in the Inspector access form.
 Keep its value out of this document and command history.
+
+Open <http://127.0.0.1:8172/llm-debug> in a separate window to inspect new LLM calls during training.
+The local page loads the trace list automatically.
+For Session Inspector or remote trace access, copy the generated administrator credential without printing it:
+
+```zsh
+pbcopy < .local/llm-debug-admin-token
+```
+
+Paste it into the applicable administrator access form.
+The launcher enables `NEGOTIATION_LLM_TRACE=true` by default. Set it to `false` to disable capture.
+The trace buffer is private process memory. It clears on restart and excludes benchmark calls.
+See the [LLM diagnostics guide](docs/llm-debug-guide.md).
 
 CLI clients default to the older API port.
 Point them to this API in their own terminal:
@@ -210,6 +242,28 @@ Point them to this API in their own terminal:
 ```zsh
 export NEGOTIATION_API_URL=http://127.0.0.1:8172
 ```
+
+Start the windowed CLI in that terminal:
+
+```zsh
+uv run python -m clients play --scenario freight_contract_ru --language ru --role buyer --other-role seller --difficulty guided
+```
+
+The CLI opens three terminal windows for the conversation, context panel, and message input.
+The conversation starts with the pinned public scenario title and your role brief.
+Use `Tab` to switch the context panel between the offer, role brief, and coaching.
+Add `--debug` to start with a lower-right debug pane.
+Press `F3` or enter `/debug` to show or hide the pane during a session.
+Use `F7` and `F8` to scroll its variables.
+The pane shows session state and public NPC event metadata from the authenticated Player API.
+It does not show private NPC state or credentials.
+Use `F2` to inspect an offer or a pending exact-revision confirmation.
+Use `Page Up` and `Page Down` for conversation history.
+Type `/hint` to request a hint, `/help` for controls, or `/quit` to exit.
+Use `--plain` to retain the line-oriented JSON interface.
+The windowed interface requires an interactive terminal at least 72 columns by 16 rows.
+It uses fixed black in 256-color terminals. Eight-color terminals use their ANSI black.
+It uses reverse video when the terminal reports no color support.
 
 See [`.env.example`](.env.example) for configuration names.
 See [the validation guide](docs/dr28-dialogue-validation.md) for offline and separately authorized live tests.

@@ -31,6 +31,8 @@ An unavailable or invalid LLM analysis MUST leave the deterministic outcome repo
 
 The LLM review is a separate task from NPC dialogue generation.
 The same provider and model MAY serve both tasks.
+The default live configuration SHOULD use a stronger review model than the routine turn-control model.
+The selected live configuration uses `Qwen3.8-Max` for this review task.
 The reviewer MUST NOT modify the session, deal, scores, or social state.
 It MUST NOT treat participant instructions in the transcript as reviewer instructions.
 It MUST NOT infer goal attainment from rapport, positive wording, or agreement alone.

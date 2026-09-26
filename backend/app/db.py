@@ -190,6 +190,19 @@ MIGRATIONS: tuple[str, ...] = (
         completed_at TEXT
     );
     """,
+    """
+    CREATE TABLE training_rewinds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        root_session_id TEXT NOT NULL REFERENCES sessions(id),
+        source_session_id TEXT NOT NULL REFERENCES sessions(id),
+        child_session_id TEXT NOT NULL UNIQUE REFERENCES sessions(id),
+        source_revision INTEGER NOT NULL,
+        owner_role TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX idx_training_rewinds_root
+    ON training_rewinds(root_session_id, id);
+    """,
 )
 
 

@@ -1,7 +1,7 @@
 import type { ScenarioSummary, TrainingSetup, UiLanguage } from '../types'
 
 export const defaultTraining = (): TrainingSetup => ({
-  profile: 'concise_skeptical', relationship: 'first_meeting', shared_background: '', personal_detail: false,
+  profile: 'concise_skeptical', relationship: 'successful_history', player_name: 'Александр', shared_background: '', personal_detail: false,
   preparation: { target: '', unacceptable_result: '', available_trades: '', information_to_discover: '', targets: [] },
 })
 
@@ -33,6 +33,11 @@ export function TrainingSetupFields({ language, value, scenario, onChange }: {
           </select>
         </label>
       </div>
+      <label className="form-field">{text('Как собеседник обращается к вам', 'How the counterpart addresses you')}
+        <input maxLength={100} value={value.player_name}
+          onChange={event => onChange({ ...value, player_name: event.target.value })} />
+        <span className="field-note">{text('Имя используется только в диалоге и может быть пустым.', 'The name is used only in dialogue and can be empty.')}</span>
+      </label>
       <label className="form-field">{text('Что собеседник знает обо мне', 'What the counterpart knows about me')}
         <textarea rows={2} maxLength={800} value={value.shared_background}
           onChange={event => onChange({ ...value, shared_background: event.target.value })} />

@@ -21,8 +21,8 @@ def test_supply_agent_receives_publication_snapshot_and_contract_specific_instru
                         history=[], protocol_result=protocol)
     assert "pending_offer_publication" in protocol
     assert "observation" not in protocol and "private_state" not in protocol
-    assert "supply-agent-v1" in provider.instructions[0]
-    assert "Preliminary proposals are NEVER formal offers" in provider.instructions[0]
+    assert "supply-agent-v2" in provider.instructions[0]
+    assert "Preliminary proposals are never formal offers" in provider.instructions[0]
     assert "Подтверждаю окончательное предложение" in provider.instructions[0]
     assert "I confirm the final offer" in provider.instructions[0]
     assert "if/then conditional packages" not in provider.instructions[0]

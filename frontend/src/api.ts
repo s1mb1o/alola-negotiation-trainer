@@ -13,6 +13,7 @@ import type {
   UiLanguage,
   CoachingResult,
   TrainingComparison,
+  AssistedReplyResponse,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1'
@@ -149,6 +150,23 @@ export function requestCoaching(sessionId: string, token: string): Promise<Coach
 export function forkSession(sessionId: string, revision: number, idempotencyKey: string, token: string): Promise<SessionEnvelope> {
   return apiRequest(`/sessions/${encodeURIComponent(sessionId)}/fork`, {
     method: 'POST', token, body: JSON.stringify({ source_revision: revision, idempotency_key: idempotencyKey }),
+  })
+}
+
+export function rewindSession(sessionId: string, revision: number, idempotencyKey: string, token: string): Promise<SessionEnvelope> {
+  return apiRequest(`/sessions/${encodeURIComponent(sessionId)}/rewind`, {
+    method: 'POST', token, body: JSON.stringify({ source_revision: revision, idempotency_key: idempotencyKey }),
+  })
+}
+
+export function requestPlayerAssist(
+  sessionId: string,
+  revision: number,
+  idempotencyKey: string,
+  token: string,
+): Promise<AssistedReplyResponse> {
+  return apiRequest(`/sessions/${encodeURIComponent(sessionId)}/player-assist`, {
+    method: 'POST', token, body: JSON.stringify({ expected_revision: revision, idempotency_key: idempotencyKey }),
   })
 }
 

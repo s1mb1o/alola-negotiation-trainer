@@ -38,6 +38,10 @@ class ProseProvider:
         return Generation(text=text, provider="openai", model=self.config.model, latency_ms=1)
 
 
+class CharacterProvider(ProseProvider):
+    config = AgentModelConfig(provider="qwen", model="qwen-flash-character")
+
+
 def request(language="ru"):
     fallback = (
         "Какие условия вы хотите обсудить?" if language == "ru"
@@ -72,6 +76,78 @@ def test_novel_contextual_prose_passes_generation_and_grounding(language, reply)
     assert not result.fallback_used
     assert len(provider.calls) == 2
     assert request(language).dialogue_context[-1].text in provider.calls[0][0][0]["content"]
+
+
+def test_renderer_routes_generation_and_grounding_to_separate_providers():
+    dialogue = ProseProvider("Какие условия для вас сейчас важнее всего?")
+    grounding = ProseProvider("unused", '{"safe":true}')
+
+    result = LlmNpcDialogueRenderer(
+        dialogue,
+        grounding_provider=grounding,
+    ).render(request())
+
+    assert result.mode == "llm"
+    assert len(dialogue.calls) == 1
+    assert len(grounding.calls) == 1
+    assert "ENGINE_CHARACTER_PROFILE" in dialogue.calls[0][1]
+    assert "CANDIDATE_REPLY_JSON:" in grounding.calls[0][0][0]["content"]
+
+
+def test_character_renderer_uses_engine_speech_act_and_grounds_reply():
+    dialogue = CharacterProvider("unused")
+    dialogue.generate = lambda messages, instructions=None: Generation(
+        text=json.dumps({
+            "speech_act": "model_selected_another_act",
+            "model_selected_metadata": "ignored",
+            "reply": "Добрый день. Какое условие вы хотите обсудить первым?",
+        }),
+        provider="qwen",
+        model="qwen-flash-character",
+        latency_ms=1,
+    )
+    grounding = ProseProvider("unused", '{"safe":true}')
+
+    result = LlmNpcDialogueRenderer(
+        dialogue,
+        grounding_provider=grounding,
+    ).render(request())
+
+    assert result.mode == "llm"
+    assert result.text == "Добрый день. Какое условие вы хотите обсудить первым?"
+    assert len(grounding.calls) == 1
+
+
+def test_character_renderer_appends_public_history_as_chat_messages():
+    dialogue = CharacterProvider("Какие условия вы хотите обсудить первыми?")
+    grounding = ProseProvider("unused", '{"safe":true}')
+
+    result = LlmNpcDialogueRenderer(
+        dialogue,
+        grounding_provider=grounding,
+    ).render(request())
+
+    assert result.mode == "llm"
+    roles = [item["role"] for item in dialogue.calls[0][0]]
+    assert roles == ["user", "user"]
+    assert dialogue.calls[0][0][0]["content"] == request().dialogue_context[0].text
+    assert "APPROVED_RENDER_INPUT" in dialogue.calls[0][0][-1]["content"]
+
+
+def test_character_renderer_rejects_unslotted_relative_date_adjective():
+    dialogue = CharacterProvider("unused")
+    dialogue.generate = lambda messages, instructions=None: Generation(
+        text=json.dumps({"reply": "Обсудим условия сегодняшней поставки?"}),
+        provider="qwen",
+        model="qwen-flash-character",
+        latency_ms=1,
+    )
+
+    result = LlmNpcDialogueRenderer(dialogue).render(request())
+
+    assert result.fallback_used
+    assert result.failure_reason == "output_invalid"
+    assert result.validation_failure == "unauthorized_claim"
 
 
 @pytest.mark.parametrize("verdict", [

@@ -1,9 +1,31 @@
 # API Sketch
 
+## Required OpenAPI documentation (DR-37)
+
+The service MUST publish an OpenAPI 3.1 document at `/openapi.json` and interactive Swagger UI at `/docs`.
+The document MUST cover every implemented canonical REST operation under `/api/v1`.
+ReDoc at `/redoc` is optional.
+Each operation MUST document a stable unique `operationId`, parameters, request bodies, successful responses, and applicable errors.
+Schemas MUST describe required fields, optional fields, nullable values, enums, and validation limits.
+Protected operations MUST declare authentication schemes and security requirements.
+Descriptions MUST state actor access restrictions, disclosure rules, and applicable idempotency, revision, and confirmation rules.
+Representative examples MUST use synthetic data without real credentials or hidden session state.
+Swagger UI MUST preserve the same access controls and validation as other clients.
+
+The document MUST be generated from route declarations and typed API contracts.
+API changes MUST update the schema and relevant examples in the same change.
+Automated checks MUST validate OpenAPI conformance, canonical operation coverage, and unique operation IDs.
+Contract tests MUST verify representative successful and error responses against the documented schemas.
+Planned operations MUST NOT appear as implemented operations.
+Compatibility aliases MAY remain excluded.
+All 25 canonical operations now have typed response contracts and explicit operation IDs.
+The generated document declares participant and administrator Bearer security.
+See [DR-37](decisions/2026-09-24_openapi-documentation.md) for the acceptance rules and the [OpenAPI guide](openapi-guide.md) for usage and verification.
+
 ## Human training loop (DR-36)
 
 The training configuration MUST be restricted to one human and one built-in NPC in training mode.
-The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
+The configuration MUST pin profile, relationship, optional player name, shared background, private preparation, and rule versions.
 The engine MUST validate finite numeric targets against the scenario's scalar term grammar.
 Only an agreed complete deal MAY satisfy a deal-term target.
 Free-text goals MUST NOT receive invented completion percentages.
@@ -128,7 +150,8 @@ Difficulty and style MUST NOT change hidden truth, utility, hard constraints, or
 Benchmark sessions MUST use Normal difficulty and disabled assistance.
 
 Dialogue quality MUST remain separate from utility and agreement rate.
-Admin diagnostics MUST use public transcript, public renderer events, and bounded telemetry only.
+Admin Session Inspector diagnostics MUST use public transcript, public renderer events, and bounded telemetry only.
+The separate privileged LLM trace window follows DR-40 below.
 They MUST distinguish exact repetition, question repetition, latency, fallback rate, and categorized validation failures.
 Missing telemetry MUST remain unavailable rather than zero.
 Heuristics MUST NOT be presented as proof of relevance or factual correctness.
@@ -174,6 +197,11 @@ It includes grounded motives, style, and exchange candidates under DR-28.
 
 The session language selects participant-facing text.
 [DR-34](decisions/2026-09-23_prompt-language.md) requires English application-owned LLM instructions independently of that language.
+All application-owned LLM instructions and task templates MUST use STE-style English under [DR-43](decisions/2026-09-24_ste-system-prompts.md).
+Use short, active sentences with one instruction or idea per sentence.
+Use consistent terms and explicit references.
+Preserve exact identifiers, schema keys, source quotes, protocol phrases, and requirement keywords.
+The prompt style does not change the session language or API schemas.
 Russian task data and exact quotes remain Russian.
 
 When `NEGOTIATION_ADMIN_TOKEN` is configured, a `run_mode: benchmark` session requires the administrator Bearer credential on this request. The service returns HTTP `401` with `administrator_unauthorized` otherwise. Training sessions need no credential. This gate stops an unauthenticated client from adding a session to a declared benchmark run and re-sealing its reviews.
@@ -188,7 +216,10 @@ Version 4 retains that opening position and adds authored `dialogue_reasons`.
 
 Version 5 retains the economic rules and adds richer motives, stable styles, and bounded exchange candidates.
 
-Versions 2, 3, and 4 remain available through explicit-version requests.
+Version 6 adds an eight-week term to the authored opening position.
+It also adds an actor-safe `dialogue_strategy` for grounded opening and later dialogue wording.
+
+Versions 2, 3, 4, and 5 remain available through explicit-version requests.
 
 The session model uses participants and roles. It does not encode human and NPC as fixed domain seats.
 
@@ -281,9 +312,21 @@ The response preserves the partial active revision and does not create a pending
 
 The example above uses Normal difficulty.
 
-The built-in NPC greeting is stored at revision 0.
+The built-in NPC opening message is stored at revision 0.
 The human remains `next_actor` and makes the first live negotiation move.
-The greeting does not state offer terms or give advice.
+An older scenario version without `dialogue_strategy` uses the bounded relationship-aware greeting.
+When `training.relationship` is `successful_history`, that greeting can signal familiarity or collaboration.
+It does not invent details about previous negotiations.
+
+A scenario version with `dialogue_strategy` uses a grounded opening.
+The opening receives actor-safe shared context and `opening_goal`.
+It receives no private role brief, BATNA, utility value, hard constraint, or economic limit.
+The model output MUST contain the exact title, player-name, and public-position placeholders.
+The engine substitutes the exact values after validation.
+The model output MUST contain no other quantitative value.
+Provider failure uses a deterministic grounded fallback.
+The service completes provider I/O before the database write transaction.
+An idempotent create retry returns the stored opening without another provider call.
 
 An Easy human-versus-built-in-NPC session uses the same greeting:
 
@@ -307,15 +350,17 @@ An Easy human-versus-built-in-NPC session uses the same greeting:
 }
 ```
 
-This greeting is not a committed turn.
+This opening message is not a committed turn.
 
 It does not change the active offer or `next_actor`.
 
-It does not state the authored opening terms.
+An older scenario greeting does not state the authored opening terms.
+A grounded opening can state only the terms selected by `dialogue_strategy.opening_term_ids`.
 
 The service records it once as `npc.greeting.delivered`.
 
-The event payload contains `speech_act: greeting` and `substantive: false`.
+The event payload contains `speech_act: greeting` or `speech_act: grounded_opening`.
+It also contains `substantive: false`.
 
 The initial `offer.created` event contains the same `unresolved_required_terms` list as the active offer projection.
 
@@ -470,6 +515,21 @@ The request contains only the approved speech act, approved public terms, approv
 Retrieved wording examples are bounded and versioned.
 They do not authorize facts, terms, or actions.
 The durable render plan stores the selected examples for restart and replay.
+Under [DR-38](decisions/2026-09-24_context-gated-reply-rag.md), retrieval MAY use up to four additional patterns and bounded sentence fragments.
+Selection MUST take one reply per matching entry before additional variants and MUST deduplicate reply text.
+The four-example limit remains mandatory.
+An entry MAY require up to two current approved reasons. Each selected reply MUST contain each required reason text verbatim.
+An entry MAY require exact `personal_fact` or `relationship` values from the NPC-safe `training_context`.
+Player text and shared background MUST NOT satisfy these gates.
+Old plans MUST retain their stored examples when the corpus changes. Existing output checks remain mandatory.
+These internal gates do not add public API fields.
+Under [DR-39](decisions/2026-09-24_polite-topic-return.md), a recognized unrelated question without an approved personal fact MUST receive a polite acknowledgment and return to negotiation.
+The deterministic fallback MUST support this behavior without a model call and MUST be stored in the durable render plan.
+The engine MUST provide several fallback variants. It MUST prefer an unused variant in the recent NPC history, then the least recently used variant.
+The reply SHOULD restate the previous negotiation question or resume the current public topic.
+It MUST NOT invent or deny unknown personal facts, repeat historical prices, or imply agreement.
+Binding actions and mixed messages with negotiation content MUST retain their existing action handling.
+Existing output validators and disclosure gates remain mandatory. The public API schema does not change.
 
 The request does not contain a raw observation, raw scenario source, role brief, raw session state, counterparty-private state, utility weights, reservation utility, BATNA utility, authored knowledge truth, distractor truth notes, constraints, private event payloads, reviews, participant credentials, provider credentials, or a list of forbidden secrets.
 
@@ -647,7 +707,10 @@ The service MUST NOT parse generated NPC prose back into negotiation state.
 
 Provider output cannot create or change a structured action, offer revision, binding term, disclosure permission, or terminal transition.
 
-`opening_offer`, `opening_position`, `offer_acceptance`, `offer_rejection`, and `complete_counteroffer` bypass the provider.
+Binding `opening_offer`, `opening_position`, `offer_acceptance`, `offer_rejection`, and `complete_counteroffer` messages bypass the provider.
+
+A DR-50 revision-zero grounded opening can use the dialogue provider for wording.
+The engine substitutes every exact value after deterministic validation.
 
 Each binding message uses the canonical deterministic template and canonical engine-approved terms.
 
@@ -698,6 +761,20 @@ OpenAI rendering defaults to `gpt-5.6-luna`.
 Qwen rendering defaults to `qwen3.8-max` and the QwenCloud Token Plan endpoint.
 
 The service does not send `temperature` when `NEGOTIATION_NPC_TEMPERATURE` is empty.
+
+The optional `NEGOTIATION_CONTROL_*` profile selects the model for grounding, social classification, and semantic extraction.
+
+The optional `NEGOTIATION_REVIEW_*` profile selects the model for final coaching.
+
+An unset control profile reuses the NPC dialogue provider.
+
+An unset review profile reuses the control provider.
+
+The selected live launcher uses QwenCloud Pay-as-you-go with `qwen-flash-character`, `DeepSeek-V4-Flash-0731`, and `Qwen3.8-Max`.
+
+The control and review profiles MAY set `ENABLE_THINKING` to `true` or `false`.
+
+The diagnostics trace reports the configured `enable_thinking` value for each call.
 
 ### Clarification response
 
@@ -842,6 +919,49 @@ The projection may contain confidence or the configured `UNKNOWN`, `PARTIAL_SIGN
 
 It does not expose `RealityState` or another participant's private belief state.
 
+An active training owner receives the following actor-safe extension under [DR-45](decisions/2026-09-26_live-social-indicators.md):
+
+```json
+{
+  "training": {
+    "version": "human-training-v1",
+    "profile": "sociable",
+    "relationship": "successful_history",
+    "player_name": "Александр",
+    "shared_background": "Мы успешно завершили предыдущую поставку.",
+    "personal_detail": true,
+    "preparation": {
+      "target": "Согласовать приемлемую цену.",
+      "unacceptable_result": "",
+      "available_trades": "",
+      "information_to_discover": "",
+      "targets": []
+    },
+    "social_state": {
+      "values": {
+        "rapport": 58,
+        "credibility": 70,
+        "tension": 10,
+        "patience": 80
+      },
+      "delta": {
+        "rapport": 3,
+        "credibility": 0,
+        "tension": 0,
+        "patience": 0
+      },
+      "source_revision": 1
+    }
+  }
+}
+```
+
+Each value is an integer from 0 through 100.
+Each delta is the aggregate engine-applied change from the latest newly processed player revision.
+The service returns zero deltas when that revision applies no change.
+The service omits `preparation` and `social_state` when the authenticated participant is not the training owner.
+The projection does not contain classifier events, evidence excerpts, or hidden event history.
+
 An active participant receives the `active_player` projection.
 
 A completed training participant may receive the configured `training_review` projection.
@@ -921,6 +1041,58 @@ A forked session is not eligible as an independent benchmark trial.
 
 ---
 
+## Rewind and player-side reply assistance
+
+Status: implemented for the owner of a human-versus-NPC training session under DR-48.
+
+```http
+POST /sessions/{id}/rewind
+POST /sessions/{id}/player-assist
+```
+
+The rewind request uses the fork request schema:
+
+```json
+{
+  "idempotency_key": "rewind_01J...",
+  "source_revision": 4
+}
+```
+
+`source_revision` MUST identify a stored built-in-NPC message and an immutable checkpoint.
+The service creates a child session.
+The source session remains unchanged.
+The child restores the checkpoint session row, structured state, offers, transcript, and events.
+The child excludes all later history.
+The initial response contains fresh participant credentials.
+
+One root training lineage permits three rewinds.
+The count applies across all descendants.
+An idempotent replay does not consume another attempt.
+An idempotent replay does not return credentials again.
+The owner observation includes `training.rewind.limit`, `used`, `remaining`, `available`, and `eligible_source_revisions`.
+
+The player-side assistance request is:
+
+```json
+{
+  "idempotency_key": "player_assist_01J...",
+  "expected_revision": 8
+}
+```
+
+The operation requires an active training session, the owner credential, the player turn, and the exact current revision.
+The operation does not change session state.
+The provider receives only the authenticated player projection and the owner's private preparation.
+It does not receive hidden NPC state, credentials, raw events, or counterpart private data.
+The service rejects malformed output, credential-like content, executable content, and binding protocol controls.
+The client submits the returned `message` through the normal message operation.
+The parser and engine remain authoritative.
+The current live route uses the configured review provider and `Qwen3.8-Max`.
+Benchmark sessions cannot use either operation.
+
+---
+
 ## Administrative close
 
 ```http
@@ -938,6 +1110,62 @@ A participant ends negotiations through a natural-language `walk_away` intent on
 Agreement, expiry, and terminal technical failure use engine-owned transitions.
 
 ---
+
+## LLM trace window (DR-40 / DR-41 / DR-44)
+
+The service MUST provide a separate diagnostics page at `/llm-debug`.
+The local page MUST load traces without a credential or sign-in step.
+Under [DR-42](decisions/2026-09-24_llm-debug-links.md), `/llm-debug#<trace_id>` MUST address one trace.
+Instructions, each input message, and the response MUST have section links under that fragment.
+Direct navigation, reload, and browser history MUST restore selection. Polling MUST preserve it.
+An unavailable trace MUST show an explicit message. The page MUST NOT substitute another record.
+Links MUST contain only an opaque trace ID and an optional section ID. Trace retention and access rules remain unchanged.
+Under [DR-41](decisions/2026-09-24_local-llm-debug-access.md), both trace endpoints MUST allow a loopback client using a loopback host without authentication.
+A supplied `Origin` MUST match the API origin for this exemption.
+Other requests MUST require the administrator Bearer credential. Participant credentials MUST NOT replace that credential.
+The exemption MUST NOT apply to other administrator or Player API operations. The Player API MUST NOT include traces.
+
+```http
+GET /api/v1/admin/llm-traces?session_id=sess_example&limit=100
+GET /api/v1/admin/llm-traces/{trace_id}
+```
+
+The list accepts an optional `session_id` and a `limit` from 1 through 200.
+The list returns `enabled`, `capacity`, `capacity_bytes`, and summaries in reverse start order.
+The detail returns complete redacted instructions, message input, response text, parameters, and safe telemetry.
+Under [DR-44](decisions/2026-09-25_complete-llm-requests.md), the detail MUST include `requests` captured at the provider transport boundary.
+Each request MUST include `attempt`, `method`, `url`, `headers`, `body`, and `timeout_seconds`.
+The `body` MUST contain the complete provider JSON payload after adapter serialization.
+Capture each retry separately. Do not reconstruct the payload from renderer input.
+The page MUST provide `/llm-debug#<trace_id>/request-0` and corresponding links for later attempts.
+The configured parameters include `seed` and `retry_backoff_seconds`.
+The request body shows which parameters the adapter actually sends.
+An empty `requests` array means that no transport attempt was captured.
+The compatibility fields `request_truncated` and `response_truncated` remain false for new records.
+Call status is `running`, `completed`, or `error`. A completed provider call can still fail output validation.
+Missing or evicted records return `404`. Administrator authentication errors remain `401` and `503`.
+
+Capture MUST require `NEGOTIATION_LLM_TRACE=true`. It MUST NOT require an administrator credential.
+The recorder MUST exclude benchmark calls.
+The recorder MUST redact known credentials before storage.
+It MUST mask credential header values and MUST NOT store raw provider exception messages.
+The recorder MUST NOT truncate retained prompts, messages, request bodies, or response text.
+The recorder MUST keep at most 200 records and 64 MiB of serialized trace data in process memory.
+It MUST evict complete records in start order when either limit is exceeded.
+An oversized record is evicted. It MUST NOT appear as a complete but shortened request.
+The recorder MUST NOT write trace contents to disk.
+Observation MUST NOT mutate outgoing requests. Observer errors MUST NOT interrupt negotiation.
+Concurrent calls MUST retain separate trace contexts.
+Trace responses MUST use `Cache-Control: no-store`.
+The API MUST document both operations in OpenAPI.
+The trace window MUST NOT change session history or engine decisions.
+
+The implemented scope is provider calls associated with existing training-session HTTP requests.
+Traces can contain private model context. They are a local development or authenticated administrator view.
+Records disappear on restart. Earlier traffic is not reconstructed.
+Application context limits still apply before submission. The trace adds no earlier session messages.
+Provider-internal instructions and HTTP-library-generated headers are outside this trace.
+See [DR-40](decisions/2026-09-24_llm-debug-window.md) and [the usage guide](llm-debug-guide.md).
 
 ## Administrative Session Inspector
 
@@ -1150,7 +1378,12 @@ The `opening_kind` metadata field is `opening_offer` or `opening_position`.
 
 The source document conforms to `schemas/scenario-v1.schema.json`.
 
-New versions MAY define `exchange_policy.candidate_values` and role `conversation_style`.
+New versions MAY define `exchange_policy.candidate_values`, role `conversation_style`, and an opening-role `dialogue_strategy`.
+`dialogue_strategy` MUST contain `shared_context`, `opening_goal`, `conversation_goal`, and `opening_term_ids`.
+It MAY contain `successful_history_context`.
+Every `opening_term_ids` item MUST identify a term in the same authored opening artifact.
+Strategy text MUST be bounded nonnumeric text.
+The compiler MUST reject `dialogue_strategy` on a non-opening role.
 The exchange grid MUST contain between two and 12 required terms, including `price` or `annual_rent`.
 Each term MUST have between one and 16 distinct finite numeric values that pass its authored schema.
 The complete candidate product MUST contain at most 512 packages.

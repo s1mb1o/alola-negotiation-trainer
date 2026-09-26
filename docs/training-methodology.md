@@ -128,6 +128,11 @@ They are not evidence of skill demonstrated in the current attempt.
 Comparisons between attempts MUST report differences in the initial background and assistance.
 
 All application-owned LLM instructions and task templates MUST be written in English.
+All application-owned LLM instructions and task templates MUST use STE-style English.
+Use short, active sentences with one instruction or idea per sentence.
+Use consistent terms and explicit references.
+Preserve exact identifiers, schema keys, source quotes, protocol phrases, and requirement keywords.
+See [DR-43](decisions/2026-09-24_ste-system-prompts.md).
 The MVP player-facing dialogue, hints, and final review MUST be in Russian.
 Russian messages, quotes, authored text, and examples MAY remain in their original language as clearly separated task data.
 See [DR-34](decisions/2026-09-23_prompt-language.md).
@@ -194,6 +199,14 @@ Try to trade payment flexibility for something valuable to you.
 Show facts and probable interests.
 
 Show one case-specific NPC greeting before the human's first turn.
+
+Use a neutral greeting for `first_meeting`.
+
+For `successful_history`, use one bounded template that signals prior familiarity or collaboration.
+
+Select the template with a stable session-scoped digest.
+
+Do not invent details about previous negotiations.
 
 Do not include deal terms or negotiation advice in the greeting.
 

@@ -1,5 +1,20 @@
 # MVP Plan
 
+## OpenAPI release gate (DR-37)
+
+The MVP MUST publish an OpenAPI 3.1 document at `/openapi.json` and interactive Swagger UI at `/docs`.
+The document MUST cover every implemented canonical REST operation under `/api/v1`.
+The document MUST describe requests, successful responses, errors, authentication, and actor access restrictions.
+API changes MUST update the schema and relevant examples in the same change.
+Release checks MUST validate OpenAPI conformance, operation coverage, and unique operation IDs.
+Contract tests MUST verify representative successful and error responses against the documented schemas.
+Examples MUST use synthetic data without real credentials or hidden session state.
+Swagger UI MUST use the same access controls and validation as other clients.
+The detailed requirements are defined in [DR-37](decisions/2026-09-24_openapi-documentation.md) and the [API specification](api.md).
+The implementation covers all 25 canonical operations with typed responses and contract checks.
+See the [OpenAPI guide](openapi-guide.md) for verification commands and extension-point boundaries.
+Registered documentation routes do not satisfy this gate alone.
+
 ## Human training loop (DR-36)
 
 The opt-in human training flow MUST support private preparation, pinned shared background, bounded social state, actor-safe LLM review, checkpoint retry, and observed outcome comparison.
@@ -9,7 +24,7 @@ Model failure MUST preserve the deterministic report and committed state.
 The exact contracts and release rules are defined in [DR-36](decisions/2026-09-24_training-loop.md).
 
 The training configuration MUST be restricted to one human and one built-in NPC in training mode.
-The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
+The configuration MUST pin profile, relationship, optional player name, shared background, private preparation, and rule versions.
 The engine MUST validate finite numeric targets against the scenario's scalar term grammar.
 Only an agreed complete deal MAY satisfy a deal-term target.
 Free-text goals MUST NOT receive invented completion percentages.
@@ -20,6 +35,11 @@ The engine MUST apply validated changes once per committed revision.
 Positive relationship events MUST have cumulative caps.
 Classification failure MUST leave social state unchanged.
 Social values MUST NOT override economic acceptability or binding-confirmation rules.
+
+The Web UI MUST show the current four-axis social projection to the training owner under [DR-45](decisions/2026-09-26_live-social-indicators.md).
+The indicators MUST use a 0–100 meter and a matching current number.
+They MUST show the signed latest-message delta separately.
+The Player API MUST omit this projection for other participants.
 
 Coaching MUST require an explicit authenticated request after session termination.
 The reviewer MUST receive only the owner's permitted evidence, preparation, and economic baseline.
@@ -85,9 +105,14 @@ The [delivery plan](plans/05_reference-supply-and-generalization.md) records sta
 ## Prompt language and initial player background
 
 All application-owned LLM instructions and task templates MUST be written in English.
+All application-owned LLM instructions and task templates MUST use STE-style English.
+Use short, active sentences with one instruction or idea per sentence.
+Use consistent terms and explicit references.
+Preserve exact identifiers, schema keys, source quotes, protocol phrases, and requirement keywords.
 The MVP player-facing dialogue, hints, and final review MUST be in Russian.
 Russian messages, quotes, authored text, and examples MAY remain in their original language as clearly separated task data.
-See [DR-34](decisions/2026-09-23_prompt-language.md). Runtime prompt coverage remains unaudited.
+See [DR-34](decisions/2026-09-23_prompt-language.md) for the language rule.
+See [DR-43](decisions/2026-09-24_ste-system-prompts.md) for the runtime prompt migration.
 
 The scenario or authorized training setup MUST allow explicit player background known to the NPC.
 The session MUST pin the validated background and its visibility at creation.
@@ -246,9 +271,18 @@ Implement:
 Acceptance:
 
 - benchmark sessions cannot request hints;
-- a human-versus-built-in-NPC training session starts with one replayable NPC greeting;
-- the greeting refers to the public case title and does not state terms or give advice;
-- the greeting does not change the session revision, round, turn count, offer, or `next_actor`;
+- a human-versus-built-in-NPC training session starts with one replayable NPC opening message;
+- a scenario version without `dialogue_strategy` uses the bounded relationship-aware greeting;
+- a scenario version with `dialogue_strategy` can state only engine-formatted terms selected from the authored opening artifact;
+- the grounded opening uses actor-safe shared context and asks one question that advances `opening_goal`;
+- `successful_history` can add only the authored successful-history context;
+- the model cannot invent previous terms, current terms, concessions, commitments, or agreements;
+- the opening message does not change the session revision, round, turn count, offer, or `next_actor`;
+- later NPC wording answers the player first and then uses `conversation_goal` as direction only;
+- an active training session can branch from an eligible earlier NPC-message checkpoint;
+- one root lineage permits three rewinds and cannot restore the spent count from a checkpoint;
+- player-side reply assistance uses only actor-safe context and does not change state directly;
+- assisted text passes through the normal parser and engine as a player message;
 - an Easy training session with an external-agent next actor retains the canonical presentation of authored public opening terms;
 - an LLM may paraphrase visible distractor text but cannot invent facts;
 - the exact rendered assistance content can be replayed.

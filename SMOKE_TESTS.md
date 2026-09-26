@@ -1,5 +1,136 @@
 # Smoke Tests
 
+## Bounded dialogue rewind and player-side assistance — DR-48
+
+- Run `pytest backend/tests/test_training_loop.py backend/tests/test_openapi.py`.
+- Run `npm test` and `npm run build` in `frontend/`.
+- Start an active human-versus-NPC training session. Send enough messages to receive two NPC replies.
+- Select **Вернуться сюда** under the first NPC reply. Check that the UI opens a new session with a fresh participant credential.
+- Check that all later messages, offers, pending protocol state, and social changes disappear.
+- Check that the selected checkpoint transcript, structured state, and offer state match the source point.
+- Repeat the same request envelope. Check that it returns the same child and does not consume another attempt.
+- Rewind from a child. Check that the root-lineage count increases.
+- Use all three attempts. Check that every eligible rewind action is disabled and a fourth API request returns `rewind_limit_exhausted`.
+- Select **Ответь за меня** on the player turn. Check a `player_assist` record in `/llm-debug`.
+- Check that the provider input contains the actor-safe brief, private preparation, and public history.
+- Check that the provider input contains no NPC private state, credential, or raw event payload.
+- Check that the generated text is sent through `POST /messages` with the current revision.
+- Return a final acceptance, final publication, or walk-away control from a fixture provider. Check that the service rejects it without changing the revision.
+- Check Russian and English labels, keyboard focus, narrow layout, light theme, and dark theme.
+
+## Relationship-aware opening greetings — DR-47
+
+- Run `pytest backend/tests/test_easy_opening_dialogue.py`.
+- Start several training sessions with `relationship: successful_history`.
+- Open the new-session form. Check that **Успешные сделки в прошлом** is selected by default.
+- Check that the Russian greeting uses varied wording and signals prior familiarity.
+- Check that the greeting contains the public scenario title.
+- Check that it contains no deal term or invented detail about a previous negotiation.
+- Repeat a create request with the same idempotency key. Check that the greeting does not change or duplicate.
+- Start a session with `relationship: first_meeting`. Check the neutral greeting.
+- Restore an older session. Check that its stored relationship and greeting do not change.
+
+## Grounded goal-directed dialogue — DR-50
+
+- Run `pytest backend/tests/test_grounded_goal_dialogue.py`.
+- Compile `supplier_001` version 6 and `freight_contract_ru` version 4.
+- Start supplier version 6 with a human buyer, a built-in seller, `successful_history`, and `player_name: Александр`.
+- Check that the revision-zero message contains the exact player name, `120 000 €`, and `8 недель`.
+- Check that the message does not state a prepayment value because the opening position omits this term.
+- Check that the message uses the authored production-load explanation and asks one relevant question.
+- Check that revision, round, substantive-turn count, active offer, and `next_actor` stay unchanged.
+- Repeat the create request with the same idempotency key. Check that no second opening render occurs.
+- Inspect `/llm-debug`. Check that generation receives tokens and does not receive the exact title or public numeric values.
+- Send a direct question about the NPC position. Check that the reply answers it before advancing `conversation_goal`.
+- Stop the provider. Check that the deterministic grounded fallback contains the same exact public terms.
+- Attempt to compile a strategy with a private numeric limit or a term absent from the opening artifact. Check that compilation fails.
+- Check the same rules in an English session.
+- Check that the human remains `next_actor` at revision 0.
+
+## Live social indicators — DR-45
+
+- Run `pytest backend/tests/test_training_loop.py backend/tests/test_openapi.py`.
+- Run `npm test -- --run src/__tests__/SocialIndicators.test.tsx` in `frontend/`.
+- Start a training session. Check four indicators at the bottom of the right column.
+- Check that each 0–100 number matches its marker position.
+- Check that each latest-message change has a separate `Δ` label.
+- Send a message with one validated social event. Check the signed changes against the stored internal event.
+- Send a neutral message. Check that all displayed changes become zero while the current values remain unchanged.
+- Repeat the previous request with the same idempotency key. Check that the delta does not change.
+- Restore the session. Check that the same values and last delta appear.
+- Check Russian and English labels, narrow layout, light theme, dark theme, and accessible meter values.
+- Authenticate as a participant that does not own the training configuration. Check that `social_state` is absent.
+
+## Complete outgoing LLM requests — DR-44
+
+- Run `pytest backend/tests/test_llm_trace.py backend/tests/test_openapi.py clients/tests/test_providers.py`.
+- Run `node --test backend/tests/llm-debug-navigation.test.cjs`.
+- Inspect a new trace. Compare the full request body with the fixture transport input.
+- Check the system prompt, all messages, context fields, retrieved examples, URL, headers, and generation parameters.
+- Check content beyond the earlier 16,000, 64,000, and 32,000 character limits.
+- Check more than 32 messages and separate request links for retries.
+- Check credential masking, whole-record eviction, and concurrent session isolation.
+- Check that an observer failure does not change the request or interrupt generation.
+
+## STE-style system instructions — DR-43
+
+- Run `pytest backend/tests clients/tests benchmarks/tests`.
+- Review the scalar, supply, extraction, social, coaching, and external-agent prompts.
+- Check short, active sentences and consistent terms.
+- Compare the rules with their previous versions. Check engine authority and untrusted-data boundaries.
+- Check exact Russian protocol phrases and the requested output language.
+- In a new training call, inspect **Инструкции модели** in `/llm-debug`. Check the new English wording.
+- Check that historical traces retain their original request text while the trace remains available.
+- Do not use fixture test results as evidence of live model quality or formal STE compliance.
+
+## Addressable LLM messages — DR-42
+
+- Run `node --test backend/tests/llm-debug-navigation.test.cjs` after installing the frontend dependencies.
+- Select a trace. Check that the URL contains its `trace_id` and that the card is an ordinary link.
+- Open an older trace by its direct URL. Reload it. Check that the newest trace does not replace it.
+- Open the instruction, input message, and response section links. Check that the selected section expands.
+- Use browser Back and Forward. Check the selected trace and section.
+- Inspect an expired or nonexistent trace link. Check the explicit unavailable message and unchanged URL.
+- Start a delayed request and select another trace before it finishes. Check that the previous response cannot replace the current selection.
+
+## Topic returns and LLM diagnostics — DR-39 / DR-40
+
+- Start a session with personal details disabled. Ask «Как зовут вашу собаку?». Repeat the question. Check a polite return to negotiation with different wording.
+- Force a provider failure in the fixture tests. Check the same behavior and unchanged economic terms.
+- Enable the authored dog fact. Check that the model still receives it. Ask a mixed personal and commercial question. Check that the commercial action remains intact.
+- Run `pytest backend/tests/test_dialogue_redirect.py backend/tests/test_llm_trace.py backend/tests/test_openapi.py`.
+- Open `/llm-debug` in a separate window. Check that its public shell contains no trace data or credentials.
+- Open the loopback LLM page without a credential. Check that the journal loads immediately and the sign-in form stays hidden. Send a new training message. Check running and completed calls, instructions, input, response, timing, and errors.
+- Check the session filter, automatic refresh, manual refresh, logout, light theme, and dark theme.
+- Check that remote and foreign-origin trace requests require an administrator credential. Check that other administrator endpoints retain authentication. Check `Cache-Control: no-store` and OpenAPI schemas.
+- Restart the API. Check that the trace buffer is empty and the session history is unchanged.
+- Check that benchmark calls create no trace. Check that a model response with `safe: false` remains distinguishable from a provider exception.
+
+## Brief at the start of the dialogue
+
+- Start a training session. Check that **Ваш бриф** appears before the NPC greeting and remains in view before the first player message.
+- Check the summary, objective, context, BATNA, limits, and priorities against the authenticated player's observation.
+- Check that the separate **Ваш контекст** panel is absent. Check that additional scenario context remains in the opening brief.
+- Check that offers, the private plan, and assistance appear beside the dialogue on wide screens and below it on narrow screens.
+- Send a message. Check that the dialogue scrolls to the latest reply and does not submit the brief as a message.
+- Restore a session and open a completed transcript. Check that the brief is available at the top without changing the message count.
+- Check Russian and English labels. Check that the card uses the current light or dark theme.
+
+## OpenAPI documentation — DR-37 acceptance target
+
+Run `uv run pytest backend/tests/test_openapi.py` for the implemented automated checks.
+The suite covers all 25 canonical operations. The shared backend client also validates response contracts during regression tests.
+
+- Fetch `/openapi.json`. Validate the document against its declared OpenAPI version.
+- Open `/docs`. Verify that Swagger UI loads the schema and displays the canonical `/api/v1` operations.
+- Compare the schema with registered canonical operations. Verify unique operation IDs.
+- Check request fields, response fields, validation limits, and applicable error schemas.
+- Check declared authentication schemes and protected-operation security requirements.
+- Execute a protected operation without a credential. Verify rejection by the normal API access controls.
+- Execute representative requests with a permitted test credential. Validate successful and error responses against the documented schemas.
+- Check actor restrictions and applicable idempotency, revision, and confirmation descriptions.
+- Check synthetic examples for real credentials and hidden session state.
+
 ## Human training loop — 2026-09-24
 
 - Run `pytest backend/tests/test_training_loop.py clients/tests/test_training.py`.
@@ -18,12 +149,15 @@
 
 See the [implementation guide](docs/human-training-guide.md) for configuration, formulas, and limits.
 
-## Selected QwenCloud Token Plan launcher
+## Selected QwenCloud Pay-as-you-go launcher
 
 - Run `/bin/zsh -n scripts/run-qwen-api.zsh` to check shell syntax.
 - Run `/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh --help'` from the project root. Confirm that Uvicorn help appears without printing a credential or starting the service.
 - After verifying the existing API process and restarting it with the launcher, check `http://127.0.0.1:8172/api/v1/health`.
-- Confirm that the configuration uses `qwen3.8-max`, the Token Plan endpoint, and `QWENCLOUD_TOKEN_PLAN_API_KEY`. Do not print the key value.
+- Confirm that NPC wording uses `qwen-flash-character`.
+- Confirm that turn control uses `deepseek-v4-flash-0731` with thinking disabled.
+- Confirm that final coaching uses `qwen3.8-max` with thinking disabled.
+- Confirm that all three routes use the Pay-as-you-go endpoint and `QWENCLOUD_PAYGO_API_KEY`. Do not print the key value.
 
 ## Implementation status — 2026-09-07
 
@@ -161,6 +295,25 @@ No live-model naturalness or model ranking is claimed.
 - Verify that the Web UI and CLI use the same Player API.
 - Run one human participant and one external-agent participant through the same natural-language message flow.
 - Verify that neither participant can submit a typed public action.
+
+### Windowed CLI
+
+- Start `play` in an interactive terminal that is at least 72 columns by 16 rows.
+- Verify that the conversation, offer panel, and message input appear without a credential.
+- Verify that the conversation starts with the pinned public scenario title, your objective, and your context.
+- Verify that the built-in NPC greets the human with the case title and no terms or negotiation advice.
+- Start as buyer and seller. Verify that the human is `next_actor` at revision 0 in both sessions.
+- Switch the right panel with `Tab`. Scroll the conversation with `Page Up` and `Page Down`.
+- Start `play --debug`. Verify that a lower-right pane shows revision, round, next actor, pending state, and public NPC action metadata.
+- Toggle the debug pane with `F3` or `/debug`. Scroll it with `F7` and `F8`. Verify that credentials and private NPC state never appear.
+- Send a Russian message. Verify that the conversation and session revision update.
+- Request a hint with `/hint` in a session with hints enabled. Verify that the coaching panel updates.
+- Reach an offer confirmation. Verify that the window shows the exact offer revision and full terms.
+- Change the offer before confirmation. Verify that the CLI refuses to confirm the stale revision.
+- Run `play --plain`. Verify that the line-oriented JSON interface still works.
+- In a 256-color terminal with ANSI color 0 mapped to gray, verify that both empty cells and ordinary text use fixed black color 16.
+- Verify distinct speaker, border, and heading colors.
+- With a light monochrome terminal, verify reverse video gives the interface a dark background.
 
 ### Easy opening dialogue
 
@@ -721,3 +874,13 @@ The CLI does not call a model provider.
 - Verify that no English labels remain ("Session Inspector", "Review", "Benchmark", "Participant Seller", "MESO" alone).
 - Complete a session and open the review.
 - Verify that each key moment shows a quoted message and that a recommendations list is present.
+
+## Retrieved few-shot replies
+
+- Run `.venv/bin/python -m backend.reply_rag_smoke`. Check that it prints four cases and makes no provider call.
+- Run the same module with `--mode offline --max-provider-calls 16 --output <new-path>`. Check both arms for every case.
+- Enable the NPC personal detail in a SaaS training session. Ask `Как зовут вашу собаку?`. Check the reply against the authored fact.
+- Disable the personal detail in a new session. The retrieved examples MUST NOT supply the dog fact.
+- Ask about advance payment and launch. Retrieved explanations MUST require the current engine-approved reason texts.
+- Reopen a stored render plan from library version 1. Its selected examples MUST remain unchanged.
+- For an authorized live comparison, use `--mode live` with the same bound. Review delivered replies separately from fallback and latency.

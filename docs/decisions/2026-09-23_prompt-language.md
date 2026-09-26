@@ -5,8 +5,9 @@ Status: accepted requirement. Runtime task instructions audited on 2026-09-24.
 
 The audit covered scalar and supply generation, grounding, supply extraction, social classification, final coaching, and the external agent.
 The remaining Russian instruction paragraph in the external-agent template was migrated to English.
-The external-agent prompt version is `natural-language-agent-v4`.
+That migration used external-agent prompt version `natural-language-agent-v4`.
 Exact Russian protocol phrases and authored examples remain task data.
+The later STE-style migration and current prompt versions are recorded in [DR-43](2026-09-24_ste-system-prompts.md).
 
 ## Decision
 

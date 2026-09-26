@@ -7,7 +7,13 @@ import pytest
 
 from backend.app.coaching import generate_coaching
 from backend.app.dialogue import template_dialogue_result, build_safe_render_input
-from backend.app.training import TrainingSetup, initialize_training, apply_social, classify_social
+from backend.app.training import (
+    TrainingSetup,
+    apply_social,
+    classify_social,
+    initialize_training,
+    training_observation,
+)
 from .conftest import bearer, create_payload
 
 
@@ -72,7 +78,13 @@ def test_private_preparation_social_once_and_renderer_context(client):
     with service.database.read_connection() as connection:
         state = json.loads(connection.execute("SELECT state_json FROM sessions WHERE id = ?", (session["session_id"],)).fetchone()[0])
     assert state["training"]["social"]["rapport"] == 58
-    assert "social" not in after["observation"]["training"]
+    social_state = after["observation"]["training"]["social_state"]
+    assert social_state == {
+        "values": {"rapport": 58, "credibility": 70, "tension": 10, "patience": 80},
+        "delta": {"rapport": 3, "credibility": 0, "tension": 0, "patience": 0},
+        "source_revision": 1,
+    }
+    assert repeated["observation"]["training"]["social_state"] == social_state
 
 
 def test_target_validation_and_benchmark_gate(client):
@@ -140,6 +152,13 @@ def test_fork_exact_checkpoint_fresh_auth_history_and_comparison(client):
     checkpoint_revision = session["revision"]
     before = client.get(f"/api/v1/sessions/{first_id}", headers=bearer(old_token)).json()
     session = send(client, session, "Прекращаю переговоры.", "exit")
+    terminal_rewind = client.post(
+        f"/api/v1/sessions/{first_id}/rewind",
+        headers=bearer(old_token),
+        json={"source_revision": checkpoint_revision, "idempotency_key": "terminal-rewind"},
+    )
+    assert terminal_rewind.status_code == 409
+    assert terminal_rewind.json()["error"] == "rewind_not_available"
     fork_body = {"source_revision": checkpoint_revision, "idempotency_key": "fork-once"}
     response = client.post(f"/api/v1/sessions/{first_id}/fork", headers=bearer(old_token), json=fork_body)
     assert response.status_code == 201, response.text
@@ -161,6 +180,150 @@ def test_fork_exact_checkpoint_fresh_auth_history_and_comparison(client):
     assert "participant_utilities" not in compared["before"]
 
 
+def test_active_rewind_restores_exact_checkpoint_and_enforces_lineage_limit(client):
+    session = create(client, "rewind-active")
+    root_id = session["session_id"]
+    root_token = session["participant_token"]
+    session = send(client, session, "Здравствуйте!", "rewind-hello")
+    source_revision = session["revision"]
+    checkpoint = client.get(
+        f"/api/v1/sessions/{root_id}", headers=bearer(root_token)
+    ).json()
+    session = send(client, session, "Какие условия для вас важны?", "rewind-question")
+
+    body = {"source_revision": source_revision, "idempotency_key": "rewind-one"}
+    response = client.post(
+        f"/api/v1/sessions/{root_id}/rewind",
+        headers=bearer(root_token),
+        json=body,
+    )
+    assert response.status_code == 201, response.text
+    child = response.json()
+    assert child["revision"] == source_revision
+    assert child["participant_token"] != root_token
+    assert [
+        {key: value for key, value in message.items() if key != "participant_id"}
+        for message in child["observation"]["conversation"]
+    ] == [
+        {key: value for key, value in message.items() if key != "participant_id"}
+        for message in checkpoint["observation"]["conversation"]
+    ]
+    assert [
+        {
+            key: value
+            for key, value in offer.items()
+            if key != "proposer_participant_id"
+        }
+        for offer in child["observation"]["active_offers"]
+    ] == [
+        {
+            key: value
+            for key, value in offer.items()
+            if key != "proposer_participant_id"
+        }
+        for offer in checkpoint["observation"]["active_offers"]
+    ]
+    assert child["observation"]["training"]["social_state"] == checkpoint["observation"]["training"]["social_state"]
+    assert child["observation"]["training"]["rewind"] == {
+        "limit": 3,
+        "used": 1,
+        "remaining": 2,
+        "available": True,
+        "eligible_source_revisions": [0],
+    }
+
+    repeated = client.post(
+        f"/api/v1/sessions/{root_id}/rewind",
+        headers=bearer(root_token),
+        json=body,
+    ).json()
+    assert repeated["session_id"] == child["session_id"]
+    assert "participant_token" not in repeated
+    root_status = client.get(
+        f"/api/v1/sessions/{root_id}", headers=bearer(root_token)
+    ).json()["observation"]["training"]["rewind"]
+    assert root_status["used"] == 1
+
+    second = client.post(
+        f"/api/v1/sessions/{child['session_id']}/rewind",
+        headers=bearer(child["participant_token"]),
+        json={"source_revision": 0, "idempotency_key": "rewind-two"},
+    ).json()
+    assert second["observation"]["training"]["rewind"]["used"] == 2
+    current = client.post(
+        f"/api/v1/sessions/{root_id}/rewind",
+        headers=bearer(root_token),
+        json={"source_revision": source_revision, "idempotency_key": "rewind-three"},
+    ).json()
+    assert current["observation"]["training"]["rewind"]["used"] == 3
+    exhausted = client.post(
+        f"/api/v1/sessions/{current['session_id']}/rewind",
+        headers=bearer(current["participant_token"]),
+        json={"source_revision": 0, "idempotency_key": "rewind-four"},
+    )
+    assert exhausted.status_code == 409
+    assert exhausted.json()["error"] == "rewind_limit_exhausted"
+
+
+def test_player_assist_is_read_only_actor_safe_and_idempotent(client):
+    session = create(client, "player-assist")
+    service = client.app.state.service
+    service.player_assist_provider = Provider(
+        [{"message": "Какие условия для вас наиболее важны?"}],
+        service.database,
+    )
+    url = f"/api/v1/sessions/{session['session_id']}"
+    request = {
+        "expected_revision": session["revision"],
+        "idempotency_key": "assist-once",
+    }
+
+    response = client.post(
+        url + "/player-assist",
+        headers=bearer(session["participant_token"]),
+        json=request,
+    )
+    assert response.status_code == 200, response.text
+    assisted = response.json()
+    assert assisted["message"] == "Какие условия для вас наиболее важны?"
+    unchanged = client.get(url, headers=bearer(session["participant_token"])).json()
+    assert unchanged["revision"] == session["revision"]
+    assert unchanged["observation"]["conversation"] == session["observation"]["conversation"]
+    assert len(service.player_assist_provider.calls) == 1
+    instructions, messages = service.player_assist_provider.calls[0]
+    assert "PRIVATE-GOAL" in messages[0]["content"]
+    assert "untrusted task data" in instructions
+
+    repeated = client.post(
+        url + "/player-assist",
+        headers=bearer(session["participant_token"]),
+        json=request,
+    ).json()
+    assert repeated == assisted
+    assert len(service.player_assist_provider.calls) == 1
+
+    sent = send(client, session, assisted["message"], "assist-send")
+    assert sent["revision"] > session["revision"]
+
+
+def test_player_assist_rejects_binding_control_without_state_change(client):
+    session = create(client, "player-assist-binding")
+    service = client.app.state.service
+    service.player_assist_provider = Provider([
+        {"message": "Подтверждаю принятие полного предложения без дополнительных условий."}
+    ])
+    url = f"/api/v1/sessions/{session['session_id']}"
+    response = client.post(
+        url + "/player-assist",
+        headers=bearer(session["participant_token"]),
+        json={"expected_revision": session["revision"], "idempotency_key": "assist-binding"},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"] == "player_assist_unavailable"
+    unchanged = client.get(url, headers=bearer(session["participant_token"])).json()
+    assert unchanged["revision"] == session["revision"]
+
+
 def test_social_schema_evidence_bounds_and_farming():
     setup = TrainingSetup(personal_detail=True)
     training = initialize_training(setup, "owner", {"terms": {"definitions": {}}}, lambda x: x)
@@ -177,6 +340,37 @@ def test_social_schema_evidence_bounds_and_farming():
     assert classify_social(provider, "Мне не подходит цена", [], {}) == []
     provider = Provider([{"events": [{"kind": "admitted_deception", "quote": "Ты соврал"}]}])
     assert classify_social(provider, "Ты соврал", [], {}) == []
+
+
+def test_social_projection_is_owner_only_and_tracks_latest_committed_delta():
+    training = initialize_training(
+        TrainingSetup(),
+        "owner",
+        {"terms": {"definitions": {}}},
+        lambda value: value,
+    )
+    initial = training_observation(training, "owner")["social_state"]
+    assert initial["values"] == {"rapport": 45, "credibility": 60, "tension": 10, "patience": 80}
+    assert initial["delta"] == {"rapport": 0, "credibility": 0, "tension": 0, "patience": 0}
+    assert "social_state" not in training_observation(training, "other")
+
+    apply_social(training, 3, [
+        {"kind": "direct_insult", "quote": "insult"},
+        {"kind": "repetition", "quote": "again"},
+    ])
+    changed = training_observation(training, "owner")["social_state"]
+    assert changed["values"] == {"rapport": 39, "credibility": 60, "tension": 18, "patience": 73}
+    assert changed["delta"] == {"rapport": -6, "credibility": 0, "tension": 8, "patience": -7}
+    assert changed["source_revision"] == 3
+
+    apply_social(training, 4, [])
+    unchanged = training_observation(training, "owner")["social_state"]
+    assert unchanged["values"] == changed["values"]
+    assert unchanged["delta"] == {"rapport": 0, "credibility": 0, "tension": 0, "patience": 0}
+    assert unchanged["source_revision"] == 4
+
+    assert apply_social(training, 4, [{"kind": "personal_interest", "quote": "dog"}]) == []
+    assert training_observation(training, "owner")["social_state"] == unchanged
 
 
 def test_completed_targets_and_pending_confirmation_survive_fork(client, settings):

@@ -14,6 +14,7 @@ from clients.providers import (
     ProviderError,
     QwenCloudProvider,
     provider_seed_metadata,
+    provider_request_observer,
 )
 
 
@@ -43,6 +44,26 @@ def _qwen_response(content: str = "Ready.") -> dict:
 
 
 class ProviderTest(unittest.TestCase):
+    def test_request_observer_cannot_change_payload_or_interrupt_transport(self):
+        sent = []
+        def observer(url, body, headers, timeout, attempt):
+            body["messages"][0]["content"] = "mutated"
+            headers["Authorization"] = "mutated"
+            raise RuntimeError("Observer failed")
+        def requester(url, body, headers, timeout):
+            sent.append((body, headers))
+            return _qwen_response()
+        token = provider_request_observer.set(observer)
+        try:
+            with patch.dict(os.environ, {"QWEN_API_KEY": "fixture-key"}):
+                result = QwenCloudProvider(requester=requester).generate(
+                    [{"role": "user", "content": "original"}])
+        finally:
+            provider_request_observer.reset(token)
+        self.assertEqual(result.text, "Ready.")
+        self.assertEqual(sent[0][0]["messages"][0]["content"], "original")
+        self.assertEqual(sent[0][1]["Authorization"], "Bearer fixture-key")
+
     def test_openai_responses_payload_and_output(self):
         captured = {}
 
@@ -123,7 +144,12 @@ class ProviderTest(unittest.TestCase):
                 "usage": {"prompt_tokens": 9, "completion_tokens": 5, "total_tokens": 14},
             }
 
-        config = AgentModelConfig(provider="qwen", model="qwen3.7-plus", seed=42)
+        config = AgentModelConfig(
+            provider="qwen",
+            model="qwen3.7-plus",
+            seed=42,
+            enable_thinking=False,
+        )
         with patch.dict(os.environ, {"QWEN_API_KEY": "qwen-secret"}, clear=True):
             result = QwenCloudProvider(config, requester=requester).generate(
                 [{"role": "user", "content": "Start."}], instructions="Speak naturally."
@@ -136,6 +162,7 @@ class ProviderTest(unittest.TestCase):
         )
         self.assertEqual(captured["payload"]["messages"][0]["role"], "system")
         self.assertEqual(captured["payload"]["seed"], 42)
+        self.assertIs(captured["payload"]["enable_thinking"], False)
         metadata = provider_seed_metadata(QwenCloudProvider(config))
         self.assertEqual(metadata["handling"], "passed_to_provider")
         self.assertFalse(metadata["reproducibility_guaranteed"])

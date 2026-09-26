@@ -2,6 +2,9 @@
 
 Negotiation Trainer is an API-first training and simulation service.
 
+The service publishes [OpenAPI JSON](http://127.0.0.1:8172/openapi.json), [Swagger UI](http://127.0.0.1:8172/docs), and [ReDoc](http://127.0.0.1:8172/redoc).
+See the [OpenAPI guide](docs/openapi-guide.md) for authentication, examples, and contract checks.
+
 Repository: [GitLab](https://github.com/s1mb1o/alola-negotiation-trainer).
 
 The repository contains a runnable FastAPI service, a React Web UI, a CLI, external-agent clients, a Telegram integration adapter, and a role-swapped benchmark runner.
@@ -13,9 +16,11 @@ The executable scenarios and clients also support English.
 
 The [human training loop](docs/human-training-guide.md) adds private preparation, shared player background, two NPC profiles, bounded social state, and goal-based LLM coaching.
 Completed sessions can restart from a recorded decision checkpoint with fresh credentials.
+Active training sessions can rewind to an earlier NPC checkpoint three times per root lineage.
+The **Ответь за меня** action uses `Qwen3.8-Max` to create one actor-safe player reply and submits it through the normal Player API.
 The final report compares observed parent and child results.
 The [implementation plan](docs/plans/06_human-training-loop.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md) define the delivered scope.
-Qwen `qwen3.8-max` is the selected live model.
+The selected live route uses `qwen-flash-character` for NPC wording, `DeepSeek-V4-Flash-0731` for turn control, and `Qwen3.8-Max` for final coaching.
 Full coaching quality remains unvalidated on live Qwen dialogues.
 
 - FastAPI exposes the role-neutral Player API.
@@ -46,6 +51,7 @@ Full coaching quality remains unvalidated on live Qwen dialogues.
 - The UI language also selects the matching localized scenario catalog.
 - The Web UI uses browser Web Speech APIs for optional STT and TTS when the browser supports them.
 - The Web UI includes a read-only Admin Session Inspector with filters, transcripts, public events, offer revisions, dialogue diagnostics, and gated public reviews.
+- The separate [LLM diagnostics window](docs/llm-debug-guide.md) at `http://127.0.0.1:8172/llm-debug` shows new training-session provider calls. Local access opens without sign-in. Remote access requires an administrator credential. Redacted traces remain only in bounded process memory.
 - An offline evaluator exports source-attributed human scorecards and compares dialogue diagnostics separately from economic outcomes.
 - The CLI supports interactive play, one-agent play, self-play, history export, reviews, and statistics.
 - Provider adapters support the OpenAI Responses API and Qwen Cloud Chat Completions API.
@@ -71,9 +77,9 @@ The selected local launcher uses API port 8172. Bare Uvicorn and CLI examples el
 
 Use Python 3.11 or later and Node.js 22 or later.
 
-The selected LLM is `qwen3.8-max` through QwenCloud Token Plan.
-The local launcher reads `QWENCLOUD_TOKEN_PLAN_API_KEY` from the interactive zsh environment and uses API port `8172`.
-This command loads `~/.zshrc`. Provider-backed dialogue uses the configured Token Plan.
+The selected route uses QwenCloud Pay-as-you-go.
+The local launcher reads `QWENCLOUD_PAYGO_API_KEY` from the interactive zsh environment and uses API port `8172`.
+This command loads `~/.zshrc`.
 
 ```sh
 uv sync --all-groups
@@ -139,6 +145,26 @@ uv run python -m clients play \
   --difficulty guided
 ```
 
+In an interactive terminal, `play` opens a windowed interface. It shows the conversation,
+the current public offer, your role brief, and available coaching. Use `Tab` to switch the
+right panel. Use `Page Up` and `Page Down` to scroll the conversation. Use `F5` and `F6`
+to scroll the right panel. Use `F2` to inspect the current offer. A separate confirmation
+window appears when you must publish or accept an exact offer revision. Confirm with
+`Enter` or `Y`. Cancel the pending confirmation with `C`. Press `Esc` to return to the
+conversation without sending a confirmation.
+The conversation starts with the pinned scenario title and your actor-safe role brief.
+Use `--debug` to show a lower-right pane with the current session revision, turn state,
+pending operation, and public NPC action metadata. Press `F3` or enter `/debug` to toggle
+the pane. Use `F7` and `F8` to scroll it. The pane does not show private NPC state.
+
+Type a message and press `Enter` to send it. Use `Ctrl+N` to add a line to the draft.
+Type `/hint` to request a hint, `/help` to view controls, or `/quit` to exit. The terminal
+must be at least 72 columns by 16 rows. Use `--plain` for the original line-oriented JSON
+interface. `play` also uses that interface when input or output is redirected.
+The 256-color theme uses fixed black for the background. It distinguishes borders, speakers,
+headings, and errors. Eight-color terminals use their configured ANSI black. On light
+monochrome terminals, reverse video gives the interface a dark background.
+
 Run one external OpenAI agent against the built-in NPC.
 
 ```sh
@@ -159,9 +185,10 @@ Do not paste a credential into a command or tracked file.
 The Qwen adapter selects the QwenCloud Token Plan endpoint for `sk-sp-` keys.
 Set `QWEN_BASE_URL` when the key belongs to Coding Plan or a custom workspace.
 
-The built-in NPC Qwen renderer uses the Token Plan endpoint by default.
+The built-in NPC Qwen renderer keeps the Token Plan endpoint as its backward-compatible implicit default.
 It does not read the ambient `QWEN_BASE_URL` value.
 Set `NEGOTIATION_NPC_BASE_URL` and `NEGOTIATION_NPC_API_KEY_ENV` together when the NPC must use another Qwen endpoint.
+The selected launcher explicitly uses the Pay-as-you-go endpoint for all model routes.
 
 External-agent clients do not send provider keys to the backend or browser.
 The optional backend renderer reads its selected key from the service process environment.
@@ -236,6 +263,8 @@ Startup recovery delivers the precomputed fallback for an unfinished render job.
 Historical render plans remain readable without memory, reasons, numeric references, and profile fields.
 A create-time binding NPC action uses its canonical deterministic message in the create transaction and does not call a provider.
 The human training greeting uses a deterministic template and does not call a provider.
+`successful_history` selects one of six relationship-aware templates in the session language.
+The templates signal familiarity without inventing details about previous negotiations.
 An Easy create-time `opening_offer` or `opening_position` presentation for an external-agent next actor also bypasses the provider.
 
 Set `OPENAI_API_KEY` securely in the service process environment before you use this exact OpenAI run command:
@@ -247,13 +276,23 @@ NEGOTIATION_NPC_API_KEY_ENV=OPENAI_API_KEY \
 uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8170
 ```
 
-Use this command for the selected Qwen configuration after zsh exports `QWENCLOUD_TOKEN_PLAN_API_KEY`:
+Use this command for the selected Qwen configuration after zsh exports `QWENCLOUD_PAYGO_API_KEY`:
 
 ```sh
 NEGOTIATION_NPC_PROVIDER=qwen \
-NEGOTIATION_NPC_MODEL=qwen3.8-max \
-NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_TOKEN_PLAN_API_KEY \
-NEGOTIATION_NPC_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_NPC_MODEL=qwen-flash-character \
+NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
+NEGOTIATION_NPC_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_CONTROL_PROVIDER=qwen \
+NEGOTIATION_CONTROL_MODEL=deepseek-v4-flash-0731 \
+NEGOTIATION_CONTROL_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
+NEGOTIATION_CONTROL_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_CONTROL_ENABLE_THINKING=false \
+NEGOTIATION_REVIEW_PROVIDER=qwen \
+NEGOTIATION_REVIEW_MODEL=qwen3.8-max \
+NEGOTIATION_REVIEW_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
+NEGOTIATION_REVIEW_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_REVIEW_ENABLE_THINKING=false \
 uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8172
 ```
 
@@ -266,6 +305,14 @@ The built-in NPC supports these environment variables:
 - `NEGOTIATION_NPC_MAX_OUTPUT_TOKENS`: default `300`; permitted range `32` through `2000`;
 - `NEGOTIATION_NPC_TEMPERATURE`: optional; leave it empty for `gpt-5.6-luna`; a configured value must be from `0` through `2` and must be supported by the selected model;
 - `NEGOTIATION_NPC_TIMEOUT_SECONDS`: default `20`; permitted range `0.1` through `120`.
+
+The `NEGOTIATION_CONTROL_*` variables select grounding, social classification, and semantic extraction.
+The `NEGOTIATION_REVIEW_*` variables select final coaching.
+Each group supports `PROVIDER`, `MODEL`, `API_KEY_ENV`, `BASE_URL`, `TEMPERATURE`, `ENABLE_THINKING`, and `TIMEOUT_SECONDS`.
+An empty control group reuses the dialogue provider.
+An empty review group reuses the control provider.
+`ENABLE_THINKING` accepts `true`, `false`, or an empty value.
+Use `NEGOTIATION_NPC_MODEL=qwen-plus-character` to evaluate the larger Character model without a code change.
 
 One eligible non-binding NPC turn makes at most one claimed render attempt.
 That attempt can include a generation call and a separate grounding-check call.

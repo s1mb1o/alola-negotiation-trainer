@@ -14,16 +14,35 @@ Read `AGENTS.md` before you change code or specifications.
 
 Each implementation directory contains a local `CLAUDE.md` file.
 
+## API documentation
+
+- [DR-37](docs/decisions/2026-09-24_openapi-documentation.md) and the [API specification](docs/api.md) require OpenAPI 3.1 at `/openapi.json` and interactive Swagger UI at `/docs`.
+- Keep contracts, authentication, examples, and schema checks synchronized with API changes. All 25 canonical operations have typed response contracts and contract checks. See the [OpenAPI guide](docs/openapi-guide.md).
+
+## Live social indicators
+
+- [DR-45](docs/decisions/2026-09-26_live-social-indicators.md) defines the owner-only live social projection and the Web UI indicators.
+
 ## Dialogue documentation
+
+- [DR-44](docs/decisions/2026-09-25_complete-llm-requests.md): show complete outgoing provider requests and retries. Redact credentials before storage. Evict whole records at 200 calls or 64 MiB. Do not truncate retained content or alter provider behavior.
+- [DR-39](docs/decisions/2026-09-24_polite-topic-return.md): six history-aware fallback variants for recognized unrelated questions without approved personal facts. Preserve grounded small talk and mixed negotiation messages.
+- [DR-42](docs/decisions/2026-09-24_llm-debug-links.md): trace and message addresses use `/llm-debug#<trace_id>`. Preserve selection during polling and history navigation. Show missing records explicitly. Links do not extend in-memory retention.
+- [DR-40](docs/decisions/2026-09-24_llm-debug-window.md): a separate LLM trace window at `/llm-debug`. [DR-41](docs/decisions/2026-09-24_local-llm-debug-access.md) permits direct local access without sign-in. See the [usage guide](docs/llm-debug-guide.md). Keep traces redacted, bounded, in memory, and outside Player API and benchmark sessions.
 
 - [Human training guide](docs/human-training-guide.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md): implemented private preparation, shared background, social state, cached LLM coaching, checkpoint retry, and observed comparison. See the guide for verification limits.
 - [Training precedents and hackathon priorities](docs/research/lct2026-task9-training-precedents-2026-09-23.md): source-linked research and proposed preparation, coaching, retry, comparison, and pilot design. No implementation is authorized by this research.
-- [DR-34](docs/decisions/2026-09-23_prompt-language.md): English instructions for all application-owned LLM tasks. Runtime tasks were audited. External-agent prompt version is `natural-language-agent-v4`.
+- [DR-34](docs/decisions/2026-09-23_prompt-language.md): English instructions for all application-owned LLM tasks. Runtime tasks were audited.
+- [DR-43](docs/decisions/2026-09-24_ste-system-prompts.md): STE-style English for all application-owned LLM instructions. Use short, active sentences with one instruction or idea per sentence. Preserve exact identifiers and Russian source text. External-agent prompt version is `natural-language-agent-v5`.
 - [DR-35](docs/decisions/2026-09-23_player-background.md): configurable player background known to the NPC, including successful prior deals. The bounded implementation is in DR-36.
 - [DR-33](docs/decisions/2026-09-23_goal-based-llm-review.md): final LLM analysis of goal progress and evidence-linked recommendations. The bounded implementation is in DR-36.
 - [Task 9 compliance assessment](docs/research/lct2026-task9-compliance-2026-09-23.md): requirement coverage, current evidence, and proposed preparation priorities for MEMORY and STATUS. This assessment does not authorize implementation.
 - [DR-31](docs/decisions/2026-09-23_human-first-negotiation.md): stored case-specific NPC greeting and human first live turn in human-versus-built-in-NPC training.
+- [DR-47](docs/decisions/2026-09-26_relationship-aware-opening-greetings.md): deterministic varied opening greetings for `successful_history` without invented historical details.
+- [DR-50](docs/decisions/2026-09-26_grounded-goal-directed-dialogue.md): actor-safe scenario context, immutable opening-value placeholders, and goal-directed dialogue wording.
+- [DR-48](docs/decisions/2026-09-26_rewind-and-player-assist.md): three lineage-wide active-dialogue rewinds and actor-safe player-side reply generation.
 - [DR-32](docs/decisions/2026-09-23_retrieved-reply-examples.md): deterministic search over prepared reply variants for NPC wording.
+- [DR-38](docs/decisions/2026-09-24_context-gated-reply-rag.md): context-gated SaaS few-shot examples, query variants, diverse selection, and a bounded Qwen comparison. See the [NPC dialogue guide](docs/npc-dialogue-guide.md).
 - [Social state and LLM protection design](docs/social-state-and-llm-dialogue.md): broader MEMORY, STATUS, persona, and OWASP design. The implemented subset is defined by DR-36.
 - [Reference implementation guide](docs/reference-supply-guide.md): bounded RU/EN composite negotiation, source-bound confirmation, optional semantic normalization, and verification limits.
 - [Actual offline reference dialogue](docs/reports/2026-09-08-supply-offline-dialogue.md): four isolated API trajectories, not a live model ranking.
@@ -39,8 +58,9 @@ Each implementation directory contains a local `CLAUDE.md` file.
 
 ## Commands
 
-The selected LLM is `qwen3.8-max` through the QwenCloud Token Plan endpoint.
-Use `QWENCLOUD_TOKEN_PLAN_API_KEY` from the user's `~/.zshrc` environment.
+The selected live route uses `qwen-flash-character` for NPC wording.
+It uses `DeepSeek-V4-Flash-0731` for turn control and `Qwen3.8-Max` for final coaching.
+Use `QWENCLOUD_PAYGO_API_KEY` from the user's `~/.zshrc` environment.
 Run `/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'` from the project root.
 The launcher pins the model, endpoint, and credential variable without storing the credential.
 
@@ -67,7 +87,7 @@ npm run build
 
 ## Security rules
 
-- Keep `OPENAI_API_KEY`, `QWEN_API_KEY`, and `QWENCLOUD_TOKEN_PLAN_API_KEY` in the process environment.
+- Keep `OPENAI_API_KEY`, `QWEN_API_KEY`, and `QWENCLOUD_PAYGO_API_KEY` in the process environment.
 - Do not send provider credentials to the browser or service API.
 - Do not write provider credentials to logs, histories, reports, or benchmark artifacts.
 - Derive every public observation from the authenticated participant.
@@ -75,9 +95,10 @@ npm run build
 
 ## Common mistakes
 
-- Write all application-owned LLM instructions and task templates in English. Keep Russian messages, exact quotes, and authored examples as separated task data. Request Russian participant-facing output for the MVP. Apply the rule to all model tasks and retry paths under DR-34.
+- Write all application-owned LLM instructions and task templates in STE-style English. Use short, active sentences with one instruction or idea per sentence. Use consistent terms and explicit references. Preserve identifiers and requirement keywords. Keep Russian messages, exact quotes, and authored examples as separated task data. Request Russian participant-facing output for the MVP. Apply the rule to all model tasks and retry paths under DR-34 and DR-43.
 - Do not infer private player information from shared background. Under DR-35, the NPC receives only explicitly known facts. Prior successful deals do not establish a current agreement or a new economic constraint.
-- Do not turn the revision-0 NPC greeting into an offer, a hint, or a substantive turn. Keep the human as `next_actor` in human-versus-built-in-NPC training.
+- Do not let the revision-0 NPC opening create or alter an offer, provide a hint, or consume a substantive turn. It can restate only engine-selected terms from the authored opening artifact under DR-50. Keep the human as `next_actor` in human-versus-built-in-NPC training.
+- Do not pass a private role brief or raw scenario source as `dialogue_strategy`. Use bounded nonnumeric actor-safe context and goals. Insert opening values only through engine-owned placeholders. Treat a conversation goal as direction, not authority for a fact, term, concession, commitment, or lifecycle action.
 - Do not use the create-session response for the next agent prompt after another participant acts. Fetch the authenticated participant view first.
 - Do not identify a participant by role text when `next_actor` contains an opaque participant ID. Resolve the ID through the session participant map.
 - Do not add an executable scenario that only passes JSON Schema validation. Run the publication compiler too.

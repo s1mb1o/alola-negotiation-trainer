@@ -132,6 +132,10 @@ def command_play(api: NegotiationApiClient, args: argparse.Namespace) -> int:
     session_id = str(created["session_id"])
     token = _participant_token(args.participant_token_env, created, args.role)
     participant_api = api.with_participant_token(token)
+    if not args.plain and sys.stdin.isatty() and sys.stdout.isatty():
+        from .tui import run_play_tui
+
+        return run_play_tui(participant_api, session_id, debug=args.debug)
     return _play_existing_plain(participant_api, created, args.role, token)
 
 
@@ -347,6 +351,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--no-hints", action="store_true")
     play.add_argument("--training-file", help="JSON file with shared context and private preparation")
+    play.add_argument(
+        "--debug", action="store_true", help="Show Player API debug state in the lower-right pane"
+    )
+    play.add_argument(
+        "--plain", action="store_true", help="Use the original line-oriented JSON interface"
+    )
 
     agent = subparsers.add_parser("agent", help="Run one external agent against the built-in NPC")
     _add_session_options(agent)

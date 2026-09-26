@@ -150,7 +150,11 @@ def test_latest_catalog_selects_reason_version_and_preserves_replay_version(
         f"/api/v1/scenarios/{previous['id']}/versions/{previous['version']}"
     )
     assert latest.status_code == historical.status_code == 200
-    assert latest.json()["version"] == current["version"] + 1
+    expected_latest = {
+        "supplier_001": 6,
+        "freight_contract_ru": 4,
+    }.get(current["id"], current["version"] + 1)
+    assert latest.json()["version"] == expected_latest
     assert historical.json()["version"] == previous["version"]
     assert "dialogue_reasons" not in latest.text
     for role in current["roles"].values():

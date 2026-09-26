@@ -304,6 +304,14 @@ class NegotiationApiClient:
     def list_scenarios(self, *, language: str | None = None) -> JsonValue:
         return self._request("GET", "/api/v1/scenarios", query={"language": language})
 
+    def get_scenario(self, scenario_id: str, version: int) -> dict[str, Any]:
+        result = self._request(
+            "GET", f"/api/v1/scenarios/{quote(scenario_id, safe='')}/versions/{version}"
+        )
+        if not isinstance(result, dict):
+            raise ApiError("Scenario endpoint returned a non-object response")
+        return result
+
     def create_session(
         self,
         *,
@@ -376,6 +384,25 @@ class NegotiationApiClient:
 
     def history(self, session_id: str) -> JsonValue:
         return self._request("GET", f"/api/v1/sessions/{quote(session_id, safe='')}/history")
+
+    def request_hint(
+        self,
+        session_id: str,
+        *,
+        expected_revision: int,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        result = self._request(
+            "POST",
+            f"/api/v1/sessions/{quote(session_id, safe='')}/hints",
+            {
+                "idempotency_key": idempotency_key or new_idempotency_key("hint"),
+                "expected_revision": expected_revision,
+            },
+        )
+        if not isinstance(result, dict):
+            raise ApiError("Hint endpoint returned a non-object response")
+        return result
 
     def review(self, session_id: str) -> JsonValue:
         return self._request("GET", f"/api/v1/sessions/{quote(session_id, safe='')}/review")

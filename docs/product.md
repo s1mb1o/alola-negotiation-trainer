@@ -1,5 +1,16 @@
 # Product Model
 
+## Required OpenAPI documentation (DR-37)
+
+The product MUST provide a machine-readable OpenAPI 3.1 document at `/openapi.json` and interactive Swagger UI at `/docs`.
+The documentation MUST cover every implemented canonical REST operation under `/api/v1`.
+The documentation MUST describe requests, successful responses, errors, authentication, and actor access restrictions.
+API changes MUST update the schema and relevant examples in the same change.
+The release MUST pass the schema and contract checks defined in [DR-37](decisions/2026-09-24_openapi-documentation.md).
+Documentation availability alone MUST NOT count as contract completeness.
+The [API specification](api.md) defines the detailed documentation requirements.
+The implemented documentation covers all 25 canonical operations. See the [OpenAPI guide](openapi-guide.md).
+
 ## Human training loop (DR-36)
 
 The opt-in human training flow MUST support private preparation, pinned shared background, bounded social state, actor-safe LLM review, checkpoint retry, and observed outcome comparison.
@@ -9,7 +20,7 @@ Model failure MUST preserve the deterministic report and committed state.
 The exact contracts and release rules are defined in [DR-36](decisions/2026-09-24_training-loop.md).
 
 The training configuration MUST be restricted to one human and one built-in NPC in training mode.
-The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
+The configuration MUST pin profile, relationship, optional player name, shared background, private preparation, and rule versions.
 The engine MUST validate finite numeric targets against the scenario's scalar term grammar.
 Only an agreed complete deal MAY satisfy a deal-term target.
 Free-text goals MUST NOT receive invented completion percentages.
@@ -20,6 +31,11 @@ The engine MUST apply validated changes once per committed revision.
 Positive relationship events MUST have cumulative caps.
 Classification failure MUST leave social state unchanged.
 Social values MUST NOT override economic acceptability or binding-confirmation rules.
+
+The active training workspace MUST show the four current social axes under [DR-45](decisions/2026-09-26_live-social-indicators.md).
+Each indicator MUST show a current number that matches its marker position.
+Each indicator MUST show the signed engine-applied change with a separate delta label.
+The interface MUST identify the values as simulation parameters.
 
 Coaching MUST require an explicit authenticated request after session termination.
 The reviewer MUST receive only the owner's permitted evidence, preparation, and economic baseline.
@@ -118,6 +134,11 @@ The CLI is a required interface for operation, testing, and agent runs.
 The MVP conversation language is Russian.
 
 All application-owned LLM instructions and task templates MUST be written in English.
+All application-owned LLM instructions and task templates MUST use STE-style English.
+Use short, active sentences with one instruction or idea per sentence.
+Use consistent terms and explicit references.
+Preserve exact identifiers, schema keys, source quotes, protocol phrases, and requirement keywords.
+See [DR-43](decisions/2026-09-24_ste-system-prompts.md).
 The MVP player-facing dialogue, hints, and final review MUST be in Russian.
 Russian messages, quotes, authored text, and examples MAY remain in their original language as clearly separated task data.
 See [DR-34](decisions/2026-09-23_prompt-language.md) for the runtime prompt audit and external-agent version change.
@@ -317,9 +338,36 @@ Shows:
 - confirmed or probable counterparty interests;
 - no direct recommended wording.
 
-The greeting does not state offer terms or give negotiation advice.
+An older scenario version without `dialogue_strategy` uses the bounded greeting.
+It does not state offer terms or give negotiation advice.
 It does not consume a turn or change the deal state.
 The human makes the first live negotiation move.
+For `successful_history`, the greeting uses bounded varied wording that signals prior familiarity.
+It does not invent details about previous negotiations.
+The Web UI selects `successful_history` by default for a new training setup.
+The user can select `first_meeting` before session creation.
+Existing sessions retain their pinned relationship and stored greeting.
+
+A new scenario version can define an actor-safe `dialogue_strategy` for the opening role.
+The strategy supplies shared scenario context and separate opening and conversation goals.
+The engine inserts exact selected terms from the authored opening artifact.
+The wording model connects these facts in natural language.
+It asks one question that advances the opening goal.
+The model cannot change a value, add a term, make a concession, or commit a lifecycle action.
+Provider failure uses a deterministic grounded opening.
+
+Later NPC wording receives the same shared scenario context and the conversation goal.
+The NPC answers the player's current message first.
+It then advances its negotiation task when the selected engine action permits this step.
+
+During an active training session, the learner can return to an eligible earlier NPC message.
+The return restores the exact saved state in a new child session.
+One root training lineage allows three returns.
+The interface shows the remaining count and disables the action after exhaustion.
+
+The learner can select **Ответь за меня** on the player's turn.
+The configured player-side model writes one message from the learner's visible context and private plan.
+The normal Player API validates and submits the message.
 An Easy session with an external-agent next actor retains the canonical opening presentation.
 
 ### Normal

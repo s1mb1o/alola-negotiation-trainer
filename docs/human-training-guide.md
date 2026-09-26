@@ -1,33 +1,57 @@
 # Human negotiation training
 
-Date: 2026-09-24.
-Contract: [DR-36](decisions/2026-09-24_training-loop.md).
+Date: 2026-09-26.
+Contracts: [DR-36](decisions/2026-09-24_training-loop.md) and [DR-48](decisions/2026-09-26_rewind-and-player-assist.md).
 Plan: [implementation plan](plans/06_human-training-loop.md).
 
 ## Use the Web UI
 
 1. Select a scenario and your role.
 2. Select a counterpart profile and relationship history.
-3. Enter optional shared background.
+3. Enter the optional player name and shared background.
 4. Open the private preparation card.
 5. Record your goal, unacceptable outcome, possible exchanges, and questions.
 6. Optionally set a numeric target for a supported scalar term.
 7. Start the negotiation.
-8. End the negotiation through an agreement or an explicit exit message.
-9. Select **Получить разбор** after the deterministic report appears.
-10. Read the evidence excerpts and proposed alternatives.
-11. Select a saved decision point and start a retry.
-12. Complete the retry and compare the observed results.
+8. Select **Ответь за меня** when you want the configured review model to send one player reply.
+9. Select **Вернуться сюда** under an earlier NPC message when you want to retry from that point.
+10. End the negotiation through an agreement or an explicit exit message.
+11. Select **Получить разбор** after the deterministic report appears.
+12. Read the evidence excerpts and proposed alternatives.
+13. Select a saved decision point and start a completed-session retry.
+14. Complete the retry and compare the observed results.
+
+The dialogue starts with a **Ваш бриф** card before the NPC greeting.
+The card shows the authenticated player's role brief, objectives, context, BATNA, limits, and priorities.
+The card remains visible at the top when a new conversation starts.
+After the player sends a message, the dialogue scrolls to the latest reply.
+The card also appears at the start of a restored or completed transcript.
+The card is private UI content. It is not a negotiation message and is not sent to the NPC.
+The card also contains additional scenario context that the Player API permits the player to see.
+The Web UI has no separate **Ваш контекст** panel.
+The dialogue occupies the main column. Offers, the private plan, and assistance appear in the right column.
+Four live social indicators appear at the bottom of the right column.
+They show contact, credibility, tension, and patience on a 0–100 scale.
+The current number beside each axis matches the marker position.
+The value with the `Δ` label shows the engine-applied change after the player's latest message.
+The indicators show zero after a message that causes no validated change.
+They are simulation parameters and not psychological measurements.
+On narrow screens, these supporting cards appear below the dialogue.
 
 The UI uses Russian by default.
 The UI also supports English.
 Session language is independent of UI language.
-Internal model instructions use English.
+Internal model instructions use STE-style English under [DR-43](decisions/2026-09-24_ste-system-prompts.md).
+Each sentence contains one instruction or idea.
+This instruction style does not require technical or mechanical dialogue.
 Russian quotes and canonical protocol phrases retain their exact text.
 
 The private card is available only to its owner and the final coach.
 The NPC receives shared background, its profile, an authored personal detail, and a derived tone.
 It does not receive the private card or raw social values.
+Only the training owner receives `training.social_state` through the Player API.
+The projection contains current values, the latest aggregate delta, and its source revision.
+It contains no classifier quote or hidden event history.
 The browser stores the active credential in session storage.
 The local progress summary excludes the private card, detailed coaching, and its transcript excerpts.
 
@@ -42,6 +66,7 @@ The Web UI supplies the object by default.
 {
   "profile": "sociable",
   "relationship": "successful_history",
+  "player_name": "Александр",
   "shared_background": "Мы успешно завершили предыдущую поставку.",
   "personal_detail": true,
   "preparation": {
@@ -67,12 +92,31 @@ The initial Web UI edits one numeric target.
 | --- | --- |
 | `profile` | `concise_skeptical` or `sociable` |
 | `relationship` | `first_meeting` or `successful_history` |
+| `player_name` | At most 100 characters; letters, spaces, hyphens, apostrophes, and periods; can be empty |
 | `shared_background` | At most 800 characters; no instruction or economic authority |
 | `personal_detail` | Enables the authored dog fact; default `false` |
 | Preparation text | Four optional strings; at most 1000 characters each |
 | `targets[].term_id` | A numeric primitive in the pinned scenario |
 | `targets[].operator` | `lte`, `gte`, or `eq` |
 | `targets[].value` | A finite number in that term's units |
+
+An older scenario version without `dialogue_strategy` uses the neutral or relationship-aware revision-zero greeting.
+`successful_history` selects one of six authored greetings in the session language for these versions.
+The wording signals prior familiarity or collaboration.
+It does not invent a past term, concession, promise, event, or current agreement.
+The selected text is stable for the session and its replay.
+The Web UI selects `successful_history` by default for new sessions.
+Select `first_meeting` in **Общий опыт** when the participants do not have shared history.
+An existing session retains the relationship and greeting that were stored at creation.
+
+A new scenario version can define `dialogue_strategy` for the opening NPC role.
+The Web UI sends `player_name` as untrusted training data.
+The opening renderer uses an exact name placeholder when this field is not empty.
+The engine inserts the exact public scenario title and selected opening terms.
+The model connects these items to actor-safe scenario context.
+It asks one question that advances the authored opening goal.
+Later replies answer the player first and then advance the authored conversation goal.
+These goals cannot authorize a new fact, value, concession, commitment, or agreement.
 
 All following endpoints require the participant Bearer credential.
 The participant must own the training configuration.
@@ -82,6 +126,8 @@ The participant must own the training configuration.
 | `GET /sessions/{id}/review` | Deterministic report and cached coaching status; no provider calls |
 | `POST /sessions/{id}/coaching` | One cached generation and grounding job for the completed session |
 | `GET /sessions/{id}/checkpoints` | Recorded human decision revisions |
+| `POST /sessions/{id}/rewind` | Active-dialogue child session from an eligible NPC checkpoint |
+| `POST /sessions/{id}/player-assist` | Read-only player reply from actor-safe context |
 | `POST /sessions/{id}/fork` | New session and initial-only fresh credential delivery |
 | `GET /sessions/{id}/comparison` | Same-role parent and child outcomes after the child completes |
 
@@ -112,6 +158,26 @@ An idempotent repeat returns the same child without redelivering its credential.
 Keep the first response credential.
 Older sessions without training checkpoints cannot use this retry route.
 
+The rewind request uses the same `source_revision` and `idempotency_key` fields as the fork request.
+The source revision must contain a stored NPC message and a checkpoint.
+The source session stays immutable.
+The returned child has the exact checkpoint state and excludes later history.
+Participant identifiers, event identifiers, and credentials are fresh and internally consistent.
+The limit is three rewinds for the root session and all rewind descendants.
+The limit does not reset when the user rewinds again from a child.
+The Web UI shows the remaining count below each eligible earlier NPC message.
+It disables those actions after the third rewind.
+
+The player assistance request contains `expected_revision` and `idempotency_key`.
+It is available only during the player's turn in an active training session.
+It does not update state before the returned text is submitted.
+The Web UI submits the text through `POST /messages` after generation.
+The normal parser, validation, and NPC response flow then apply.
+The provider input contains the actor-safe observation and private preparation.
+It excludes NPC private state and raw internal events.
+The selected live route uses `Qwen3.8-Max` for this operation.
+The `/llm-debug` window records this call with task name `player_assist`.
+
 ## Social rules and memory
 
 The engine pins `human-training-v1` and `social-events-v1` in session state.
@@ -137,6 +203,11 @@ An admitted-deception event additionally requires an explicit first-person admis
 Provider failure, invalid JSON, missing evidence, or unknown event kinds cause no social change.
 Firm bargaining does not count as an insult in the classifier instructions.
 Classification remains probabilistic.
+
+The active owner observation exposes the current values as `training.social_state.values`.
+It exposes the latest applied change as `training.social_state.delta`.
+It exposes the processed player revision as `training.social_state.source_revision`.
+Legacy active sessions show a zero delta until the next processed player message.
 
 Social state currently changes presentation tone only.
 It cannot change utility, reservation thresholds, hard constraints, or confirmation rules.
@@ -194,9 +265,12 @@ Run the selected model through the existing launcher:
 /bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
 ```
 
-The launcher uses `qwen3.8-max` and the user-selected Token Plan endpoint.
-It reads `QWENCLOUD_TOKEN_PLAN_API_KEY` from the process environment loaded by interactive zsh.
-Dialogue, social classification, and review use that selected provider.
+The launcher uses `qwen-flash-character` for NPC wording.
+It uses `DeepSeek-V4-Flash-0731` for grounding and social classification.
+It uses `Qwen3.8-Max` for the final review.
+It reads `QWENCLOUD_PAYGO_API_KEY` from the process environment loaded by interactive zsh.
+All three routes use the QwenCloud Pay-as-you-go endpoint.
+Set `NEGOTIATION_NPC_MODEL=qwen-plus-character` before the launcher to test the larger Character model.
 No provider credential reaches the browser.
 Template mode remains available without provider credentials.
 Template mode produces no model-based social classifications or coaching.
@@ -216,7 +290,10 @@ Completed-session commands read `NEGOTIATION_PARTICIPANT_TOKEN`.
 `retry` starts a plain interactive child session and keeps its fresh credential inside the process.
 It does not print that credential.
 External agents retain the common Player API.
-Their English instruction template version is `natural-language-agent-v4`.
+Their English instruction template version is `natural-language-agent-v5`.
+The supply branch uses `supply-agent-v2`.
+New final coaching uses `goal-coaching-v2`.
+Existing cached coaching retains its original result and version.
 Do not combine benchmark results across changed prompt versions without identifying the difference.
 
 ## OWASP implementation boundary

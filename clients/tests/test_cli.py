@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import io
 import os
+from types import SimpleNamespace
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 from clients.api import ApiError
-from clients.cli import _participant_token, build_parser, main
+from clients.cli import _participant_token, build_parser, command_play, main
 
 
 class CredentialPrecedenceTest(unittest.TestCase):
@@ -70,6 +71,11 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(
             build_parser().parse_args(["agent", "--scenario", "s"]).provider_max_attempts, 3
         )
+
+    def test_play_debug_is_opt_in(self):
+        parser = build_parser()
+        self.assertFalse(parser.parse_args(["play", "--scenario", "s"]).debug)
+        self.assertTrue(parser.parse_args(["play", "--scenario", "s", "--debug"]).debug)
 
 
 class PlayLoopApi:
@@ -160,6 +166,43 @@ class PlayLoopTest(unittest.TestCase):
         self.assertIn(("token", "fresh-token"), api.calls)
         self.assertNotIn(("token", "stale-env-token"), api.calls)
         self.assertNotIn("fresh-token", stdout)
+
+    def test_interactive_terminal_uses_windowed_interface(self):
+        api = PlayLoopApi([])
+        args = build_parser().parse_args(["play", "--scenario", "saas_subscription_ru"])
+        fake_tty = SimpleNamespace(isatty=lambda: True)
+        with (
+            patch("clients.cli.sys", SimpleNamespace(stdin=fake_tty, stdout=fake_tty)),
+            patch("clients.tui.run_play_tui", return_value=0) as run_tui,
+        ):
+            self.assertEqual(command_play(api, args), 0)
+        run_tui.assert_called_once_with(api, "sess_play", debug=False)
+
+    def test_debug_flag_is_passed_to_windowed_interface(self):
+        api = PlayLoopApi([])
+        args = build_parser().parse_args(["play", "--scenario", "s", "--debug"])
+        fake_tty = SimpleNamespace(isatty=lambda: True)
+        with (
+            patch("clients.cli.sys", SimpleNamespace(stdin=fake_tty, stdout=fake_tty)),
+            patch("clients.tui.run_play_tui", return_value=0) as run_tui,
+        ):
+            self.assertEqual(command_play(api, args), 0)
+        run_tui.assert_called_once_with(api, "sess_play", debug=True)
+
+    def test_plain_flag_keeps_original_interface(self):
+        api = PlayLoopApi([{"revision": 1, "status": "agreement_reached"}])
+        stdout = io.StringIO()
+        args = build_parser().parse_args(["play", "--scenario", "saas_subscription_ru", "--plain"])
+        fake_tty = SimpleNamespace(isatty=lambda: True)
+        with (
+            patch("clients.cli.sys", SimpleNamespace(stdin=fake_tty, stdout=fake_tty)),
+            patch("clients.tui.run_play_tui") as run_tui,
+            patch("builtins.input", return_value="hello"),
+            redirect_stdout(stdout),
+        ):
+            self.assertEqual(command_play(api, args), 0)
+        run_tui.assert_not_called()
+        self.assertIn("agreement_reached", stdout.getvalue())
 
 
 if __name__ == "__main__":

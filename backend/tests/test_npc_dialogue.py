@@ -456,6 +456,67 @@ def test_user_reported_sequence_receives_distinct_contextual_replies(settings: S
     )
 
 
+def test_npc_restates_its_public_terms_after_rejecting_player_counteroffer(
+    settings: Settings,
+) -> None:
+    renderer = SelectingRenderer()
+    messages = (
+        "А какие у вас?",
+        "все",
+        "просто скажи мне их",
+        "ТЫ МНЕ СКАЖИИ!!!",
+    )
+    expected_terms = {
+        "delivery_weeks": 6,
+        "prepayment_fraction": 0.4,
+        "price": 480_000,
+    }
+    with TestClient(create_app(settings, npc_dialogue_renderer=renderer)) as client:
+        state = _create(
+            client,
+            "reported-public-position",
+            scenario_id="freight_contract_ru",
+            scenario_version=3,
+        )
+        participant_token = state["participant_token"]
+        state = _submit(
+            client,
+            state,
+            "Предлагаю цену 450000 рублей.",
+            "reported-public-position-counteroffer",
+            token=participant_token,
+        )
+        assert state["committed_actions"][-1]["speech_act"] == "offer_rejection"
+
+        for index, message in enumerate(messages):
+            state = _submit(
+                client,
+                state,
+                message,
+                f"reported-public-position-question-{index}",
+                token=participant_token,
+            )
+            action = state["committed_actions"][-1]
+            assert action["speech_act"] == "public_position_restatement"
+            assert "480\u00a0000 ₽" in action["message"]
+            assert "40%" in action["message"]
+            assert "6 недель" in action["message"]
+            assert dict(renderer.requests[-1].approved_terms) == expected_terms
+
+
+def test_generic_document_question_does_not_restate_npc_position(settings: Settings) -> None:
+    with TestClient(create_app(settings)) as client:
+        created = _create(client, "generic-document-terms-question")
+        body = _submit(
+            client,
+            created,
+            "Какие условия указаны в документе?",
+            "generic-document-terms-question-message",
+        )
+
+    assert body["committed_actions"][-1]["speech_act"] == "general_answer"
+
+
 def test_human_opening_role_gets_first_turn_without_initial_rejection(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         payload = create_payload("explicit-rejection", human_role="seller")
@@ -843,3 +904,95 @@ def test_openai_npc_default_omits_unsupported_temperature(monkeypatch, tmp_path)
 
     assert configured.npc_temperature is None
     assert renderer._text_provider.config.temperature is None
+
+
+def test_task_specific_model_routes(settings: Settings) -> None:
+    configured = replace(
+        settings,
+        npc_provider="qwen",
+        npc_model="qwen-flash-character",
+        npc_api_key_env="QWENCLOUD_PAYGO_API_KEY",
+        npc_base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        control_provider="qwen",
+        control_model="deepseek-v4-flash-0731",
+        control_api_key_env="QWENCLOUD_PAYGO_API_KEY",
+        control_base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        control_enable_thinking=False,
+        review_provider="qwen",
+        review_model="qwen3.8-max",
+        review_api_key_env="QWENCLOUD_PAYGO_API_KEY",
+        review_base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        review_enable_thinking=False,
+    )
+
+    renderer = _configured_dialogue_renderer(configured)
+    assert renderer._text_provider.config.model == "qwen-flash-character"
+    assert renderer._grounding_provider.config.model == "deepseek-v4-flash-0731"
+
+    with TestClient(create_app(configured)) as client:
+        service = client.app.state.service
+        assert service.dialogue_renderer._text_provider.config.model == "qwen-flash-character"
+        assert service.dialogue_renderer._grounding_provider.config.model == "deepseek-v4-flash-0731"
+        assert service.social_provider.config.model == "deepseek-v4-flash-0731"
+        assert service.social_provider.config.enable_thinking is False
+        assert service.review_provider.config.model == "qwen3.8-max"
+        assert service.review_provider.config.enable_thinking is False
+
+
+def test_settings_read_task_specific_model_routes(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("NEGOTIATION_DB_PATH", str(tmp_path / "settings.sqlite3"))
+    monkeypatch.setenv("NEGOTIATION_CONTROL_PROVIDER", "qwen")
+    monkeypatch.setenv("NEGOTIATION_CONTROL_MODEL", "deepseek-v4-flash-0731")
+    monkeypatch.setenv("NEGOTIATION_CONTROL_API_KEY_ENV", "QWENCLOUD_PAYGO_API_KEY")
+    monkeypatch.setenv("NEGOTIATION_CONTROL_ENABLE_THINKING", "false")
+    monkeypatch.setenv(
+        "NEGOTIATION_CONTROL_BASE_URL",
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    )
+    monkeypatch.setenv("NEGOTIATION_REVIEW_PROVIDER", "qwen")
+    monkeypatch.setenv("NEGOTIATION_REVIEW_MODEL", "qwen3.8-max")
+    monkeypatch.setenv("NEGOTIATION_REVIEW_API_KEY_ENV", "QWENCLOUD_PAYGO_API_KEY")
+    monkeypatch.setenv("NEGOTIATION_REVIEW_ENABLE_THINKING", "false")
+    monkeypatch.setenv(
+        "NEGOTIATION_REVIEW_BASE_URL",
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    )
+
+    configured = Settings.from_environment()
+
+    assert configured.control_model == "deepseek-v4-flash-0731"
+    assert configured.control_enable_thinking is False
+    assert configured.review_model == "qwen3.8-max"
+    assert configured.review_enable_thinking is False
+
+
+def test_control_profile_can_override_only_timeout(settings: Settings) -> None:
+    configured = replace(
+        settings,
+        npc_provider="qwen",
+        npc_model="qwen-flash-character",
+        control_timeout_seconds=13.0,
+    )
+
+    renderer = _configured_dialogue_renderer(configured)
+
+    assert renderer._grounding_provider.config.model == "qwen-flash-character"
+    assert renderer._grounding_provider.config.timeout == 13.0
+
+
+def test_control_provider_change_does_not_inherit_qwen_endpoint(settings: Settings) -> None:
+    configured = replace(
+        settings,
+        npc_provider="qwen",
+        npc_model="qwen-flash-character",
+        npc_api_key_env="QWENCLOUD_PAYGO_API_KEY",
+        npc_base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        control_provider="openai",
+    )
+
+    renderer = _configured_dialogue_renderer(configured)
+
+    assert renderer._grounding_provider.config.provider == "openai"
+    assert renderer._grounding_provider.config.model == "gpt-5.6-luna"
+    assert renderer._grounding_provider.config.api_key_env is None
+    assert renderer._grounding_provider.config.base_url is None

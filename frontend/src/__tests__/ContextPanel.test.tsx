@@ -1,16 +1,27 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ComponentProps } from 'react'
 import { ContextPanel } from '../components/ContextPanel'
+import { RoleBriefContent } from '../components/RoleBriefContent'
 
 afterEach(cleanup)
 
-describe('ContextPanel', () => {
+function BriefAndSupport(props: ComponentProps<typeof ContextPanel>) {
+  return <>
+    <RoleBriefContent language={props.language} brief={props.observation.role_brief}
+      currency={props.observation.currency} contextItems={props.observation.context} />
+    <ContextPanel {...props} />
+  </>
+}
+
+
+describe('Role brief and training support', () => {
   it.each([
     ['ru', 'Максимальная сумма к оплате по договору', 'Минимальная цена основной партии', 'Цена основной партии', 'Партии и сроки поставки', 'Оплата по партиям', 'Резерв для замены'],
     ['en', 'Maximum total contractual payment', 'Minimum main order price', 'Main order price', 'Delivery lots and dates', 'Payment by lot', 'Replacement reserve'],
   ] as const)('localizes supply limits and priorities across the %s brief and assistance', (language, limit, floor, price, delivery, payment, reserve) => {
     const priorities = ['base_price', 'delivery_lots', 'payment_schedule', 'reserve_policy']
-    const { container } = render(<ContextPanel language={language} hintsEnabled requestingHint={false} onRequestHint={vi.fn()}
+    const { container } = render(<BriefAndSupport language={language} hintsEnabled requestingHint={false} onRequestHint={vi.fn()}
       observation={{ currency: 'EUR', negotiation_contract_version: 'supply-package-v1',
         role_brief: { constraints: { maximum_total_liability: 115000, minimum_base_price: 103000 }, priorities },
         assistance: { own_priorities: priorities },
@@ -26,7 +37,7 @@ describe('ContextPanel', () => {
 
   it('renders backend coaching, signals, and persisted hints', () => {
     render(
-      <ContextPanel
+      <BriefAndSupport
         language="ru"
         hintsEnabled
         requestingHint={false}
@@ -55,7 +66,7 @@ describe('ContextPanel', () => {
 
   it('renders a structured Russian role brief as localized sections', () => {
     render(
-      <ContextPanel
+      <BriefAndSupport
         language="ru"
         hintsEnabled={false}
         requestingHint={false}
@@ -88,7 +99,7 @@ describe('ContextPanel', () => {
 
   it('renders the structured role brief in English', () => {
     render(
-      <ContextPanel
+      <BriefAndSupport
         language="en"
         hintsEnabled={false}
         requestingHint={false}
@@ -124,7 +135,7 @@ describe('ContextPanel', () => {
       + 'Ваши ограничения: {"minimum_price": 2100000} '
       + 'Ваши приоритеты по убыванию: price, prepayment_fraction, delivery_weeks.'
     const { container } = render(
-      <ContextPanel
+      <BriefAndSupport
         language="ru"
         hintsEnabled={false}
         requestingHint={false}

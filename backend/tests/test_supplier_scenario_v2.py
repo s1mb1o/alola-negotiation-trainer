@@ -16,7 +16,7 @@ from .conftest import bearer, create_payload, credentials
 
 SCENARIO_ID = "supplier_001"
 SCENARIO_VERSION = 2
-LATEST_SCENARIO_VERSION = 5
+LATEST_SCENARIO_VERSION = 6
 
 
 def _supplier_payload(key: str, *, both_external: bool = True, difficulty: str = "normal") -> dict:

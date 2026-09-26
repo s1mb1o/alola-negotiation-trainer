@@ -12,22 +12,18 @@ from dataclasses import dataclass
 from statistics import fmean
 from typing import Any
 
-from .db import Database
-from .training_service import TrainingServiceMixin
-from .training import initialize_training, training_observation, npc_training_context, apply_social
-from .supply_protocol import SupplyProtocolMixin, supply_current, supply_envelope
-from .supply import is_supply_scenario, supply_financial_summary
-from .dialogue_contracts import PublicNumericReference
-from .dialogue_quality import build_dialogue_quality
-from .negotiation_policy import select_counterproposal
-from .reply_retrieval import retrieve_reply_examples
 from .conversation import (
     build_conversation_memory,
     detected_topic_directive,
     mentioned_term_ids,
 )
+from .db import Database
 from .dialogue import (
     MAX_CONTEXT_TURNS,
+    OPENING_NAME_TOKEN,
+    OPENING_POSITION_TOKEN,
+    OPENING_TITLE_TOKEN,
+    GroundedOpeningRequest,
     NpcDialogueRenderer,
     NpcDialogueRequest,
     NpcDialogueResult,
@@ -38,16 +34,20 @@ from .dialogue import (
     redact_untrusted_credentials,
     stable_render_id,
     template_dialogue_result,
+    template_opening_result,
     utterance_plan_from_payload,
     utterance_plan_payload,
     validated_dialogue_result,
+    validated_grounded_opening_result,
 )
+from .dialogue_contracts import PublicNumericReference
+from .dialogue_quality import build_dialogue_quality
+from .dialogue_redirect import select_varied_fallback, topic_return_options
 from .engine import (
-    ParsedAction,
     ParseContext,
-    classify_npc_speech_act,
+    ParsedAction,
     clarification_text,
-    deterministic_npc_fallback,
+    classify_npc_speech_act,
     format_terms,
     npc_message_options,
     offer_is_acceptable,
@@ -55,15 +55,18 @@ from .engine import (
     offer_is_complete,
     parse_message,
     participant_term_labels,
+    requests_npc_public_position,
     role_label,
 )
 from .models import (
+    TERMINAL_STATUSES,
     CloseSessionRequest,
     CreateSessionRequest,
     HintRequest,
     SubmitMessageRequest,
-    TERMINAL_STATUSES,
 )
+from .negotiation_policy import select_counterproposal
+from .reply_retrieval import retrieve_reply_examples
 from .scenarios import (
     authored_opening,
     canonical_json,
@@ -72,6 +75,68 @@ from .scenarios import (
     evaluate_utility,
     validate_terms,
 )
+from .supply import is_supply_scenario, supply_financial_summary
+from .supply_extraction import VERSION as SUPPLY_EXTRACTOR_VERSION
+from .supply_protocol import SupplyProtocolMixin, supply_current, supply_envelope
+from .training import apply_social, initialize_training, npc_training_context, training_observation
+from .training_service import TrainingServiceMixin
+
+RELATIONSHIP_GREETING_VERSION = "relationship-greeting-v1"
+
+SUCCESSFUL_HISTORY_GREETINGS = {
+    "ru": (
+        (
+            "Добрый день. Рад снова быть с вами на связи. В этот раз предлагаю "
+            "обсудить «{title}». С чего вам было бы удобно начать?"
+        ),
+        (
+            "Здравствуйте. Приятно снова встретиться. Предлагаю перейти к теме "
+            "«{title}». Что вы хотели бы обозначить вначале?"
+        ),
+        (
+            "Рад снова вас приветствовать. У нас новая тема — «{title}». "
+            "Как вы предлагаете начать разговор?"
+        ),
+        (
+            "Добрый день. Рад продолжить наше сотрудничество. Теперь предлагаю "
+            "обсудить «{title}». Я вас слушаю."
+        ),
+        (
+            "Здравствуйте. Хорошо, что мы снова на связи. Давайте начнём с темы "
+            "«{title}». Что для вас важно обсудить в первую очередь?"
+        ),
+        (
+            "Рад снова вас видеть. Предлагаю вместе посмотреть на тему «{title}». "
+            "С чего начнём?"
+        ),
+    ),
+    "en": (
+        (
+            'Good to speak with you again. This time, I suggest we discuss "{title}". '
+            "Where would you like to begin?"
+        ),
+        (
+            'Hello again. It is good to meet you again. Let us turn to "{title}". '
+            "What would you like to address first?"
+        ),
+        (
+            'Good to see you again. We have a new topic: "{title}". '
+            "How would you like to start?"
+        ),
+        (
+            'Hello. I am glad to continue our work together. I suggest we discuss "{title}". '
+            "Please go ahead."
+        ),
+        (
+            'It is good to be in touch again. Let us start with "{title}". '
+            "What is most important for you to address first?"
+        ),
+        (
+            'Good to meet with you again. Let us look at "{title}" together. '
+            "Where shall we begin?"
+        ),
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,6 +339,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         supply_extractor=None,
         social_provider=None,
         review_provider=None,
+        player_assist_provider=None,
     ):
         self.database = database
         self.locks = SessionLockPool()
@@ -281,6 +347,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         self.supply_extractor = supply_extractor
         self.social_provider = social_provider
         self.review_provider = review_provider
+        self.player_assist_provider = player_assist_provider
         self._known_redaction_secrets = tuple(secret for secret in known_redaction_secrets if secret)
 
     # Scenario reads -----------------------------------------------------
@@ -351,6 +418,73 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         request_data = request.model_dump(mode="json")
         request_digest = digest(request_data)
         scope = "create_session"
+        session_id = "sess_" + uuid.uuid4().hex[:24]
+        prepared_opening: NpcDialogueResult | None = None
+
+        # The provider call happens before the write transaction. The create lock
+        # preserves idempotency for this process, and the write path checks it again.
+        with self.database.read_connection() as connection:
+            repeated = self._idempotency_result(
+                connection, scope, request.idempotency_key, request_digest
+            )
+            if repeated is not None:
+                return repeated
+            scenario_row = connection.execute(
+                "SELECT * FROM scenario_versions WHERE scenario_id = ? AND version = ?",
+                (request.scenario_id, request.scenario_version),
+            ).fetchone()
+            if scenario_row is not None and request.language == scenario_row["language"]:
+                scenario = _loads(scenario_row["source_json"])
+                scenario_roles = list(scenario["roles"])
+                requested_roles = [participant.role for participant in request.participants]
+                if set(requested_roles) == set(scenario_roles):
+                    spec_by_role = {item.role: item for item in request.participants}
+                    human_roles = [
+                        role for role in scenario_roles
+                        if spec_by_role[role].controller == "human"
+                    ]
+                    npc_roles = [
+                        role for role in scenario_roles
+                        if spec_by_role[role].controller == "built_in_npc"
+                    ]
+                    opening_role, _opening_kind, opening_terms = authored_opening(scenario)
+                    if (
+                        str(request.run_mode) == "training"
+                        and len(human_roles) == 1
+                        and len(npc_roles) == 1
+                        and npc_roles[0] == opening_role
+                    ):
+                        opening_request = self._grounded_opening_request(
+                            scenario,
+                            npc_roles[0],
+                            opening_terms,
+                            request.language,
+                            request.training,
+                        )
+                        if opening_request is not None:
+                            render_opening = getattr(self.dialogue_renderer, "render_opening", None)
+                            if render_opening is None:
+                                prepared_opening = template_opening_result(opening_request)
+                            else:
+                                from .llm_trace import trace_session
+
+                                trace_token = trace_session.set(session_id)
+                                try:
+                                    try:
+                                        prepared_opening = render_opening(opening_request)
+                                    except Exception:
+                                        prepared_opening = template_opening_result(
+                                            opening_request,
+                                            provider=getattr(self.dialogue_renderer, "provider", None),
+                                            model=getattr(self.dialogue_renderer, "model", None),
+                                            fallback_used=True,
+                                            failure_reason="renderer_failure",
+                                        )
+                                finally:
+                                    trace_session.reset(trace_token)
+                            prepared_opening = validated_grounded_opening_result(
+                                opening_request, prepared_opening
+                            )
         with self.database.write_transaction() as connection:
             repeated = self._idempotency_result(
                 connection, scope, request.idempotency_key, request_digest
@@ -402,7 +536,6 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 )
                 return result
 
-            session_id = "sess_" + uuid.uuid4().hex[:24]
             participant_records: list[dict[str, Any]] = []
             role_to_participant: dict[str, str] = {}
             credentials: list[dict[str, str]] = []
@@ -607,7 +740,24 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             opening_actor_row = self._participant_row(connection, opening_participant)
             if human_npc_training:
                 npc_row = self._participant_row(connection, role_to_participant[npc_roles[0]])
-                greeting = self._initial_npc_greeting(scenario["title"], request.language)
+                relationship = str(
+                    state.get("training", {})
+                    .get("setup", {})
+                    .get("relationship", "first_meeting")
+                )
+                if prepared_opening is not None:
+                    greeting = prepared_opening.text
+                    greeting_speech_act = "grounded_opening"
+                    greeting_renderer = prepared_opening.public_metadata()
+                else:
+                    greeting = self._initial_npc_greeting(
+                        scenario["title"],
+                        request.language,
+                        session_id=session_id,
+                        relationship=relationship,
+                    )
+                    greeting_speech_act = "greeting"
+                    greeting_renderer = None
                 self._insert_message(
                     connection, session_id, 0, npc_row, greeting, request.language
                 )
@@ -617,7 +767,15 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                     0,
                     npc_row["id"],
                     "npc.greeting.delivered",
-                    {"speech_act": "greeting", "substantive": False},
+                    {
+                        "speech_act": greeting_speech_act,
+                        "substantive": False,
+                        **(
+                            {"dialogue_renderer": greeting_renderer}
+                            if greeting_renderer is not None
+                            else {}
+                        ),
+                    },
                     {},
                 )
             if (
@@ -1364,7 +1522,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                                            (_json(committed_state), session_id))
                     if extracted is not None and int(current["revision"]) > initial_revision:
                         self._insert_event(connection, session_id, int(current["revision"]), participant["id"],
-                            "message.extracted", {"extractor_version": "supply-semantic-normalizer-v1",
+                            "message.extracted", {"extractor_version": SUPPLY_EXTRACTOR_VERSION,
                             "source_revision": initial_revision, "action": parsed.action,
                             "validation_category": parsed.clarification_code or "validated"}, {})
                     next_participant_id = current["next_participant_id"]
@@ -2337,6 +2495,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         npc: sqlite3.Row,
         player_message: str,
         player_action: str,
+        recent_messages: tuple[str, ...] = (),
     ) -> tuple[str, str, dict[str, Any]]:
         if is_supply_scenario(scenario):
             from .supply_language import decide_supply_action
@@ -2346,10 +2505,27 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                                            proposer_role=current.get("proposer_role") or next((role for role, pid in state["role_to_participant"].items() if pid == current.get("proposer_participant_id")), None))
             return decision.action, "acknowledge_information", decision.terms or {}
         conversational = classify_npc_speech_act(player_message, player_action)
+        public_position: dict[str, Any] = {}
+        active_offer = state.get("active_offer")
+        if active_offer and active_offer.get("proposer_participant_id") == npc["id"]:
+            public_position = dict(active_offer.get("terms") or {})
+        elif state.get("npc_counter_terms"):
+            public_position = dict(state["npc_counter_terms"])
+        elif state.get("opening_participant_id") == npc["id"]:
+            public_position = dict(state.get("opening_terms") or {})
+        if (
+            conversational != "qualitative_interest_answer"
+            and public_position
+            and not mentioned_term_ids(player_message, scenario["terms"]["definitions"])
+            and requests_npc_public_position(
+                player_message,
+                recent_messages=recent_messages,
+            )
+        ):
+            return "inform", "public_position_restatement", public_position
         directive = detected_topic_directive(player_message, scenario["terms"]["definitions"])
         if directive.get("focus") and conversational in {"request_complete_offer", "acknowledge_information", "greeting"}:
             conversational = "focused_discussion"
-        active_offer = state.get("active_offer")
         if player_action in {"question", "inform"} and conversational in CONVERSATIONAL_SPEECH_ACTS | {"focused_discussion"}:
             return "inform", conversational, {}
         if active_offer and active_offer["proposer_participant_id"] != npc["id"]:
@@ -2517,18 +2693,29 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             str(session["id"]),
             str(npc["id"]),
         )
-        fallback = deterministic_npc_fallback(options, player_message)
-        recent_npc_replies = {turn.text for turn in dialogue_context if turn.speaker == "npc"}
-        if fallback in recent_npc_replies and len(options) > 1:
-            fallback_index = options.index(fallback)
-            fallback = next(
-                (
-                    options[(fallback_index + offset) % len(options)]
-                    for offset in range(1, len(options))
-                    if options[(fallback_index + offset) % len(options)] not in recent_npc_replies
-                ),
-                fallback,
-            )
+        session_state = _loads(session["state_json"])
+        training = session_state.get("training", {})
+        training_context = npc_training_context(
+            training, str(session["language"]), player_message,
+        )
+        strategy = scenario["roles"][npc["role"]].get("dialogue_strategy", {})
+        shared_context_parts = [strategy.get("shared_context", "")]
+        if (
+            training.get("setup", {}).get("relationship") == "successful_history"
+            and strategy.get("successful_history_context")
+        ):
+            shared_context_parts.append(strategy["successful_history_context"])
+        shared_scenario_context = " ".join(
+            part.strip() for part in shared_context_parts if part.strip()
+        )
+        if speech_act in {"general_answer", "acknowledge_information"} and not approved_reasons:
+            options = topic_return_options(
+                player_message, str(session["language"]), labels, dialogue_context,
+                training_context, focus,
+            ) or options
+        fallback = select_varied_fallback(
+            options, player_message, [turn.text for turn in dialogue_context if turn.speaker == "npc"],
+        )
         return NpcDialogueRequest(
             language=str(session["language"]),
             currency=str(scenario["currency"]),
@@ -2547,6 +2734,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 player_message=player_message,
                 focused_term_ids=focused_terms,
                 approved_reasons=approved_reasons,
+                training_context=training_context,
             ),
             scenario_title=str(scenario["title"]),
             npc_role=str(npc["role"]),
@@ -2559,8 +2747,9 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             conversation_style=scenario["roles"][npc["role"]].get("conversation_style", "pragmatic"),
             requested_term_id=requested_term_id,
             numeric_references=tuple(references),
-            training_context=npc_training_context(_loads(session["state_json"]).get("training", {}),
-                                                  str(session["language"]), player_message),
+            training_context=training_context,
+            shared_scenario_context=shared_scenario_context,
+            conversation_goal=str(strategy.get("conversation_goal", "")),
         )
 
     def _parse_context(self, connection: sqlite3.Connection, session: sqlite3.Row,
@@ -2850,6 +3039,14 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 npc,
                 player_message,
                 player_action,
+                tuple(
+                    turn.text
+                    for turn in self._dialogue_context(
+                        connection,
+                        str(session["id"]),
+                        str(npc["id"]),
+                    )[:-1]
+                ),
             )
             intent_revision = participant_revision + 1
             plan = self._build_utterance_plan(
@@ -3875,6 +4072,13 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             for item in scenario.get("distractors", [])
             if item["id"] in distractor_ids
         ]
+        training_view = None
+        if state.get("training"):
+            training_view = training_observation(state["training"], participant["id"])
+            if state["training"].get("owner_id") == participant["id"]:
+                training_view["rewind"] = self._training_rewind_status(
+                    connection, session, state
+                )
         return {
             "participant_id": participant["id"],
             "role": participant["role"],
@@ -3893,7 +4097,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             "substantive_turn_count": session["substantive_turn_count"],
             "next_actor": session["next_participant_id"],
             "language": session["language"],
-            **({"training": training_observation(state["training"], participant["id"])} if state.get("training") else {}),
+            **({"training": training_view} if training_view is not None else {}),
             **self._supply_observation(scenario, state),
         }
 
@@ -4052,7 +4256,96 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             raise RuntimeError("Optimistic session revision update failed")
 
     @staticmethod
-    def _initial_npc_greeting(title: str, language: str) -> str:
+    def _grounded_opening_request(
+        scenario: dict[str, Any],
+        npc_role: str,
+        opening_terms: dict[str, Any],
+        language: str,
+        training_setup: Any,
+    ) -> GroundedOpeningRequest | None:
+        strategy = scenario["roles"][npc_role].get("dialogue_strategy")
+        if not strategy:
+            return None
+        setup = training_setup.model_dump(mode="json") if training_setup is not None else {}
+        relationship = str(setup.get("relationship", "first_meeting"))
+        player_name = redact_untrusted_credentials(str(setup.get("player_name", ""))).strip()
+        player_background = redact_untrusted_credentials(
+            str(setup.get("shared_background", ""))
+        ).strip()
+        shared_parts = [str(strategy["shared_context"]).strip()]
+        if relationship == "successful_history" and strategy.get("successful_history_context"):
+            shared_parts.append(str(strategy["successful_history_context"]).strip())
+        shared_context = " ".join(shared_parts)
+        selected_terms = {
+            term_id: opening_terms[term_id]
+            for term_id in strategy["opening_term_ids"]
+        }
+        formatted_terms = format_terms(selected_terms, scenario=scenario, language=language)
+        if language == "ru":
+            public_position = formatted_terms
+            if relationship == "successful_history":
+                introduction = "Рад снова с вами работать."
+            else:
+                introduction = "Рад познакомиться и обсудить условия."
+            name_prefix = f"{OPENING_NAME_TOKEN}, добрый день." if player_name else "Добрый день."
+            fallback_template = (
+                f"{name_prefix} {introduction} Как вы видели в нашем предложении по теме "
+                f"«{OPENING_TITLE_TOKEN}», {OPENING_POSITION_TOKEN}. "
+                f"{strategy['shared_context']} Подходит ли вам предложенная основа, "
+                "и какое условие вы хотите обсудить первым?"
+            )
+        else:
+            public_position = formatted_terms
+            if relationship == "successful_history":
+                introduction = "I am glad to work with you again."
+            else:
+                introduction = "I am glad to meet you and discuss the terms."
+            name_prefix = f"Good afternoon, {OPENING_NAME_TOKEN}." if player_name else "Good afternoon."
+            fallback_template = (
+                f"{name_prefix} {introduction} As shown in our proposal for "
+                f"{OPENING_TITLE_TOKEN}, {OPENING_POSITION_TOKEN}. "
+                f"{strategy['shared_context']} Is this a workable basis, and which term "
+                "would you like to discuss first?"
+            )
+        return GroundedOpeningRequest(
+            language=language,
+            scenario_title=str(scenario["title"]),
+            npc_role=npc_role,
+            player_name=player_name,
+            relationship=relationship,
+            shared_scenario_context=shared_context,
+            untrusted_player_background=player_background,
+            opening_goal=str(strategy["opening_goal"]),
+            public_position=public_position,
+            conversation_style=str(
+                scenario["roles"][npc_role].get("conversation_style", "pragmatic")
+            ),
+            fallback_template=fallback_template,
+        )
+
+    @staticmethod
+    def _initial_npc_greeting(
+        title: str,
+        language: str,
+        *,
+        session_id: str = "",
+        relationship: str = "first_meeting",
+    ) -> str:
+        if relationship == "successful_history":
+            greeting_language = language if language in SUCCESSFUL_HISTORY_GREETINGS else "en"
+            templates = SUCCESSFUL_HISTORY_GREETINGS[greeting_language]
+            selection_key = "\x1f".join(
+                (
+                    RELATIONSHIP_GREETING_VERSION,
+                    session_id,
+                    greeting_language,
+                    title,
+                    relationship,
+                )
+            )
+            selection_digest = hashlib.sha256(selection_key.encode("utf-8")).digest()
+            index = int.from_bytes(selection_digest[:8], "big") % len(templates)
+            return templates[index].format(title=title)
         if language == "ru":
             return f"Здравствуйте. Давайте обсудим «{title}». Слушаю вас."
         return f'Hello. I am ready to discuss "{title}". Please go ahead.'
