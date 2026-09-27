@@ -119,6 +119,19 @@ def test_ambiguous_relative_changes_require_clarification(message, context, reas
     assert result.terms_delta == {}
 
 
+def test_qualitative_trade_willingness_is_discussion_not_a_numeric_edit():
+    result = parse_message(
+        "Мы готовы рассмотреть более позднюю поставку, если это поможет снизить цену.",
+        TERMS,
+        pending_confirmation=False,
+        scenario_currency="EUR",
+        context=BASELINE,
+    )
+
+    assert result.action == "inform"
+    assert result.terms_delta == {}
+
+
 @pytest.mark.parametrize("message, context, expected", [
     ("105 тысяч", BASELINE, {"price": 105000}),
     ("105 thousand", BASELINE, {"price": 105000}),

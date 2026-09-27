@@ -19,6 +19,36 @@ const data: TrainingReview = {
 }
 
 describe('training loop', () => {
+  it.each(['ru', 'en'] as const)('labels methodology dimensions and evidence limits in %s', language => {
+    const cards = (['economics', 'process', 'communication'] as const).map(dimension => ({
+      dimension, assessment: 'insufficient_evidence' as const,
+      observation: dimension, recommendation: 'Practice', alternative_phrase: 'Question', next_practice: 'Next',
+      alternative_is_hypothesis: true, evidence: data.evidence,
+    }))
+    render(<TrainingReviewPanel language={language} data={{ ...data,
+      methodology: { version: 'harvard-batna-voss-v1', zopa: 'not_inferred', economics: {
+        outcome: 'agreement', surplus_over_batna: 10, margin_over_reservation: -10, meets_reservation: false,
+      } }, coaching: { status: 'complete', summary: 'Summary', cards },
+    }} />)
+    expect(screen.getByText(language === 'ru' ? 'Выгода относительно BATNA' : 'Surplus over BATNA')).toBeInTheDocument()
+    expect(screen.getByText('10')).toBeInTheDocument()
+    expect(screen.getByText('-10')).toBeInTheDocument()
+    expect(screen.getByText(language === 'ru' ? 'Сделка ниже вашего порога приемлемости.' : 'The deal is below your reservation utility.')).toBeInTheDocument()
+    expect(screen.getByText(/· Harvard/)).toBeInTheDocument()
+    expect(screen.getByText(/· Voss/)).toBeInTheDocument()
+    expect(screen.getAllByText(language === 'ru' ? /Недостаточно данных для вывода/ : /Insufficient evidence/)).toHaveLength(3)
+  })
+
+  it('keeps absent deal margins distinct from zero when there is no agreement', () => {
+    render(<TrainingReviewPanel language="en" data={{ ...data, methodology: {
+      version: 'harvard-batna-voss-v1', zopa: 'not_inferred', economics: {
+        outcome: 'no_agreement', surplus_over_batna: null, margin_over_reservation: null, meets_reservation: null,
+      },
+    } }} />)
+    expect(screen.getByText(/Deal surplus is not calculated/)).toBeInTheDocument()
+    expect(screen.queryByText('Surplus over BATNA')).not.toBeInTheDocument()
+  })
+
   it('keeps shared background and private goals in separate setup fields', async () => {
     const user = userEvent.setup()
     const changed = vi.fn()

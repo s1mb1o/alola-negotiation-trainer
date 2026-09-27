@@ -1,5 +1,22 @@
 # Smoke Tests
 
+## Negotiation methodologies — DR-51
+
+- Run `uv run pytest backend/tests/test_methodology.py backend/tests/test_training_loop.py backend/tests/test_conditional_exchange_policy.py backend/tests/test_grounded_goal_dialogue.py backend/tests/test_supply_dialogue.py backend/tests/test_openapi.py`.
+- Check separate BATNA and reservation margins with positive, zero, and negative differences.
+- End a session without agreement. Check null deal margins and no automatic failure label.
+- Return duplicate dimensions, an invented reference, or an unsafe grounding verdict from a fixture provider. Check that coaching becomes unavailable and the deterministic report remains available.
+- Check new render-plan version retention and historical plans without a version.
+- Check canonical acceptance and exact supply package preservation.
+- Check that a technique name cannot create a social event.
+- Run `npm test` and `npm run build` in `frontend`.
+- In a completed session, select **Получить разбор**. Check economics, Harvard process, and Voss communication labels in both UI languages.
+- Check that insufficient evidence is a coverage limit rather than a failed skill.
+- Inspect dark and light themes and a narrow viewport. The new sections use the existing review styles.
+- Keep live model quality checks separate from fixture tests. Use synthetic cases and record each actual fallback.
+- Use an exit-only transcript with an empty offer history. Check that an `observed` economics card is rejected before grounding, even if a fixture grounder would approve it.
+- Check that the reviewer does not treat alternative utility as rejected-offer utility or infer an economically justified exit from an empty history.
+
 ## Bounded dialogue rewind and player-side assistance — DR-48
 
 - Run `pytest backend/tests/test_training_loop.py backend/tests/test_openapi.py`.
@@ -46,6 +63,12 @@
 - Attempt to compile a strategy with a private numeric limit or a term absent from the opening artifact. Check that compilation fails.
 - Check the same rules in an English session.
 - Check that the human remains `next_actor` at revision 0.
+- Send `Добрый день, мы не ожидали что вы так быстро сможете поставить оборудование, а вот цена конечно нас расстроила`.
+- Check that the social greeting does not select the `greeting` speech act.
+- Check that `price` is the concern and `delivery_weeks` is a favorable-surprise signal.
+- Check that the NPC does not ask whether delivery must become faster.
+- Accept a tentative question about a later delivery in exchange for price discussion.
+- Check that the question does not state that the player has accepted this exchange.
 
 ## Live social indicators — DR-45
 
@@ -154,7 +177,7 @@ See the [implementation guide](docs/human-training-guide.md) for configuration, 
 - Run `/bin/zsh -n scripts/run-qwen-api.zsh` to check shell syntax.
 - Run `/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh --help'` from the project root. Confirm that Uvicorn help appears without printing a credential or starting the service.
 - After verifying the existing API process and restarting it with the launcher, check `http://127.0.0.1:8172/api/v1/health`.
-- Confirm that NPC wording uses `qwen-flash-character`.
+- Confirm that NPC wording uses `deepseek-v4.1-flash` with thinking disabled.
 - Confirm that turn control uses `deepseek-v4-flash-0731` with thinking disabled.
 - Confirm that final coaching uses `qwen3.8-max` with thinking disabled.
 - Confirm that all three routes use the Pay-as-you-go endpoint and `QWENCLOUD_PAYGO_API_KEY`. Do not print the key value.

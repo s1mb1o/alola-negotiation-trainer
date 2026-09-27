@@ -46,9 +46,9 @@ def topic_return_options(
         for turn in reversed(dialogue_context):
             if turn.speaker == "npc" and "?" in turn.text:
                 topics = mentioned_term_ids(turn.text, labels)
-                if topics:
-                    focus = topics[-1]
-                    break
+                if len(topics) == 1:
+                    focus = topics[0]
+                break
     if language == "ru":
         follow_up = (
             f"Какой вариант по условию «{labels[focus]}» вы предлагаете?"

@@ -74,6 +74,21 @@ It SHOULD then take one step toward `conversation_goal` when the selected speech
 The conversation goal MUST NOT authorize a new fact, term, concession, commitment, or lifecycle action.
 The engine remains the final action and term authority.
 
+## Clarification 2026-09-27
+
+A greeting at the start of a substantive player message MUST NOT replace the business intent.
+The service MAY derive bounded term signals from the latest player wording.
+A concern signal identifies a term that the player explicitly criticized.
+A favorable-surprise signal identifies a term that the player described as unexpectedly favorable.
+Neither signal is an agreement, a term value, or a commitment.
+
+When both signals are present, the NPC MUST address the concern first.
+The NPC MUST NOT ask whether the favorable term must improve further.
+The NPC MAY test a possible exchange as a tentative question.
+The question MAY ask whether the player would relax the favorable term to improve the concern term.
+The NPC MUST NOT state that the player has already accepted this exchange.
+The grounding check MUST enforce the same rules.
+
 ## Consequences
 
 New scenario versions can produce richer openings and more purposeful dialogue.

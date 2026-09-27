@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from typing import Any, Mapping, Sequence
 
 import pytest
@@ -413,6 +413,62 @@ def test_non_priority_english_phrases_do_not_trigger_interest_disclosure(
     assert body["committed_actions"][-1]["speech_act"] == expected_speech_act
 
 
+def test_leading_greeting_preserves_concern_and_favorable_surprise_signals(
+    settings: Settings,
+) -> None:
+    renderer = SelectingRenderer()
+    with _client_with_renderer(settings, renderer) as client:
+        created = _create(
+            client,
+            "mixed-greeting-concern",
+            scenario_id="freight_contract_ru",
+            scenario_version=3,
+        )
+        body = _submit(
+            client,
+            created,
+            "Добрый день, мы не ожидали что вы так быстро сможете поставить оборудование, "
+            "а вот цена конечно нас растроила",
+            "mixed-greeting-concern-message",
+        )
+
+    action = body["committed_actions"][-1]
+    request = renderer.requests[-1]
+    assert action["speech_act"] == "focused_discussion"
+    assert request.focused_term_ids == ("price",)
+    assert request.player_concern_term_ids == ("price",)
+    assert request.player_favorable_surprise_term_ids == ("delivery_weeks",)
+    assert request.requested_term_id is None
+    assert "цен" in request.fallback_text.casefold()
+    assert "обмен" in request.fallback_text.casefold()
+    assert "сократ" not in request.fallback_text.casefold()
+
+
+def test_player_conditional_trade_gets_a_specific_non_binding_follow_up(
+    settings: Settings,
+) -> None:
+    renderer = SelectingRenderer()
+    with _client_with_renderer(settings, renderer) as client:
+        created = _create(
+            client,
+            "conditional-trade-discussion",
+            scenario_id="freight_contract_ru",
+            scenario_version=4,
+        )
+        body = _submit(
+            client,
+            created,
+            "Мы готовы рассмотреть более позднюю поставку, если это поможет снизить цену.",
+            "conditional-trade-discussion-message",
+        )
+
+    action = body["committed_actions"][-1]
+    assert action["speech_act"] == "focused_discussion"
+    assert "срок поставки" in action["message"]
+    assert "цена" in action["message"]
+    assert "Какую позицию" in action["message"]
+
+
 def test_user_reported_sequence_receives_distinct_contextual_replies(settings: Settings) -> None:
     messages = [
         "Добрый день, мы хотели обсудить условия перевозки через вашу компанию",
@@ -421,7 +477,7 @@ def test_user_reported_sequence_receives_distinct_contextual_replies(settings: S
         "ты дурак?",
     ]
     expected_acts = [
-        "greeting",
+        "request_complete_offer",
         "qualitative_interest_answer",
         "greeting",
         "abusive_language_boundary",
@@ -502,6 +558,31 @@ def test_npc_restates_its_public_terms_after_rejecting_player_counteroffer(
             assert "40%" in action["message"]
             assert "6 недель" in action["message"]
             assert dict(renderer.requests[-1].approved_terms) == expected_terms
+
+
+def test_npc_restates_requested_known_terms_and_names_unresolved_terms(
+    settings: Settings,
+) -> None:
+    renderer = SelectingRenderer()
+    with _client_with_renderer(settings, renderer) as client:
+        created = _create(
+            client,
+            "supplier-request-current-terms",
+            scenario_id="supplier_001",
+            scenario_version=6,
+        )
+        body = _submit(
+            client,
+            created,
+            "Назовите, пожалуйста, ваши текущие условия по цене, предоплате и сроку поставки.",
+            "supplier-request-current-terms-message",
+        )
+
+    action = body["committed_actions"][-1]
+    assert action["speech_act"] == "public_position_restatement"
+    assert "120\u00a0000 €" in action["message"]
+    assert "8 недель" in action["message"]
+    assert "Пока не согласовано: размер предоплаты" in action["message"]
 
 
 def test_generic_document_question_does_not_restate_npc_position(settings: Settings) -> None:
@@ -910,9 +991,10 @@ def test_task_specific_model_routes(settings: Settings) -> None:
     configured = replace(
         settings,
         npc_provider="qwen",
-        npc_model="qwen-flash-character",
+        npc_model="deepseek-v4.1-flash",
         npc_api_key_env="QWENCLOUD_PAYGO_API_KEY",
         npc_base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        npc_enable_thinking=False,
         control_provider="qwen",
         control_model="deepseek-v4-flash-0731",
         control_api_key_env="QWENCLOUD_PAYGO_API_KEY",
@@ -926,12 +1008,14 @@ def test_task_specific_model_routes(settings: Settings) -> None:
     )
 
     renderer = _configured_dialogue_renderer(configured)
-    assert renderer._text_provider.config.model == "qwen-flash-character"
+    assert renderer._text_provider.config.model == "deepseek-v4.1-flash"
+    assert renderer._text_provider.config.enable_thinking is False
     assert renderer._grounding_provider.config.model == "deepseek-v4-flash-0731"
 
     with TestClient(create_app(configured)) as client:
         service = client.app.state.service
-        assert service.dialogue_renderer._text_provider.config.model == "qwen-flash-character"
+        assert service.dialogue_renderer._text_provider.config.model == "deepseek-v4.1-flash"
+        assert service.dialogue_renderer._text_provider.config.enable_thinking is False
         assert service.dialogue_renderer._grounding_provider.config.model == "deepseek-v4-flash-0731"
         assert service.social_provider.config.model == "deepseek-v4-flash-0731"
         assert service.social_provider.config.enable_thinking is False
@@ -941,6 +1025,14 @@ def test_task_specific_model_routes(settings: Settings) -> None:
 
 def test_settings_read_task_specific_model_routes(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("NEGOTIATION_DB_PATH", str(tmp_path / "settings.sqlite3"))
+    monkeypatch.setenv("NEGOTIATION_NPC_PROVIDER", "qwen")
+    monkeypatch.setenv("NEGOTIATION_NPC_MODEL", "deepseek-v4.1-flash")
+    monkeypatch.setenv("NEGOTIATION_NPC_API_KEY_ENV", "QWENCLOUD_PAYGO_API_KEY")
+    monkeypatch.setenv("NEGOTIATION_NPC_ENABLE_THINKING", "false")
+    monkeypatch.setenv(
+        "NEGOTIATION_NPC_BASE_URL",
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    )
     monkeypatch.setenv("NEGOTIATION_CONTROL_PROVIDER", "qwen")
     monkeypatch.setenv("NEGOTIATION_CONTROL_MODEL", "deepseek-v4-flash-0731")
     monkeypatch.setenv("NEGOTIATION_CONTROL_API_KEY_ENV", "QWENCLOUD_PAYGO_API_KEY")
@@ -960,6 +1052,8 @@ def test_settings_read_task_specific_model_routes(monkeypatch, tmp_path) -> None
 
     configured = Settings.from_environment()
 
+    assert configured.npc_model == "deepseek-v4.1-flash"
+    assert configured.npc_enable_thinking is False
     assert configured.control_model == "deepseek-v4-flash-0731"
     assert configured.control_enable_thinking is False
     assert configured.review_model == "qwen3.8-max"

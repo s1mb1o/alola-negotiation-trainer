@@ -134,6 +134,11 @@ def test_review_grounding_exact_evidence_and_no_write_lock(client):
                             "recommendation": "Перед выходом проверьте альтернативу.",
                             "alternative_phrase": "Какое условие для вас важнее всего?",
                             "next_practice": "Задайте вопрос об интересах до выхода."}]}
+    candidate["cards"] = [
+        {**candidate["cards"][0], "dimension": dimension,
+         "assessment": "insufficient_evidence"}
+        for dimension in ("economics", "process", "communication")
+    ]
     service = client.app.state.service
     service.review_provider = Provider([candidate, {"safe": True}], service.database)
     response = client.post(url + "/coaching", headers=bearer(session["participant_token"])).json()
@@ -141,6 +146,7 @@ def test_review_grounding_exact_evidence_and_no_write_lock(client):
     assert response["cards"][0]["evidence"] == [source]
     assert len(service.review_provider.calls) == 2
     assert "PRIVATE-GOAL" in service.review_provider.calls[0][1][0]["content"]
+    assert json.loads(service.review_provider.calls[0][1][0]["content"])["methodology"] == report["training"]["methodology"]
     candidate["cards"][0]["evidence_refs"] = ["invented"]
     assert generate_coaching(Provider([candidate]), {"revision": 1, "evidence": [source]}, lambda x: x)["status"] == "unavailable"
 
@@ -386,6 +392,11 @@ def test_completed_targets_and_pending_confirmation_survive_fork(client, setting
     goal = review["training"]["goal_comparison"][0]
     assert goal["actual"] == expected_terms["price"]
     assert goal["gap"] == max(0, expected_terms["price"] - 1200000)
+    economics = review["training"]["methodology"]["economics"]
+    baseline = review["training"]["economic_baseline"]
+    assert economics["outcome"] == "agreement"
+    assert economics["surplus_over_batna"] == pytest.approx(review["outcome"]["participant_utility"] - baseline["batna_utility"])
+    assert economics["margin_over_reservation"] == pytest.approx(review["outcome"]["participant_utility"] - baseline["reservation_utility"])
     from backend.app.main import create_app
     from fastapi.testclient import TestClient
     with TestClient(create_app(settings)) as restarted:

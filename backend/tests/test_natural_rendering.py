@@ -1,14 +1,14 @@
 """Regressions for contextual prose without LLM authority over the deal."""
 
-from dataclasses import replace
 import json
+from dataclasses import replace
 
 import pytest
 
 from backend.app.dialogue import (
-    LlmNpcDialogueRenderer,
     MAX_CONTEXT_TEXT_CHARACTERS,
     MAX_CONTEXT_TURNS,
+    LlmNpcDialogueRenderer,
     NpcDialogueRequest,
     PublicDialogueTurn,
     bounded_dialogue_context,
@@ -148,6 +148,86 @@ def test_character_renderer_rejects_unslotted_relative_date_adjective():
     assert result.fallback_used
     assert result.failure_reason == "output_invalid"
     assert result.validation_failure == "unauthorized_claim"
+
+
+def test_renderer_rejects_further_improvement_of_a_favorable_surprise_term():
+    tradeoff = replace(
+        request(),
+        participant_facing_terms=(
+            ("price", "цена"),
+            ("delivery_weeks", "срок поставки"),
+        ),
+        focused_term_ids=("price",),
+        player_concern_term_ids=("price",),
+        player_favorable_surprise_term_ids=("delivery_weeks",),
+    )
+    provider = ProseProvider(
+        "Для вас важнее сократить срок поставки или обсудить цену?"
+    )
+
+    result = LlmNpcDialogueRenderer(provider).render(tradeoff)
+
+    assert result.fallback_used
+    assert result.failure_reason == "output_invalid"
+    assert len(provider.calls) == 1
+
+
+def test_renderer_allows_tentative_exchange_question_for_favorable_surprise():
+    tradeoff = replace(
+        request(),
+        participant_facing_terms=(
+            ("price", "цена"),
+            ("delivery_weeks", "срок поставки"),
+        ),
+        focused_term_ids=("price",),
+        player_concern_term_ids=("price",),
+        player_favorable_surprise_term_ids=("delivery_weeks",),
+    )
+    reply = (
+        "Правильно понимаю: основной вопрос для вас — цена, а более поздний срок "
+        "поставки вы готовы рассмотреть как предмет обмена?"
+    )
+
+    result = LlmNpcDialogueRenderer(ProseProvider(reply)).render(tradeoff)
+
+    assert result.text == reply
+    assert result.mode == "llm"
+    assert not result.fallback_used
+
+
+def test_renderer_requires_the_tentative_exchange_question_for_both_signals():
+    tradeoff = replace(
+        request(),
+        participant_facing_terms=(
+            ("price", "цена"),
+            ("delivery_weeks", "срок поставки"),
+        ),
+        focused_term_ids=("price",),
+        player_concern_term_ids=("price",),
+        player_favorable_surprise_term_ids=("delivery_weeks",),
+    )
+    provider = ProseProvider(
+        "Понимаю вашу озабоченность по поводу стоимости. Что именно в цене вас расстроило?"
+    )
+
+    result = LlmNpcDialogueRenderer(provider).render(tradeoff)
+
+    assert result.fallback_used
+    assert result.failure_reason == "output_invalid"
+    assert len(provider.calls) == 1
+
+
+def test_renderer_rejects_an_unauthorized_price_explanation():
+    provider = ProseProvider(
+        "Текущая стоимость обусловлена повышенными транспортными издержками. "
+        "Какой диапазон цен вы готовы рассмотреть?"
+    )
+
+    result = LlmNpcDialogueRenderer(provider).render(request())
+
+    assert result.fallback_used
+    assert result.failure_reason == "output_invalid"
+    assert len(provider.calls) == 1
 
 
 @pytest.mark.parametrize("verdict", [

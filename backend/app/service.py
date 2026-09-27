@@ -14,6 +14,8 @@ from typing import Any
 
 from .conversation import (
     build_conversation_memory,
+    detected_conditional_exchange,
+    detected_term_signals,
     detected_topic_directive,
     mentioned_term_ids,
 )
@@ -58,6 +60,7 @@ from .engine import (
     requests_npc_public_position,
     role_label,
 )
+from .methodology import VERSION as METHODOLOGY_VERSION
 from .models import (
     TERMINAL_STATUSES,
     CloseSessionRequest,
@@ -2516,14 +2519,38 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         if (
             conversational != "qualitative_interest_answer"
             and public_position
-            and not mentioned_term_ids(player_message, scenario["terms"]["definitions"])
             and requests_npc_public_position(
                 player_message,
                 recent_messages=recent_messages,
             )
+            and (
+                not mentioned_term_ids(
+                    player_message, scenario["terms"]["definitions"]
+                )
+                or not re.search(
+                    r"\b(?:почему|зачем|why)\b", player_message, re.IGNORECASE
+                )
+            )
         ):
             return "inform", "public_position_restatement", public_position
         directive = detected_topic_directive(player_message, scenario["terms"]["definitions"])
+        term_signals = detected_term_signals(
+            player_message, scenario["terms"]["definitions"]
+        )
+        conditional_exchange = detected_conditional_exchange(
+            player_message, scenario["terms"]["definitions"]
+        )
+        if term_signals["concern"] and conversational in {
+            "greeting",
+            "acknowledge_information",
+        }:
+            conversational = "focused_discussion"
+        if conditional_exchange and conversational in {
+            "greeting",
+            "acknowledge_information",
+            "general_answer",
+        }:
+            conversational = "focused_discussion"
         if directive.get("focus") and conversational in {"request_complete_offer", "acknowledge_information", "greeting"}:
             conversational = "focused_discussion"
         if player_action in {"question", "inform"} and conversational in CONVERSATIONAL_SPEECH_ACTS | {"focused_discussion"}:
@@ -2610,8 +2637,16 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         labels = participant_term_labels(scenario, str(session["language"]))
         memory = self._public_conversation_memory(connection, session, npc, scenario, labels)
         directive = detected_topic_directive(player_message, labels)
+        term_signals = detected_term_signals(player_message, labels)
+        conditional_exchange = detected_conditional_exchange(player_message, labels)
         current_topic = memory.get("current_topic") or {}
-        focus = directive.get("focus") or current_topic.get("term_id")
+        focus = (
+            (conditional_exchange[1] if conditional_exchange else None)
+            or
+            next(iter(term_signals["concern"]), None)
+            or directive.get("focus")
+            or current_topic.get("term_id")
+        )
         mentioned = mentioned_term_ids(player_message, labels)
         focused_terms = (focus,) if focus in labels else mentioned[:1]
         disclosed_reasons = self._disclosed_dialogue_reasons(connection, session, npc, scenario)
@@ -2641,7 +2676,12 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         active_offer = (_loads(session["state_json"]) or {}).get("active_offer") or {}
         offer_terms = active_offer.get("terms") or {}
         requested_term_id = None
-        if speech_act == "focused_discussion" and len(focused_terms) == 1:
+        if (
+            speech_act == "focused_discussion"
+            and len(focused_terms) == 1
+            and not term_signals["favorable_surprise"]
+            and not conditional_exchange
+        ):
             requested_term_id = focused_terms[0]
         if speech_act == "request_complete_offer":
             requested_term_id = next((term_id for term_id in scenario["terms"]["required_term_ids"]
@@ -2688,6 +2728,57 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             requested_label=labels.get(requested_term_id),
             exchange_labels=exchange_labels,
         )
+        signal_options: tuple[str, ...] = ()
+        if speech_act == "focused_discussion" and conditional_exchange:
+            offered_label = labels[conditional_exchange[0]]
+            requested_label = labels[conditional_exchange[1]]
+            if session["language"] == "ru":
+                options = (
+                    f"Понял: вы предлагаете связать условия «{offered_label}» и "
+                    f"«{requested_label}». Какой вариант по условию «{offered_label}» "
+                    "вы готовы рассмотреть?",
+                    f"Рассмотрим ваш вариант обмена между условиями «{offered_label}» и "
+                    f"«{requested_label}». Что именно вы готовы изменить в условии "
+                    f"«{offered_label}»?",
+                    f"Вы готовы обсуждать условие «{offered_label}» ради изменения условия "
+                    f"«{requested_label}». Какую позицию по условию «{offered_label}» "
+                    "вы предлагаете?",
+                )
+            else:
+                options = (
+                    f"I understand that you propose linking {offered_label} and "
+                    f"{requested_label}. What change to {offered_label} would you consider?",
+                    f"Let us examine your proposed trade between {offered_label} and "
+                    f"{requested_label}. What would you change about {offered_label}?",
+                    f"You are willing to discuss {offered_label} in return for a change to "
+                    f"{requested_label}. What position do you propose on {offered_label}?",
+                )
+        if (
+            speech_act == "focused_discussion"
+            and term_signals["concern"]
+            and term_signals["favorable_surprise"]
+        ):
+            concern_label = labels[term_signals["concern"][0]]
+            favorable_label = labels[term_signals["favorable_surprise"][0]]
+            if session["language"] == "ru":
+                signal_options = (
+                    f"Я понял, что сейчас вас беспокоит условие «{concern_label}». "
+                    f"Готовы ли вы обсуждать обмен с изменением условия «{favorable_label}»?",
+                    f"Сосредоточимся на условии «{concern_label}». Можно ли рассматривать "
+                    f"гибкость по условию «{favorable_label}» как часть обмена?",
+                    f"Правильно понимаю: основной вопрос — «{concern_label}», а условие "
+                    f"«{favorable_label}» можно обсуждать в составе обмена?",
+                )
+            else:
+                signal_options = (
+                    f"I understand that {concern_label} is your current concern. "
+                    f"Would you discuss a trade that changes {favorable_label}?",
+                    f"Let us focus on {concern_label}. Can flexibility on "
+                    f"{favorable_label} be part of a trade?",
+                    f"Is my understanding correct: {concern_label} is the main issue, "
+                    f"and {favorable_label} can be discussed as part of a trade?",
+                )
+            options = signal_options + options
         dialogue_context = self._dialogue_context(
             connection,
             str(session["id"]),
@@ -2714,7 +2805,9 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 training_context, focus,
             ) or options
         fallback = select_varied_fallback(
-            options, player_message, [turn.text for turn in dialogue_context if turn.speaker == "npc"],
+            signal_options or options,
+            player_message,
+            [turn.text for turn in dialogue_context if turn.speaker == "npc"],
         )
         return NpcDialogueRequest(
             language=str(session["language"]),
@@ -2740,6 +2833,8 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             npc_role=str(npc["role"]),
             missing_term_labels=missing_labels,
             focused_term_ids=focused_terms,
+            player_concern_term_ids=term_signals["concern"],
+            player_favorable_surprise_term_ids=term_signals["favorable_surprise"],
             conversation_memory=memory,
             approved_reasons=approved_reasons,
             disclosed_reasons=disclosed_reasons,
@@ -2750,6 +2845,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             training_context=training_context,
             shared_scenario_context=shared_scenario_context,
             conversation_goal=str(strategy.get("conversation_goal", "")),
+            methodology_version=METHODOLOGY_VERSION,
         )
 
     def _parse_context(self, connection: sqlite3.Connection, session: sqlite3.Row,
@@ -4321,6 +4417,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 scenario["roles"][npc_role].get("conversation_style", "pragmatic")
             ),
             fallback_template=fallback_template,
+            methodology_version=METHODOLOGY_VERSION,
         )
 
     @staticmethod

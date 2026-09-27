@@ -571,6 +571,8 @@ class Evidence(Contract):
 
 
 class CoachingCard(Contract):
+    dimension: Literal["economics", "process", "communication"] | None = None
+    assessment: Literal["observed", "insufficient_evidence"] | None = None
     evidence_refs: list[str] = Field(min_length=1, max_length=3)
     observation: str = Field(min_length=1, max_length=900)
     recommendation: str = Field(min_length=1, max_length=900)
@@ -650,6 +652,25 @@ class EconomicBaseline(Contract):
     reservation_utility: float
 
 
+class MethodologyEconomics(Contract):
+    outcome: Literal["agreement", "no_agreement"]
+    surplus_over_batna: float | None = Field(
+        description="Agreement utility minus the learner's BATNA utility. Null without agreement."
+    )
+    margin_over_reservation: float | None = Field(
+        description="Agreement utility minus the learner's reservation utility. Null without agreement."
+    )
+    meets_reservation: bool | None = Field(
+        description="Whether agreement utility reaches the learner's reservation utility. Null without agreement."
+    )
+
+
+class MethodologyReview(Contract):
+    version: Literal["harvard-batna-voss-v1"]
+    economics: MethodologyEconomics
+    zopa: Literal["not_inferred"]
+
+
 class OfferHistoryItem(Contract):
     source_revision: Count
     event_id: str
@@ -662,6 +683,7 @@ class TrainingReview(Contract):
     preparation: Preparation
     role_brief: RoleBrief
     economic_baseline: EconomicBaseline
+    methodology: MethodologyReview
     initial_context: InitialContext
     goal_comparison: list[GoalComparison]
     initial_social: SocialState

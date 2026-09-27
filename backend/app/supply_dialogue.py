@@ -22,6 +22,7 @@ from .dialogue import (
     MAX_CONTEXT_TEXT_CHARACTERS,
 )
 from .dialogue import _safe_identifier
+from .methodology import instructions as methodology_instructions
 
 CONTRACT = "supply-dialogue-v1"
 _GENERATION = """Write a non-binding NPC reply for the action selected by the engine.
@@ -253,7 +254,7 @@ def render_supply_reply(renderer, request):
     content = json.dumps(facts, ensure_ascii=False)
     try:
         generated = renderer._text_provider.generate(
-            [{"role": "user", "content": content}], instructions=_GENERATION
+            [{"role": "user", "content": content}], instructions=_GENERATION + methodology_instructions(request.methodology_version)
         )
     except Exception:
         return replace(
@@ -284,7 +285,7 @@ def render_supply_reply(renderer, request):
                     + json.dumps({"reply": prose}, ensure_ascii=False),
                 }
             ],
-            instructions=_GROUNDING,
+            instructions=_GROUNDING + methodology_instructions(request.methodology_version, grounding=True),
         )
         verdict = _strict_json_object(checked.text)
         if set(verdict) != {"safe"} or verdict["safe"] is not True:

@@ -157,6 +157,7 @@ def _configured_dialogue_renderer(settings: Settings) -> NpcDialogueRenderer:
         base_url=base_url,
         max_output_tokens=settings.npc_max_output_tokens,
         temperature=settings.npc_temperature,
+        enable_thinking=settings.npc_enable_thinking,
         timeout=settings.npc_timeout_seconds,
     )
     control_provider = _configured_task_provider(settings, "control", text_provider)
@@ -693,7 +694,9 @@ def create_app(
             contracts.ReviewResponse,
             "Get final participant review",
             PARTICIPANT + REVIEW + "Returns the deterministic report "
-            "and the owner's permitted training evidence. Does not initiate LLM coaching.",
+            "and the owner's permitted training evidence. Training methodology includes the learner's "
+            "agreement surplus over BATNA and margin over reservation utility. Without agreement, "
+            "both margins are null. Does not initiate LLM coaching.",
             errors=(401, 404, 409, 422),
         ),
     )
@@ -712,6 +715,8 @@ def create_app(
             "Request final goal coaching",
             PARTICIPANT + REVIEW + "Only the owner of an opt-in human "
             "training session can request coaching. The result is cached per session and source revision. "
+            "New coaching has three evidence-linked dimensions: economics, process, and communication. "
+            "Each dimension states observed or insufficient_evidence. Historical cached cards can omit these labels. "
             "No idempotency key or expected_revision is needed because the session is terminal. "
             "Repeated requests return the cached result, or 202 while another request is pending. "
             "Provider failure returns status unavailable with HTTP 200; the deterministic report remains available.",

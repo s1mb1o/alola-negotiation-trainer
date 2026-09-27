@@ -89,6 +89,7 @@ class Settings:
     npc_base_url: str | None = None
     npc_max_output_tokens: int = 300
     npc_temperature: float | None = None
+    npc_enable_thinking: bool | None = None
     npc_timeout_seconds: float = 20.0
     control_provider: str | None = None
     control_model: str | None = None
@@ -153,6 +154,7 @@ class Settings:
             npc_temperature=_bounded_optional_float(
                 "NEGOTIATION_NPC_TEMPERATURE", minimum=0.0, maximum=2.0
             ),
+            npc_enable_thinking=_optional_bool("NEGOTIATION_NPC_ENABLE_THINKING"),
             npc_timeout_seconds=_bounded_float(
                 "NEGOTIATION_NPC_TIMEOUT_SECONDS", 20.0, minimum=0.1, maximum=120.0
             ),

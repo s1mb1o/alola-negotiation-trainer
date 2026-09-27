@@ -9,6 +9,7 @@ import uuid
 from .coaching import generate_coaching
 from .dialogue import redact_untrusted_credentials
 from .models import TERMINAL_STATUSES
+from .methodology import assess_economics
 from .player_assistance import generate_player_reply
 from .scenarios import canonical_json, digest
 from .training import classify_social, evaluate_targets, npc_training_context
@@ -128,13 +129,15 @@ class TrainingServiceMixin:
                   (session["id"],))]
         coaching = connection.execute("SELECT status, result_json FROM training_reviews WHERE session_id = ?",
                                       (session["id"],)).fetchone()
+        baseline = {
+            "batna_utility": scenario["roles"][participant["role"]]["batna"]["utility"],
+            "reservation_utility": scenario["utility_model"]["role_models"][participant["role"]]["reservation_utility"],
+        }
         return {"training": {
             "version": training["version"], "preparation": training["setup"]["preparation"],
             "role_brief": self._role_brief(scenario, participant["role"], session["language"]),
-            "economic_baseline": {
-                "batna_utility": scenario["roles"][participant["role"]]["batna"]["utility"],
-                "reservation_utility": scenario["utility_model"]["role_models"][participant["role"]]["reservation_utility"],
-            },
+            "economic_baseline": baseline,
+            "methodology": assess_economics(public["outcome"], baseline),
             "initial_context": {
                 key: training["setup"].get(key, "")
                 for key in ("profile", "relationship", "player_name", "shared_background")
@@ -178,6 +181,7 @@ class TrainingServiceMixin:
             package = {"language": language, "revision": report["revision"], "outcome": report["outcome"],
                        "preparation": data["preparation"], "goal_comparison": data["goal_comparison"],
                        "role_brief": data["role_brief"], "economic_baseline": data["economic_baseline"],
+                       "methodology": data["methodology"],
                        "initial_context": data["initial_context"],
                        "evidence": data["evidence"], "offer_history": data["offer_history"]}
             # Bound provider context. Exact evidence references remain valid when truncated.

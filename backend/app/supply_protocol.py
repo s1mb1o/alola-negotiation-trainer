@@ -8,6 +8,7 @@ from typing import Any
 import uuid
 
 from .dialogue import NpcDialogueRequest, redact_untrusted_credentials
+from .methodology import VERSION as METHODOLOGY_VERSION
 from .dialogue_redirect import select_varied_fallback, topic_return_options
 from .engine import ParsedAction, offer_is_acceptable, offer_is_bindable
 from .reply_retrieval import retrieve_reply_examples
@@ -231,6 +232,7 @@ class SupplyProtocolMixin:
             npc_role=npc["role"],
             difficulty=session["difficulty"],
             render_contract="supply-dialogue-v1",
+            methodology_version=METHODOLOGY_VERSION,
             package_block=block,
             supply_action=action,
             training_context=training_context,

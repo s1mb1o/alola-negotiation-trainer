@@ -770,9 +770,10 @@ An unset control profile reuses the NPC dialogue provider.
 
 An unset review profile reuses the control provider.
 
-The selected live launcher uses QwenCloud Pay-as-you-go with `qwen-flash-character`, `DeepSeek-V4-Flash-0731`, and `Qwen3.8-Max`.
+The selected live launcher uses QwenCloud Pay-as-you-go with `deepseek-v4.1-flash`, `deepseek-v4-flash-0731`, and `qwen3.8-max`.
 
-The control and review profiles MAY set `ENABLE_THINKING` to `true` or `false`.
+The dialogue, control, and review profiles MAY set `ENABLE_THINKING` to `true` or `false`.
+The selected launcher sets it to `false` for all three profiles.
 
 The diagnostics trace reports the configured `enable_thinking` value for each call.
 
@@ -1327,6 +1328,21 @@ The existing deterministic fields above do not implement that requirement.
 The extension MUST preserve engine-calculated metrics and the review release gate.
 An unavailable or invalid LLM analysis MUST leave the deterministic report available and identify the missing analysis.
 The implemented response extension is `training`.
+Under [DR-51](decisions/2026-09-26_negotiation-methodologies.md), the completed owner-only projection MUST include `training.methodology`.
+Its `version` is `harvard-batna-voss-v1`.
+Its `economics` contains `outcome`, `surplus_over_batna`, `margin_over_reservation`, and `meets_reservation`.
+For an agreement, the engine MUST compute both margins from the learner's utility and own baseline.
+Without agreement, both margins and `meets_reservation` MUST be null.
+`zopa` is `not_inferred`. The report MUST NOT infer private NPC limits from the transcript.
+New methodology coaching MUST contain exactly three cards with distinct `dimension` values: `economics`, `process`, and `communication`.
+Each card MUST contain `assessment` with value `observed` or `insufficient_evidence`.
+Each card MUST cite actual message references.
+Insufficient evidence MUST NOT be treated as a failed skill.
+Without agreement and without offer evidence, `economics` MUST use `insufficient_evidence`.
+An `observed` economic assessment in that case MUST produce unavailable coaching.
+The grounding pass MUST validate claims against the cited evidence and engine economics.
+Historical cached cards MAY omit `dimension` and `assessment`.
+These fields MUST NOT appear in active observations or add benchmark assistance.
 Under [DR-35](decisions/2026-09-23_player-background.md), the review MUST distinguish initial relationship advantages from behavior demonstrated during this session.
 
 An intentional no-ZOPA scenario can return a successful `walked_away` training outcome.

@@ -12,6 +12,19 @@ from backend.app.main import create_app
 from .conftest import SCENARIO_ID, bearer, create_payload
 from .openapi_support import ResponseContractCheck, schema_validator
 
+
+def test_methodology_review_contract_documents_null_economics_and_legacy_cards(client):
+    schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    assert "methodology" in schemas["TrainingReview"]["required"]
+    economics = schemas["MethodologyEconomics"]
+    for field in ("surplus_over_batna", "margin_over_reservation", "meets_reservation"):
+        assert field in economics["required"]
+        assert {"type": "null"} in economics["properties"][field]["anyOf"]
+    card = schemas["CoachingCard"]
+    assert "dimension" not in card["required"]
+    assert "assessment" not in card["required"]
+    assert card["properties"]["dimension"]["anyOf"][0]["enum"] == ["economics", "process", "communication"]
+
 EXPECTED_OPERATION_IDS = {
     "getHealth",
     "listScenarios",

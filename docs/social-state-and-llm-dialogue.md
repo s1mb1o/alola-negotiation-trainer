@@ -253,10 +253,10 @@ The system MUST NOT automatically import private history from other sessions.
 
 ### 4.6. STE-style English instructions and Russian interaction (DR-34, DR-43)
 
-The live model route is accepted in [DR-46](decisions/2026-09-26_character-dialogue-and-model-routing.md).
-The route uses `qwen-flash-character` for NPC wording.
-It uses `DeepSeek-V4-Flash-0731` for turn-control tasks.
-It uses `Qwen3.8-Max` for the final review.
+The current live model route is accepted in [DR-52](decisions/2026-09-27_deepseek-v41-dialogue-route.md).
+The route uses `deepseek-v4.1-flash` with thinking disabled for NPC wording.
+It uses `deepseek-v4-flash-0731` with thinking disabled for turn-control tasks.
+It uses `qwen3.8-max` with thinking disabled for the final review.
 The credential source is the `QWENCLOUD_PAYGO_API_KEY` environment variable from `~/.zshrc`.
 See [the selected-model launcher](../COMMANDS.md#selected-model-qwencloud-pay-as-you-go).
 The engine remains the authority for social-state changes and negotiation state.

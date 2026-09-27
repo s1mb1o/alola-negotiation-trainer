@@ -6,12 +6,11 @@ Participant quotes remain untrusted. Only typed public events supply offer facts
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import json
 import math
 import re
+from collections.abc import Mapping, Sequence
 from typing import Any
-
 
 MAX_MEMORY_CHARACTERS = 8_000
 MAX_MEMORY_TEXT_CHARACTERS = 400
@@ -33,7 +32,8 @@ _TOPIC_PATTERNS = {
         r"\b(?:предоплат\w*|аванс\w*|оплат\w*|платеж\w*|prepayment|payment|advance)\b"
     ),
     "delivery_weeks": (
-        r"\b(?:поставк\w*|доставк\w*|запуск\w*|срок\w*|delivery|launch|timeline|lead time)\b"
+        r"\b(?:поставк\w*|постав(?:ить|им|ите|ят|ит|ил\w*)|доставк\w*|"
+        r"запуск\w*|срок\w*|delivery|deliver\w*|launch|timeline|lead time)\b"
     ),
     "office_readiness_weeks": (
         r"\b(?:готовност\w*|въезд\w*|переезд\w*|срок\w*|readiness|ready|move.in|timeline)\b"
@@ -62,6 +62,23 @@ _PRIORITY = re.compile(
     r"\b(?:важ\w*|нуж\w*|приоритет\w*|критич\w*|бюджет\w*|рис\w*|"
     r"предпоч\w*|important|need|priority|critical|budget|risk|prefer|avoid)\b"
 )
+_CONTRAST_BOUNDARY = re.compile(
+    r"[.!?;:\n]+|\s+(?:а(?:\s+вот)?|но|зато|but|while|whereas)\s+"
+)
+_FAVORABLE_SURPRISE = re.compile(
+    r"\b(?:не\s+ожидал\w*(?:[\s,]+\w+){0,6}[\s,]+(?:так\s+)?(?:быстр|раньш)\w*|"
+    r"(?:быстр|раньш)\w*(?:[\s,]+\w+){0,5}[\s,]+чем\s+ожидал\w*|"
+    r"приятно\s+удив\w*|(?:faster|sooner)\s+than\s+(?:we\s+)?expected|"
+    r"pleasantly\s+surpris\w*)\b"
+)
+_EXPLICIT_CONCERN = re.compile(
+    r"\b(?:рас+тро\w*|смуща\w*|беспоко\w*|не\s+устраива\w*|"
+    r"слишком\s+(?:высок\w*|дорог\w*)|дорог\w*|"
+    r"disappoint\w*|concern\w*|too\s+(?:high|expensive)|expensive)\b"
+)
+_CONDITIONAL_EXCHANGE_WILLINGNESS = re.compile(
+    r"\b(?:готов\w*|можем|могу|рассмотр\w*|willing|prepared|can|could|consider)\b"
+)
 
 
 def _normalized(message: str) -> str:
@@ -80,6 +97,63 @@ def mentioned_term_ids(message: str, term_ids: Sequence[str]) -> tuple[str, ...]
             normalized,
         )
     )
+
+
+def detected_term_signals(message: str, term_ids: Sequence[str]) -> dict[str, tuple[str, ...]]:
+    """Detect bounded wording signals without creating a term or commitment."""
+
+    favorable: list[str] = []
+    concerns: list[str] = []
+    for clause in _CONTRAST_BOUNDARY.split(_normalized(message)):
+        topic_mentions = [
+            (term_id, match.start(), match.end())
+            for term_id in dict.fromkeys(term_ids)
+            for match in re.finditer(
+                _TOPIC_PATTERNS.get(
+                    term_id,
+                    r"\b" + re.escape(term_id.replace("_", " ")) + r"\b",
+                ),
+                clause,
+            )
+        ]
+        if not topic_mentions:
+            continue
+        for signal_pattern, target in (
+            (_FAVORABLE_SURPRISE, favorable),
+            (_EXPLICIT_CONCERN, concerns),
+        ):
+            for signal in signal_pattern.finditer(clause):
+                signal_midpoint = (signal.start() + signal.end()) / 2
+                term_id, _, _ = min(
+                    topic_mentions,
+                    key=lambda mention: (
+                        abs(((mention[1] + mention[2]) / 2) - signal_midpoint),
+                        mention[1],
+                    ),
+                )
+                if term_id not in target:
+                    target.append(term_id)
+    concern_set = set(concerns)
+    return {
+        "favorable_surprise": tuple(topic for topic in favorable if topic not in concern_set),
+        "concern": tuple(concerns),
+    }
+
+
+def detected_conditional_exchange(
+    message: str,
+    term_ids: Sequence[str],
+) -> tuple[str, str] | None:
+    """Return the player's offered and requested trade terms without accepting the trade."""
+
+    parts = re.split(r"\b(?:если|if)\b", _normalized(message), maxsplit=1)
+    if len(parts) != 2 or not _CONDITIONAL_EXCHANGE_WILLINGNESS.search(parts[0]):
+        return None
+    offered = mentioned_term_ids(parts[0], term_ids)
+    requested = mentioned_term_ids(parts[1], term_ids)
+    if len(offered) != 1 or len(requested) != 1 or offered[0] == requested[0]:
+        return None
+    return offered[0], requested[0]
 
 
 def detected_topic_directive(message: str, term_ids: Sequence[str]) -> dict[str, Any]:

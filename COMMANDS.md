@@ -48,8 +48,8 @@ The commands use the installed virtual environment. They do not need activation.
 
 ### Selected model: QwenCloud Pay-as-you-go
 
-The NPC wording model is `qwen-flash-character`.
-The turn-control model is `DeepSeek-V4-Flash-0731` with thinking disabled.
+The NPC wording model is `deepseek-v4.1-flash` with thinking disabled.
+The turn-control model is `deepseek-v4-flash-0731` with thinking disabled.
 The final-review model is `Qwen3.8-Max` with thinking disabled.
 The launcher reads `QWENCLOUD_PAYGO_API_KEY` from its process environment.
 The interactive zsh command below loads the user's `~/.zshrc` first.
@@ -64,7 +64,7 @@ The launcher selects the exact endpoint:
 It starts this project's API on `127.0.0.1:8172` with one worker.
 Stop an existing verified project API process before using the launcher.
 Provider-backed tasks use the configured Pay-as-you-go account when generation is requested.
-Set `NEGOTIATION_NPC_MODEL=qwen-plus-character` before the launcher to evaluate the larger Character model.
+Set `NEGOTIATION_NPC_MODEL=qwen-flash-character` or `NEGOTIATION_NPC_MODEL=qwen-plus-character` before the launcher to evaluate a Character model.
 
 ### Alternative: natural dialogue with OpenAI
 
@@ -89,9 +89,11 @@ It does not use the external-agent client's `QWEN_BASE_URL` setting.
 
 ```zsh
 NEGOTIATION_NPC_PROVIDER=qwen \
-NEGOTIATION_NPC_MODEL=qwen-flash-character \
+NEGOTIATION_NPC_MODEL=deepseek-v4.1-flash \
 NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
 NEGOTIATION_NPC_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_NPC_ENABLE_THINKING=false \
+NEGOTIATION_NPC_TIMEOUT_SECONDS=30 \
 NEGOTIATION_CONTROL_PROVIDER=qwen \
 NEGOTIATION_CONTROL_MODEL=deepseek-v4-flash-0731 \
 NEGOTIATION_CONTROL_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \

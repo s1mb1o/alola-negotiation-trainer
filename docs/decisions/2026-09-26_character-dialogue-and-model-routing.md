@@ -3,6 +3,9 @@
 Date: 2026-09-26.
 Status: accepted and in implementation.
 
+[DR-52](2026-09-27_deepseek-v41-dialogue-route.md) supersedes the default NPC wording model in this record.
+The remaining task-routing and safety rules stay in force.
+
 ## Context
 
 The NPC must sound like a consistent human counterparty.

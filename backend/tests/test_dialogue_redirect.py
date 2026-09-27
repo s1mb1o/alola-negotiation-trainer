@@ -48,6 +48,24 @@ def test_approved_dog_fact_is_not_redirected_and_previous_prices_are_not_copied(
     assert all("цена" in text and "110000" not in text and "Гуффи" not in text for text in options)
 
 
+def test_multitopic_previous_question_returns_to_terms_without_choosing_one() -> None:
+    options = topic_return_options(
+        "Как зовут вашу собаку?",
+        "ru",
+        {"price": "цена", "delivery_weeks": "срок поставки"},
+        (
+            PublicDialogueTurn(
+                "npc",
+                "Подходит ли вам цена и срок поставки, и что обсудим первым?",
+            ),
+        ),
+        {},
+    )
+
+    assert options
+    assert all("Какие условия вы хотели бы обсудить?" in text for text in options)
+
+
 @pytest.mark.parametrize("language", ["ru", "en"])
 def test_disabled_personal_fact_provider_failure_is_polite_durable_and_varied(settings, language):
     provider = FailingProvider()

@@ -6,6 +6,26 @@ Plan: [implementation plan](plans/06_human-training-loop.md).
 
 ## Use the Web UI
 
+[DR-51](decisions/2026-09-26_negotiation-methodologies.md) adds Harvard, BATNA/ZOPA, and Voss to NPC wording and final coaching.
+The NPC can ask about interests, explain an authorized exchange, or tentatively reflect a stated concern.
+It must answer a direct question first.
+The engine still selects the action and validates the terms.
+Warm wording does not change the acceptable economic range.
+
+The completed report shows agreement surplus over your BATNA and margin over your reservation utility.
+These numbers use scenario utility units.
+Without agreement, no deal surplus is shown.
+An exit alone does not prove success or failure.
+The report does not infer an exact ZOPA from the conversation.
+
+New coaching has three evidence-linked cards: economics, negotiation process, and communication.
+The coach can report insufficient evidence for a dimension.
+This is not a negative skill rating.
+Voss techniques are optional. A technique name does not earn a score.
+Old cached coaching remains readable and is not regenerated automatically.
+
+### Steps
+
 1. Select a scenario and your role.
 2. Select a counterpart profile and relationship history.
 3. Enter the optional player name and shared background.
@@ -265,12 +285,12 @@ Run the selected model through the existing launcher:
 /bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
 ```
 
-The launcher uses `qwen-flash-character` for NPC wording.
-It uses `DeepSeek-V4-Flash-0731` for grounding and social classification.
-It uses `Qwen3.8-Max` for the final review.
+The launcher uses `deepseek-v4.1-flash` with thinking disabled for NPC wording.
+It uses `deepseek-v4-flash-0731` with thinking disabled for grounding and social classification.
+It uses `qwen3.8-max` with thinking disabled for the final review.
 It reads `QWENCLOUD_PAYGO_API_KEY` from the process environment loaded by interactive zsh.
 All three routes use the QwenCloud Pay-as-you-go endpoint.
-Set `NEGOTIATION_NPC_MODEL=qwen-plus-character` before the launcher to test the larger Character model.
+Set `NEGOTIATION_NPC_MODEL=qwen-flash-character` or `NEGOTIATION_NPC_MODEL=qwen-plus-character` before the launcher to test a Character model.
 No provider credential reaches the browser.
 Template mode remains available without provider credentials.
 Template mode produces no model-based social classifications or coaching.

@@ -29,6 +29,14 @@ The model SHOULD advance the conversation goal when the selected speech act perm
 The goal supplies direction only.
 The engine remains the authority for the action, values, concessions, and offer lifecycle.
 
+A greeting at the start of a longer message is social context.
+It does not replace the business intent.
+The service can pass bounded concern and favorable-surprise term signals to the renderer.
+The renderer MUST address a concern before it advances the NPC goal.
+It MUST NOT ask whether an unexpectedly favorable term must improve further.
+It MAY test a possible exchange as a tentative question.
+It MUST NOT present the exchange as accepted player flexibility.
+
 ## Подготовленные варианты ответа
 
 Файл [`backend/data/reply_examples_v2.json`](../backend/data/reply_examples_v2.json) содержит 18 записей для перевозки, поставки компьютеров и подписки SaaS.
@@ -62,11 +70,11 @@ The engine remains the authority for the action, values, concessions, and offer 
 
 Команда `.venv/bin/python -m backend.reply_rag_smoke` показывает план без создания сессий и вызовов модели.
 Режим `offline` проверяет четыре синтетических случая через тестового провайдера.
-Режим `live` использует `qwen-flash-character` для реплик NPC.
-Для проверок он использует `DeepSeek-V4-Flash-0731`.
-Для итогового разбора он использует `Qwen3.8-Max`.
+Режим `live` использует `deepseek-v4.1-flash` с отключённым мышлением для реплик NPC.
+Для проверок он использует `deepseek-v4-flash-0731` с отключённым мышлением.
+Для итогового разбора он использует `qwen3.8-max` с отключённым мышлением.
 Лаунчер читает `QWENCLOUD_PAYGO_API_KEY` из окружения.
-Модель диалога можно заменить на `qwen-plus-character` через `NEGOTIATION_NPC_MODEL`.
+Модель диалога можно заменить на `qwen-flash-character` или `qwen-plus-character` через `NEGOTIATION_NPC_MODEL`.
 Запускайте live-проверку при разрешённой передаче синтетических данных выбранному провайдеру.
 
 ```sh

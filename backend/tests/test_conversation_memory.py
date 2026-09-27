@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 from typing import Any
 
 import pytest
@@ -9,11 +9,12 @@ import pytest
 from backend.app.conversation import (
     MAX_MEMORY_CHARACTERS,
     build_conversation_memory,
+    detected_conditional_exchange,
+    detected_term_signals,
     detected_topic_directive,
     mentioned_term_ids,
     validate_conversation_memory,
 )
-
 
 TERM_LABELS = {
     "price": "цена",
@@ -87,6 +88,39 @@ def test_explicit_single_term_proposal_establishes_nonbinding_focus(message: str
     }
     assert memory["offers"] == []
     assert memory["agreement"] is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Добрый день, мы не ожидали что вы так быстро сможете поставить оборудование, "
+        "а вот цена конечно нас растроила",
+        "Добрый день, мы не ожидали, что вы так быстро сможете поставить оборудование, "
+        "а вот цена нас, конечно, расстроила.",
+        "Delivery is sooner than we expected, but the price is disappointing.",
+    ],
+)
+def test_contrastive_term_signals_keep_concern_separate_from_favorable_surprise(
+    message: str,
+) -> None:
+    assert detected_term_signals(message, tuple(TERM_LABELS)) == {
+        "favorable_surprise": ("delivery_weeks",),
+        "concern": ("price",),
+    }
+
+
+def test_concern_signal_uses_the_nearest_term_across_a_parenthetical_comma() -> None:
+    assert detected_term_signals(
+        "Цена нас, конечно, расстроила, а срок поставки приемлем.",
+        tuple(TERM_LABELS),
+    ) == {"favorable_surprise": (), "concern": ("price",)}
+
+
+def test_conditional_exchange_keeps_offered_and_requested_terms_separate() -> None:
+    assert detected_conditional_exchange(
+        "Мы готовы рассмотреть более позднюю поставку, если это поможет снизить цену.",
+        tuple(TERM_LABELS),
+    ) == ("delivery_weeks", "price")
 
 
 def test_topic_resume_and_postponement_have_their_own_message_sources() -> None:

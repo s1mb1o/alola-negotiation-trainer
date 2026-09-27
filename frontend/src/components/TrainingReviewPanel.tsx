@@ -17,6 +17,12 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
   const text = (ru: string, en: string) => language === 'ru' ? ru : en
   const [selected, setSelected] = useState(data.checkpoints[0]?.source_revision ?? 0)
   const coaching = data.coaching
+  const economics = data.methodology?.economics
+  const dimensions = {
+    economics: text('Экономика · BATNA и порог приемлемости', 'Economics · BATNA and reservation utility'),
+    process: text('Переговорные решения · Harvard', 'Negotiation process · Harvard'),
+    communication: text('Общение · Voss', 'Communication · Voss'),
+  }
   const format = (value: number | null | undefined) => value == null ? '—' : value.toLocaleString(language === 'ru' ? 'ru-RU' : 'en-US')
   const axes: Record<string, string> = {
     rapport: text('Контакт', 'Rapport'), credibility: text('Доверие к словам', 'Credibility'),
@@ -42,12 +48,28 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
         ] as const).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{data.preparation[key] || '—'}</dd></div>)}</dl>
       </details>
     </section>
+    {economics && <section className="review-section">
+      <h3>{text('Экономика сделки', 'Deal economics')}</h3>
+      {economics.outcome === 'agreement' ? <>
+        <dl>
+          <div><dt>{text('Выгода относительно BATNA', 'Surplus over BATNA')}</dt><dd>{format(economics.surplus_over_batna)}</dd></div>
+          <div><dt>{text('Запас до порога приемлемости', 'Margin over reservation utility')}</dt><dd>{format(economics.margin_over_reservation)}</dd></div>
+        </dl>
+        <p>{economics.meets_reservation
+          ? text('Сделка достигает вашего порога приемлемости.', 'The deal meets your reservation utility.')
+          : text('Сделка ниже вашего порога приемлемости.', 'The deal is below your reservation utility.')}</p>
+        <p className="field-note">{text('Значения выражены в единицах полезности сценария, а не в деньгах.', 'Values use scenario utility units, not money.')}</p>
+      </> : <p>{text('Соглашение не заключено. Выгода сделки не рассчитана. Выход из переговоров сам по себе не означает успех или неудачу.', 'No agreement was reached. Deal surplus is not calculated. Ending negotiations alone does not prove success or failure.')}</p>}
+      <p className="field-note">{text('BATNA — лучшая альтернатива без сделки. Порог приемлемости может отличаться от её полезности. Точная зона возможного соглашения (ZOPA) по переписке не определяется.', 'BATNA is the best alternative without a deal. Reservation utility can differ from its utility. An exact zone of possible agreement (ZOPA) is not inferred from the transcript.')}</p>
+    </section>}
     <section className="review-section" aria-busy={trainingBusy}>
       <h3>{text('Разбор с тренером', 'Coaching review')}</h3>
       {coaching.evidence_truncated && <p className="field-note">{text('Разбор использует сокращённую историю. Выводы относятся только к приведённым фрагментам.', 'This review uses a shortened history. Conclusions apply only to the included excerpts.')}</p>}
       {coaching.status === 'complete' ? <>
         <p>{coaching.summary}</p><p>{coaching.goal_assessment}</p>
         {coaching.cards?.map((card, index) => <article className="coaching-card" key={index}>
+          {card.dimension && <p><strong>{dimensions[card.dimension]}</strong></p>}
+          {card.assessment === 'insufficient_evidence' && <p className="field-note">{text('Недостаточно данных для вывода. Это не оценка навыка.', 'Insufficient evidence. This is not a skill rating.')}</p>}
           <h4>{card.observation}</h4>
           {card.evidence.map(source => <blockquote key={source.ref}>
             <p>{source.text}{source.excerpt_truncated ? '…' : ''}</p><cite>{text('Ход', 'Turn')} {source.source_revision} · {identifierLabel(language, source.role)}</cite>

@@ -845,6 +845,10 @@ def _contextual_numeric_action(
     """Resolve only bounded relative edits and unambiguous short numeric answers."""
 
     relative = is_relative_change(message)
+    if relative and not re.search(r"\d|\b(?:наполовину|вдвое|half)\b", message, re.IGNORECASE):
+        # A qualitative willingness to change a term is discussion evidence.
+        # It is not a numeric edit to the active offer.
+        return None
     stripped = _without_input_currencies(message).strip(" .!")
     short = re.fullmatch(
         rf"(?P<value>{_INPUT_NUMBER})\s*(?P<unit>%|процент\w*|percent|"
@@ -1134,10 +1138,14 @@ def classify_npc_speech_act(message: str, player_action: str) -> str:
         cue in normalized for cue in _INTEREST_QUESTION_CUES
     ):
         return "qualitative_interest_answer"
-    # A greeting at the start of a substantive question is social context, not its intent.
-    if player_action == "question" and normalized.strip(" .!?,") not in _GREETING_CUES:
+    greeting_only = any(
+        re.fullmatch(rf"[\s,.!?;:—-]*{re.escape(cue)}[\s,.!?;:—-]*", normalized)
+        for cue in _GREETING_CUES
+    )
+    # A greeting at the start of a substantive message is social context, not its intent.
+    if player_action == "question" and not greeting_only:
         return "general_answer"
-    if any(_contains_complete_phrase(normalized, cue) for cue in _GREETING_CUES):
+    if greeting_only:
         return "greeting"
     if any(cue in normalized for cue in _COMPLETE_OFFER_REQUEST_CUES):
         return "request_complete_offer"
@@ -1285,15 +1293,17 @@ def npc_message_options(
         return (f"I propose a trade: the price change depends on changes to {trade}. The complete package is: {package}.",)
     if speech_act == "public_position_restatement":
         if language == "ru":
+            unresolved = f" Пока не согласовано: {missing}." if missing else ""
             return (
-                f"Повторю мою последнюю публичную позицию: {package}.",
-                f"Мои последние названные условия: {package}.",
-                f"Моё последнее предложение было таким: {package}.",
+                f"Повторю мою последнюю публичную позицию: {package}.{unresolved}",
+                f"Мои последние названные условия: {package}.{unresolved}",
+                f"Моё последнее предложение было таким: {package}.{unresolved}",
             )
+        unresolved = f" Still unresolved: {missing}." if missing else ""
         return (
-            f"I will repeat my latest public position: {package}.",
-            f"My latest stated terms were: {package}.",
-            f"My latest offer was: {package}.",
+            f"I will repeat my latest public position: {package}.{unresolved}",
+            f"My latest stated terms were: {package}.{unresolved}",
+            f"My latest offer was: {package}.{unresolved}",
         )
     if requested_label:
         if language == "ru":

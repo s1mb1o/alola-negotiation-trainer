@@ -533,12 +533,24 @@ export interface CoachingResult {
   summary?: string
   goal_assessment?: string
   cards?: Array<{
+    dimension?: 'economics' | 'process' | 'communication' | null
+    assessment?: 'observed' | 'insufficient_evidence' | null
     observation: string; recommendation: string; alternative_phrase: string; next_practice: string
     evidence: CoachingEvidence[]; alternative_is_hypothesis: boolean
   }>
 }
 
 export interface TrainingReview {
+  methodology?: {
+    version: 'harvard-batna-voss-v1'
+    economics: {
+      outcome: 'agreement' | 'no_agreement'
+      surplus_over_batna: number | null
+      margin_over_reservation: number | null
+      meets_reservation: boolean | null
+    }
+    zopa: 'not_inferred'
+  }
   preparation: TrainingSetup['preparation']
   goal_comparison: Array<{ term_id: string; operator: string; value: number; actual: number | null; gap: number | null; status: string }>
   initial_social: Record<string, number>

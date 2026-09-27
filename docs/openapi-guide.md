@@ -57,6 +57,15 @@ Coaching returns `202` while an existing analysis is pending.
 A completed request returns `200` with `complete` or `unavailable` status.
 A provider failure does not remove the deterministic review.
 
+DR-51 adds `MethodologyReview` to the completed owner-only training report.
+The engine calculates surplus over the learner's BATNA and margin over reservation utility.
+Without agreement, both margins and `meets_reservation` are null.
+New coaching cards identify `economics`, `process`, or `communication`.
+Each card states `observed` or `insufficient_evidence`.
+Legacy cached cards can omit these two fields.
+The generator checks that new methodology coaching contains all three dimensions exactly once.
+No endpoint or authentication rule changes.
+
 Public term values follow the pinned scenario grammar.
 Public event payloads follow the event type and version.
 These extension points use JSON values.

@@ -20,7 +20,8 @@ Active training sessions can rewind to an earlier NPC checkpoint three times per
 The **Ответь за меня** action uses `Qwen3.8-Max` to create one actor-safe player reply and submits it through the normal Player API.
 The final report compares observed parent and child results.
 The [implementation plan](docs/plans/06_human-training-loop.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md) define the delivered scope.
-The selected live route uses `qwen-flash-character` for NPC wording, `DeepSeek-V4-Flash-0731` for turn control, and `Qwen3.8-Max` for final coaching.
+The selected live route uses `deepseek-v4.1-flash` for NPC wording, `deepseek-v4-flash-0731` for turn control, and `qwen3.8-max` for final coaching.
+The launcher disables thinking for all three bounded tasks.
 Full coaching quality remains unvalidated on live Qwen dialogues.
 
 - FastAPI exposes the role-neutral Player API.
@@ -280,9 +281,11 @@ Use this command for the selected Qwen configuration after zsh exports `QWENCLOU
 
 ```sh
 NEGOTIATION_NPC_PROVIDER=qwen \
-NEGOTIATION_NPC_MODEL=qwen-flash-character \
+NEGOTIATION_NPC_MODEL=deepseek-v4.1-flash \
 NEGOTIATION_NPC_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
 NEGOTIATION_NPC_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1 \
+NEGOTIATION_NPC_ENABLE_THINKING=false \
+NEGOTIATION_NPC_TIMEOUT_SECONDS=30 \
 NEGOTIATION_CONTROL_PROVIDER=qwen \
 NEGOTIATION_CONTROL_MODEL=deepseek-v4-flash-0731 \
 NEGOTIATION_CONTROL_API_KEY_ENV=QWENCLOUD_PAYGO_API_KEY \
@@ -304,6 +307,7 @@ The built-in NPC supports these environment variables:
 - `NEGOTIATION_NPC_BASE_URL`: optional HTTPS endpoint override; Qwen NPC rendering defaults to the Token Plan endpoint, and a custom endpoint requires an explicit `NEGOTIATION_NPC_API_KEY_ENV`;
 - `NEGOTIATION_NPC_MAX_OUTPUT_TOKENS`: default `300`; permitted range `32` through `2000`;
 - `NEGOTIATION_NPC_TEMPERATURE`: optional; leave it empty for `gpt-5.6-luna`; a configured value must be from `0` through `2` and must be supported by the selected model;
+- `NEGOTIATION_NPC_ENABLE_THINKING`: optional `true` or `false`; the selected DeepSeek route sets it to `false`;
 - `NEGOTIATION_NPC_TIMEOUT_SECONDS`: default `20`; permitted range `0.1` through `120`.
 
 The `NEGOTIATION_CONTROL_*` variables select grounding, social classification, and semantic extraction.
@@ -312,7 +316,7 @@ Each group supports `PROVIDER`, `MODEL`, `API_KEY_ENV`, `BASE_URL`, `TEMPERATURE
 An empty control group reuses the dialogue provider.
 An empty review group reuses the control provider.
 `ENABLE_THINKING` accepts `true`, `false`, or an empty value.
-Use `NEGOTIATION_NPC_MODEL=qwen-plus-character` to evaluate the larger Character model without a code change.
+Use `NEGOTIATION_NPC_MODEL=qwen-flash-character` or `NEGOTIATION_NPC_MODEL=qwen-plus-character` to evaluate a Character model without a code change.
 
 One eligible non-binding NPC turn makes at most one claimed render attempt.
 That attempt can include a generation call and a separate grounding-check call.

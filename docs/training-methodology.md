@@ -1,5 +1,31 @@
 # Training Methodology
 
+## Negotiation methodologies (DR-51)
+
+[DR-51](decisions/2026-09-26_negotiation-methodologies.md) defines Harvard, BATNA/ZOPA, and Voss behavior.
+NPC wording MUST answer direct questions first and use only approved facts.
+It SHOULD investigate interests and use supported criteria.
+It MAY use tentative labels, short mirrors, summaries, and calibrated questions when relevant.
+The methodology MUST NOT change economic authority or award automatic social points.
+Canonical actions MUST remain deterministic.
+New render plans MUST store the methodology version.
+Historical plans MUST remain readable.
+
+The completed owner-only training review MUST compute agreement margins over the learner's BATNA and reservation utility separately.
+Without agreement, those margins MUST be null.
+No agreement MUST NOT automatically mean failure or success.
+Without agreement and without offer evidence, the economics card MUST use `insufficient_evidence`.
+The service MUST reject an `observed` economics assessment in that case.
+The reviewer MUST NOT treat alternative utility as the utility of a rejected offer.
+An empty offer history MUST NOT establish that no acceptable deal existed.
+The grounding pass MUST reject an asserted economic justification for an exit without this evidence in any part of the review.
+The review MUST NOT infer or disclose an exact hidden ZOPA.
+New coaching MUST include economics, process, and communication cards.
+Each card MUST cite message evidence and distinguish observed behavior from insufficient evidence.
+The Web UI MUST support Russian and English labels.
+These checks MUST NOT be presented as a validated competence score.
+
+
 ## Human training loop (DR-36)
 
 The training configuration MUST be restricted to one human and one built-in NPC in training mode.

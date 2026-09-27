@@ -16,8 +16,11 @@ Read [`../CLAUDE.md`](../CLAUDE.md) and [`../AGENTS.md`](../AGENTS.md) first.
 - `/llm-debug` uses the trace API under DR-40, DR-41, and DR-44. Loopback clients with a loopback host and matching Origin can read without a credential. Other requests require an administrator credential. Capture complete outgoing requests and retry attempts. Redact credentials before storage. Evict whole records at 200 calls or 64 MiB. Keep records in process memory. Exclude benchmark calls. Never add traces to player responses or session history.
 - DR-46 separates dialogue, control, and review model profiles. Keep the engine authoritative. Route NPC prose to the dialogue provider. Route grounding and social classification to the control provider. Route final coaching to the review provider.
 - DR-50 permits provider-backed revision-zero wording only for a scenario version with `dialogue_strategy`. Run provider I/O before the create-session write transaction. Require exact engine-owned placeholders for the title, optional player name, and selected opening terms. Never pass the private role brief or private economics to the opening renderer.
+- DR-50 also requires mixed greeting and business messages to keep the business intent. Treat concern and favorable-surprise term signals as bounded wording evidence. Never convert them into an agreement, a term value, or accepted flexibility.
 
 ## Built-in NPC validation
+
+- DR-51 uses `app/methodology.py` for shared Harvard, BATNA/ZOPA, and Voss wording rules. Preserve the version in new render plans. Keep engine actions and canonical financial replies authoritative. New coaching requires one evidence-linked card per dimension. Read old plans and cached cards without regeneration. See [verification cases](../docs/methodology-validation-2026-09-27.md).
 
 - Supply Stage A uses `supply-package-v1` and `supply-economics-v1`.
 - Keep preliminary proposals separate from formal offers. Do not auto-accept a complete preliminary package.

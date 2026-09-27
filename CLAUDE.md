@@ -14,6 +14,11 @@ Read `AGENTS.md` before you change code or specifications.
 
 Each implementation directory contains a local `CLAUDE.md` file.
 
+## Submission readiness
+
+- [Plan 14](docs/plans/14_reach-90-plus.md) defines the proposed execution order for a 90+ internal readiness target. It prioritizes semantic safety, a complete training journey, access, and the jury package. It includes evidence gates, dependencies, effort, and freeze rules. It does not authorize deployment or publication.
+- [Plan 13](docs/plans/13_hackathon-readiness.md) retains the underlying defect reproductions and requirement analysis. Accepted decisions and core specifications remain authoritative.
+
 ## API documentation
 
 - [DR-37](docs/decisions/2026-09-24_openapi-documentation.md) and the [API specification](docs/api.md) require OpenAPI 3.1 at `/openapi.json` and interactive Swagger UI at `/docs`.
@@ -24,6 +29,8 @@ Each implementation directory contains a local `CLAUDE.md` file.
 - [DR-45](docs/decisions/2026-09-26_live-social-indicators.md) defines the owner-only live social projection and the Web UI indicators.
 
 ## Dialogue documentation
+
+- [DR-51](docs/decisions/2026-09-26_negotiation-methodologies.md): versioned Harvard, BATNA/ZOPA, and Voss wording rules. New render plans retain `methodology_version`. Completed owner-only reviews calculate the learner's economic margins. New coaching requires three evidence-linked dimensions. Preserve canonical actions, hidden economics, legacy render plans, and cached coaching.
 
 - [DR-44](docs/decisions/2026-09-25_complete-llm-requests.md): show complete outgoing provider requests and retries. Redact credentials before storage. Evict whole records at 200 calls or 64 MiB. Do not truncate retained content or alter provider behavior.
 - [DR-39](docs/decisions/2026-09-24_polite-topic-return.md): six history-aware fallback variants for recognized unrelated questions without approved personal facts. Preserve grounded small talk and mixed negotiation messages.
@@ -53,13 +60,14 @@ Each implementation directory contains a local `CLAUDE.md` file.
 - [NPC dialogue guide](docs/npc-dialogue-guide.md): user examples, scenario authoring, and verification commands.
 - [DR-27](docs/decisions/2026-09-06_conversation-continuity.md): accepted continuity and disclosure requirements.
 - [DR-28](docs/decisions/2026-09-06_grounded-negotiation-dialogue.md): contextual parsing, bounded exchange selection, exact public numeric references, dialogue profiles, and evaluation boundaries.
+- [DR-52](docs/decisions/2026-09-27_deepseek-v41-dialogue-route.md): selected DeepSeek V4.1 Flash dialogue route and safety boundaries.
 - [Dialogue evaluation rubric](docs/dialogue-evaluation-rubric.md): offline diagnostics and source-linked human ratings.
 - [Verification report](docs/reports/2026-09-06-conversation-continuity.md): completed checks and live-test limits.
 
 ## Commands
 
-The selected live route uses `qwen-flash-character` for NPC wording.
-It uses `DeepSeek-V4-Flash-0731` for turn control and `Qwen3.8-Max` for final coaching.
+The selected live route uses `deepseek-v4.1-flash` with thinking disabled for NPC wording.
+It uses `deepseek-v4-flash-0731` with thinking disabled for turn control and `qwen3.8-max` with thinking disabled for final coaching.
 Use `QWENCLOUD_PAYGO_API_KEY` from the user's `~/.zshrc` environment.
 Run `/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'` from the project root.
 The launcher pins the model, endpoint, and credential variable without storing the credential.
@@ -111,5 +119,6 @@ npm run build
 - Keep missing required terms `UNSPECIFIED` during focused discussion. Require a complete validated package before binding acceptance.
 - Add `dialogue_reasons` only in a new immutable scenario version. Pass engine-selected reason identifiers and texts or previously delivered public reason history to the renderer. Record disclosure only after delivery. Keep the referenced private source out of the request.
 - Do not treat generated NPC prose as a structured action. Never parse that prose back into negotiation state.
+- Do not classify a substantive player message as `greeting` only because it starts with a greeting. Concern and favorable-surprise term signals describe wording only. They do not prove agreement or flexibility. Test possible flexibility with a tentative question.
 - Do not use benchmark sessions with hints or a difficulty other than `normal`.
 - Do not use a shared participant credential across sessions.
