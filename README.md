@@ -231,7 +231,7 @@ Negotiation Trainer is an API-first training and simulation service.
 The service publishes [OpenAPI JSON](http://127.0.0.1:8172/openapi.json), [Swagger UI](http://127.0.0.1:8172/docs), and [ReDoc](http://127.0.0.1:8172/redoc).
 See the [OpenAPI guide](docs/openapi-guide.md) for authentication, examples, and contract checks.
 
-Repository: [GitLab](https://github.com/s1mb1o/alola-negotiation-trainer).
+Repository: [GitHub](https://github.com/s1mb1o/alola-negotiation-trainer).
 
 The repository contains a runnable FastAPI service, a React Web UI, a CLI, external-agent clients, a Telegram integration adapter, and a role-swapped benchmark runner.
 
@@ -245,7 +245,7 @@ Completed sessions can restart from a recorded decision checkpoint with fresh cr
 Active training sessions can rewind to an earlier NPC checkpoint three times per root lineage.
 The **Ответь за меня** action uses `Qwen3.8-Max` to create one actor-safe player reply and submits it through the normal Player API.
 The final report compares observed parent and child results.
-The [implementation plan](docs/plans/06_human-training-loop.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md) define the delivered scope.
+[DR-36](docs/decisions/2026-09-24_training-loop.md) defines the delivered scope.
 The selected live route uses `deepseek-v4.1-flash` for NPC wording, `deepseek-v4-flash-0731` for turn control, and `qwen3.8-max` for final coaching.
 The launcher disables thinking for all three bounded tasks.
 Full coaching quality remains unvalidated on live Qwen dialogues.
@@ -637,7 +637,7 @@ uv run python -m benchmarks.dialogue_quality analyze benchmarks/fixtures/dialogu
 
 ```sh
 uv run pytest
-uv run ruff check backend clients benchmarks scripts/release
+uv run ruff check backend clients benchmarks
 
 cd frontend
 npm audit
@@ -662,8 +662,8 @@ See the full LLM matrix report for the 11-model Russian and English comparison.
 
 The next delivery order is accepted in [DR-29](docs/decisions/2026-09-08_reference-before-generalization.md): complete one reference supply scenario, then generalize its deal model for another domain.
 The bounded reference scenario is implemented under [DR-30](docs/decisions/2026-09-08_reference-supply-implementation.md).
-See the [implementation guide](docs/reference-supply-guide.md) and actual offline dialogue.
-The [two-stage plan](docs/plans/05_reference-supply-and-generalization.md) keeps live language validation pending before generalization.
+See the [implementation guide](docs/reference-supply-guide.md).
+The [reference supply specification](docs/reference-supply-spec.md) keeps live language validation pending before generalization.
 
 - The built-in NPC uses a deterministic MVP policy. An optional provider can write contextual non-binding replies after the engine selects the action and disclosures.
 - The parser supports bounded proposal clauses, questions, quotations, corrections, and one explicit relative `на` or `by` change against the active offer. It does not implement unrestricted arithmetic or date interpretation.

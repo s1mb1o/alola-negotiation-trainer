@@ -33,7 +33,7 @@ Its proposed fields, economics, and protocol extensions are not yet accepted run
 This decision does not supersede DR-28's financial rendering or offer-transition requirements.
 Approval of changes to those requirements must update the affected core specifications in the same change.
 
-The [delivery plan](../plans/05_reference-supply-and-generalization.md) defines the two stages and their gates.
+The [reference supply specification](../reference-supply-spec.md) defines the two stages and their gates.
 Neither stage is implemented by this documentation change.
 
 ## Consequences

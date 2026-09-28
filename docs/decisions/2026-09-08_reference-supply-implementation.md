@@ -6,7 +6,7 @@ Sequence: [DR-29](2026-09-08_reference-before-generalization.md).
 
 ## Authority and scope
 
-Implement Stage A from [the delivery plan](../plans/05_reference-supply-and-generalization.md).
+Implement Stage A as defined by [DR-29](2026-09-08_reference-before-generalization.md).
 The [resolved implementation contract](../reference-supply-contract.md) supplies the exact wire model and synthetic economics.
 It resolves the open inputs in [the reference specification](../reference-supply-spec.md).
 It takes precedence over that draft's proposed names and unresolved alternatives.

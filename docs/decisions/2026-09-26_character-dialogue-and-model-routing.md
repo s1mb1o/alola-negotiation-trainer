@@ -59,5 +59,3 @@ Model substitutions do not change the Player API.
 The separate routes make latency, cost, and quality visible in the LLM diagnostics window.
 The revision-zero NPC greeting remains an authored deterministic artifact.
 Greeting comparisons therefore measure the NPC response to the player's first greeting.
-
-See [Plan 09](../plans/09_character-dialogue-and-model-routing.md).

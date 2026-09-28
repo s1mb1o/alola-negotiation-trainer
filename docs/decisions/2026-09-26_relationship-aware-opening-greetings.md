@@ -51,5 +51,3 @@ The same session remains stable for replay and audit.
 The authored relationship affects the conversational tone before the first player message.
 The greeting cannot reveal hidden state or create negotiation evidence.
 Existing sessions retain their stored greeting and initial social state.
-
-See [Plan 10](../plans/10_relationship-aware-opening-greetings.md).

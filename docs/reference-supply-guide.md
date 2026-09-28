@@ -149,5 +149,5 @@ Both temporary server processes were stopped after verification.
 
 No paid model calls were made.
 Live naturalness and cross-model quality remain unverified.
-The [delivery plan](plans/05_reference-supply-and-generalization.md) keeps that validation gate before Stage B generalization.
+The [reference specification](reference-supply-spec.md) keeps that validation gate before Stage B generalization.
 The shared general-purpose deal DSL and the second-domain composite scenario are not implemented in this increment.

@@ -2,8 +2,6 @@
 
 Date: 2026-09-26.
 Contracts: [DR-36](decisions/2026-09-24_training-loop.md) and [DR-48](decisions/2026-09-26_rewind-and-player-assist.md).
-Plan: [implementation plan](plans/06_human-training-loop.md).
-
 ## Use the Web UI
 
 [DR-51](decisions/2026-09-26_negotiation-methodologies.md) adds Harvard, BATNA/ZOPA, and Voss to NPC wording and final coaching.

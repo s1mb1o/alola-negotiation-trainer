@@ -95,5 +95,3 @@ New scenario versions can produce richer openings and more purposeful dialogue.
 Opening generation can add provider latency.
 The deterministic fallback preserves availability and exact term values.
 Old sessions and old scenario versions remain unchanged.
-
-See [Plan 12](../plans/12_grounded-goal-directed-dialogue.md).

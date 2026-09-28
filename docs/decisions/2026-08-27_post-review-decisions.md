@@ -292,7 +292,6 @@ The normative contract is in [the knowledge and emergent state model](../knowled
 - The Inspector is read-only in this increment.
 - The Inspector does not expose scenario-authoring secrets or utility models.
 
-The implementation plan is in [the Admin Session Inspector plan](../plans/02_admin-session-inspector.md).
 
 ---
 

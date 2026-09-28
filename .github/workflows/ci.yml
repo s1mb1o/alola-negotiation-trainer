@@ -17,7 +17,7 @@ jobs:
           python-version: "3.13"
       - run: uv sync --frozen --dev
       - run: uv run pytest
-      - run: uv run ruff check backend clients benchmarks scripts/release
+      - run: uv run ruff check backend clients benchmarks
 
   frontend:
     runs-on: ubuntu-latest

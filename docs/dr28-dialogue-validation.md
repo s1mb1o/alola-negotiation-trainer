@@ -3,8 +3,6 @@
 Date: 2026-09-07.
 Implementation: [`backend.live_dialogue_smoke`](../backend/live_dialogue_smoke.py).
 Authority: [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md).
-Scope: [validation plan](plans/04_dr28-dialogue-validation.md).
-
 ## Purpose and limits
 
 The harness checks the built-in NPC training path.

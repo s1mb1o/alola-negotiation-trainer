@@ -100,7 +100,7 @@ Implementation MUST NOT begin until the reference specification, economic assump
 This sequencing decision does not authorize paid model calls or external AI review.
 
 The [reference specification](reference-supply-spec.md) records the design. DR-30 and the resolved contract replace its open alternatives.
-The [delivery plan](plans/05_reference-supply-and-generalization.md) records stages and readiness gates.
+The [reference specification](reference-supply-spec.md) records stages and readiness gates.
 
 ## Prompt language and initial player background
 

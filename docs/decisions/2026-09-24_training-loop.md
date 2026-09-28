@@ -77,4 +77,4 @@ Keep all model instructions in English under DR-34.
 Use the session language for participant-facing text.
 Use the configured Qwen model for live dialogue and coaching.
 The offline path MUST remain usable without credentials.
-See [implementation plan](../plans/06_human-training-loop.md).
+See the [human training guide](../human-training-guide.md).

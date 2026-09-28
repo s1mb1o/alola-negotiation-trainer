@@ -67,5 +67,3 @@ Benchmark sessions MUST NOT use player-side assistance.
 Rewind feels like dialogue rollback in the Web UI while preserving immutable audit history.
 The durable lineage counter prevents a learner from recovering spent attempts through another rewind.
 The model can write a player reply but cannot bypass the Player API or deterministic transition rules.
-
-See [Plan 11](../plans/11_rewind-and-player-assist.md).

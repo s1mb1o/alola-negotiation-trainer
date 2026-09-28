@@ -62,7 +62,7 @@ The focused suite validates the document, canonical route coverage, stable opera
 It validates successful HTTP responses for all 21 operations.
 It also checks authentication failures, error shapes, credential omission on replay, and pending coaching.
 The shared backend client fixture validates real response bodies against the generated schemas.
-See the [OpenAPI guide](../openapi-guide.md) and [implementation plan](../plans/07_openapi-contracts.md).
+See the [OpenAPI guide](../openapi-guide.md).
 
 ## Consequences and risks
 

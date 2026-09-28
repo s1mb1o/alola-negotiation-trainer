@@ -3,7 +3,7 @@
 Date: 2026-09-08.
 Status: approved design, resolved and implemented in bounded form under DR-30.
 Delivery authority: [DR-29](decisions/2026-09-08_reference-before-generalization.md).
-Implementation order: [Stage A, then Stage B](plans/05_reference-supply-and-generalization.md).
+Implementation order: Stage A, then Stage B.
 
 The [resolved contract](reference-supply-contract.md) and [DR-30](decisions/2026-09-08_reference-supply-implementation.md) take precedence over the proposed names and alternatives below.
 The [implementation guide](reference-supply-guide.md) records executable scope and validation limits.
