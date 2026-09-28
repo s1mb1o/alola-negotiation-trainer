@@ -1,9 +1,9 @@
 import type { UiLanguage } from './types'
 
 const ru = {
-  documentTitle: 'Контур — тренажёр переговоров',
+  documentTitle: 'Alola — тренажёр переговоров',
   documentDescription: 'Тренажёр деловых переговоров с управляемыми сценариями и разбором результата.',
-  brand: 'Контур',
+  brand: 'Alola',
   brandSubtitle: 'Тренажёр переговоров',
   navTraining: 'Тренировка',
   navStats: 'Прогресс',
@@ -328,9 +328,9 @@ const ru = {
 type TranslationKey = keyof typeof ru
 
 const en: Record<TranslationKey, string> = {
-  documentTitle: 'Kontur — negotiation trainer',
+  documentTitle: 'Alola — negotiation trainer',
   documentDescription: 'A business negotiation trainer with controlled scenarios and evidence-based reviews.',
-  brand: 'Kontur',
+  brand: 'Alola',
   brandSubtitle: 'Negotiation trainer',
   navTraining: 'Training',
   navStats: 'Progress',

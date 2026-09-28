@@ -22,7 +22,7 @@ describe('UI preferences', () => {
     applyUiLanguage('en')
 
     expect(document.documentElement.lang).toBe('en')
-    expect(document.title).toBe('Kontur — negotiation trainer')
+    expect(document.title).toBe('Alola — negotiation trainer')
     expect(document.querySelector('meta[name="description"]')).toHaveAttribute(
       'content',
       'A business negotiation trainer with controlled scenarios and evidence-based reviews.',
