@@ -152,10 +152,10 @@ export function SessionSetup({
                   </option>
                 ))}
               </select>
-              {selectedScenario && (
+                  {selectedScenario && (
                 <div className="scenario-summary">
                   <div>
-                    <strong>{selectedScenario.title}</strong>
+                    <strong>{selectedScenario.title}{selectedScenario.scenario_id === 'supplier_001' ? ` · ${t('mainCase')}` : ''}</strong>
                     <p>{selectedScenario.description}</p>
                   </div>
                   {selectedScenario.duration_minutes && (

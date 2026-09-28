@@ -13,8 +13,8 @@ from backend.tests.conftest import bearer, credentials
 from backend.tests.test_supply_protocol import FULL, create_supply, submit
 
 
-def _pending_publication(client, language="en"):
-    session = create_supply(client, language, both_external=True)
+def _pending_publication(client, language="en", run_mode="training"):
+    session = create_supply(client, language, both_external=True, run_mode=run_mode)
     tokens = credentials(session)
     submit(client, session, tokens["buyer"], FULL[language])
     submit(
@@ -101,7 +101,7 @@ def test_question_returns_the_same_owner_acceptance_snapshot(client):
 
 
 def test_clarification_expiry_removes_publication_and_active_preliminary_projection(client):
-    session, tokens, _ = _pending_publication(client)
+    session, tokens, _ = _pending_publication(client, run_mode="benchmark")
     result = None
     for _ in range(10):
         result = submit(

@@ -1,4 +1,4 @@
-import { BarChart3, Bot, CalendarDays, CheckCircle2, ChevronRight, Gauge, Languages, Laptop, Layers3, LoaderCircle, Route, Server, Sparkles, Target, Trophy } from 'lucide-react'
+import { BarChart3, Bot, CalendarDays, CheckCircle2, ChevronRight, Languages, Laptop, Layers3, LoaderCircle, Route, Server, Target, Trophy } from 'lucide-react'
 import { identifierLabel, translate } from '../i18n'
 import type { AggregateStats, AggregateStatsResponse, UiLanguage } from '../types'
 import { formatNumber, formatPercent } from '../utils'
@@ -67,7 +67,6 @@ export function StatsView({ language, localStats, remoteStats, loading, error, o
   const agreementRate = numeric(totals, 'agreement_rate', 'agreements_rate', 'agreement_ratio')
     ?? (completedSessions ? totalAgreements / completedSessions : undefined)
   const averageOutcome = numeric(totals, 'average_outcome_score', 'avg_outcome_score', 'average_outcome') ?? localStats.average_outcome ?? undefined
-  const averageSkill = numeric(totals, 'average_skill_score', 'avg_skill_score', 'average_skill')
 
   const groups = [
     { key: 'by_model', title: t('byModel'), icon: Bot, rows: normalizeGroup(remoteStats?.by_model, ['model', 'model_id', 'name']) },
@@ -125,11 +124,6 @@ export function StatsView({ language, localStats, remoteStats, loading, error, o
               <div><small>{t('averageOutcome')}</small><strong>{averageOutcome === undefined ? '—' : formatNumber(metricScore(averageOutcome) ?? 0, locale, 0)}</strong></div>
               <span className="metric-trend neutral">/ 100</span>
             </article>
-            <article>
-              <span className="metric-icon violet"><Gauge size={19} aria-hidden="true" /></span>
-              <div><small>{t('averageSkill')}</small><strong>{averageSkill === undefined ? '—' : formatNumber(metricScore(averageSkill) ?? 0, locale, 0)}</strong></div>
-              <span className="metric-trend neutral">/ 100</span>
-            </article>
           </section>
 
           {groups.some((group) => group.rows.length > 0) && (
@@ -159,26 +153,6 @@ export function StatsView({ language, localStats, remoteStats, loading, error, o
                     ) : <p className="aggregate-empty">—</p>}
                   </article>
                 ))}
-              </div>
-            </section>
-          )}
-
-          {Object.keys(localStats.average_skills).length > 0 && (
-            <section className="stats-section skill-profile-section">
-              <div className="section-title-row">
-                <div><Sparkles size={20} aria-hidden="true" /><h2>{t('skillProfile')}</h2></div>
-                <small className="stats-source-badge">{t('statsLocalTotals')}</small>
-              </div>
-              <div className="stats-skill-grid">
-                {Object.entries(localStats.average_skills).map(([skill, value]) => {
-                  const normalized = metricScore(value) ?? 0
-                  return (
-                    <div className="stats-skill" key={skill}>
-                      <div><span>{identifierLabel(language, skill)}</span><strong>{Math.round(normalized)}</strong></div>
-                      <div><span style={{ width: `${Math.min(100, normalized)}%` }} /></div>
-                    </div>
-                  )
-                })}
               </div>
             </section>
           )}

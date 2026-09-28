@@ -1,0 +1,24 @@
+[Unit]
+Description=Negotiation Trainer template API
+After=network.target
+
+[Service]
+Type=simple
+User=negotiation
+Group=negotiation
+WorkingDirectory=/opt/negotiation-trainer
+Environment=NEGOTIATION_NPC_PROVIDER=template
+Environment=NEGOTIATION_CONTROL_PROVIDER=template
+Environment=NEGOTIATION_REVIEW_PROVIDER=template
+Environment=NEGOTIATION_LLM_TRACE=false
+Environment=NEGOTIATION_DB_PATH=/var/lib/negotiation-trainer/negotiation.db
+ExecStart=/opt/negotiation-trainer/.venv/bin/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8172 --workers 1
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/negotiation-trainer
+
+[Install]
+WantedBy=multi-user.target

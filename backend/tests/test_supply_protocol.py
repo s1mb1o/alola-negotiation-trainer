@@ -16,7 +16,9 @@ FULL = {
 }
 
 
-def create_supply(client, language="ru", both_external=False, human_role="buyer"):
+def create_supply(
+    client, language="ru", both_external=False, human_role="buyer", run_mode="training"
+):
     payload = create_payload(
         uuid.uuid4().hex,
         difficulty="easy",
@@ -25,7 +27,18 @@ def create_supply(client, language="ru", both_external=False, human_role="buyer"
         human_role=human_role,
     )
     payload.update(scenario_id="supplier_integration_" + language, scenario_version=1)
-    response = client.post("/api/v1/sessions", json=payload)
+    headers = None
+    if run_mode == "benchmark":
+        payload.update(
+            run_mode="benchmark",
+            difficulty="normal",
+            hints_enabled=False,
+            benchmark_run_id="supply-protocol-bound",
+            trial_id=uuid.uuid4().hex,
+            benchmark_expected_trials=1,
+        )
+        headers = bearer("test-admin")
+    response = client.post("/api/v1/sessions", json=payload, headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
 

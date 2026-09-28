@@ -200,7 +200,7 @@ The `/llm-debug` window records this call with task name `player_assist`.
 
 ## Social rules and memory
 
-The engine pins `human-training-v1` and `social-events-v1` in session state.
+The engine pins `human-training-v1`, `social-events-v1`, and `training-clarification-v1` in session state.
 The baseline is rapport 45, credibility 60, tension 10, and patience 80.
 Successful prior deals set initial rapport to 55 and credibility to 70.
 The values are simulation parameters on a 0–100 scale.
@@ -236,6 +236,24 @@ The model does not write an unrestricted MEMORY document.
 The optional personal fact is a dog named Гуффи in Russian or Goofy in English.
 It is available for relevant questions and one early opportunity in the sociable profile.
 The engine records disclosure only when the delivered reply contains the name.
+
+## Clarification recovery
+
+A parser clarification does not end a new training session.
+An acceptance-confirmation opening or cancellation also does not consume a training termination allowance.
+A failed HTTP 4xx participant transition does not consume this allowance.
+
+After three consecutive clarifications, the Player API returns `clarification.recovery`.
+The object contains the pinned version, one supported example, and a canonical exit message.
+The Web UI and CLI show this recovery content.
+An authenticated session reload shows the same recovery content while the clarification remains pending.
+The service restores this content after a restart.
+The learner can restate the proposal or send the exit message.
+The same learner remains the next actor.
+The offer and substantive counters do not change.
+
+Benchmark sessions retain the configured bounded protocol-control behavior.
+Historical terminal sessions remain terminal.
 
 ## Goal evaluation and coaching
 
@@ -299,7 +317,7 @@ Save the example training object to a private local JSON file.
 The CLI can start it and operate completed sessions:
 
 ```sh
-python -m clients.cli --base-url http://127.0.0.1:8172 play --scenario supplier_001 --scenario-version 5 --training-file /path/to/training.json
+python -m clients.cli --base-url http://127.0.0.1:8172 play --scenario supplier_001 --scenario-version 6 --training-file /path/to/training.json
 python -m clients.cli --base-url http://127.0.0.1:8172 coach SESSION_ID
 python -m clients.cli --base-url http://127.0.0.1:8172 checkpoints SESSION_ID
 python -m clients.cli --base-url http://127.0.0.1:8172 retry SESSION_ID --source-revision 2 --idempotency-key RETRY_KEY
@@ -312,7 +330,7 @@ It does not print that credential.
 External agents retain the common Player API.
 Their English instruction template version is `natural-language-agent-v5`.
 The supply branch uses `supply-agent-v2`.
-New final coaching uses `goal-coaching-v2`.
+New final coaching uses `goal-coaching-v4`.
 Existing cached coaching retains its original result and version.
 Do not combine benchmark results across changed prompt versions without identifying the difference.
 

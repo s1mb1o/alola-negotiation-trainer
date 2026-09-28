@@ -162,6 +162,11 @@ export interface Clarification {
   reason_code?: string
   question: string
   candidate_interpretations?: string[]
+  recovery?: {
+    version: 'training-clarification-v1'
+    example: string
+    end_session_message: string
+  }
 }
 
 export interface PendingConfirmation {

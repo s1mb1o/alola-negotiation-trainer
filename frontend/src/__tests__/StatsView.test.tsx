@@ -31,7 +31,8 @@ describe('StatsView', () => {
     )
 
     expect(screen.getByText('50%')).toBeInTheDocument()
-    expect(screen.getByText('Average skill')).toBeInTheDocument()
+    expect(screen.queryByText('Average skill')).not.toBeInTheDocument()
+    expect(screen.queryByText('Skill profile')).not.toBeInTheDocument()
     expect(screen.queryByText('Average efficiency')).not.toBeInTheDocument()
     expect(screen.queryByText('100%')).not.toBeInTheDocument()
     expect(screen.getByText('Service-wide totals (all sessions)')).toBeInTheDocument()

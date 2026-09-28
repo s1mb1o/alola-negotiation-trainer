@@ -218,6 +218,40 @@ describe('session persistence', () => {
     expect(screen.queryByRole('button', { name: 'Получить подсказку' })).not.toBeInTheDocument()
   })
 
+  it.each([
+    ['active session', null],
+    ['pending confirmation', {
+      offer_id: 'offer_01',
+      offer_revision: 4,
+      terms: { price: 109_500, prepayment_fraction: 0.5, delivery_weeks: 6 },
+      unresolved_required_terms: [],
+    }],
+  ])('ends an %s through the Player API after confirmation', async (_label, pendingConfirmation) => {
+    storeIdentity()
+    apiMocks.getSession.mockResolvedValue({
+      ...restoredSession,
+      pending_confirmation: pendingConfirmation,
+    })
+    apiMocks.sendMessage.mockResolvedValue({
+      ...restoredSession,
+      revision: 4,
+      status: 'walked_away',
+      next_actor: null,
+    })
+    apiMocks.getReview.mockResolvedValue({ outcome: { agreement: false, termination_reason: 'walked_away' } })
+    const user = userEvent.setup()
+
+    render(<App />)
+    await screen.findByText('Восстановленная реплика оппонента.')
+    await user.click(screen.getByRole('button', { name: 'Завершить переговоры' }))
+    expect(screen.getByRole('alertdialog', { name: 'Завершить переговоры без соглашения?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Завершить переговоры' }))
+
+    expect(apiMocks.sendMessage).toHaveBeenCalledWith(
+      'sess_restored', 'Прекращаю переговоры.', 3, 'message-stable-key', 'stored-token',
+    )
+  })
+
   it('restores the owner publication snapshot and submits its confirmation through the Player API', async () => {
     storeIdentity()
     apiMocks.getSession.mockResolvedValue({

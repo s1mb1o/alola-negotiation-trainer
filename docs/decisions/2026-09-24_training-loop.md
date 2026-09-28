@@ -46,6 +46,30 @@ Benchmark sessions MUST NOT fork into training practice.
 The comparison MUST report observed outcomes for the same role and identify the shared initial conditions.
 It MUST label retries after feedback as informed practice.
 
+## Accepted amendment: recoverable training controls
+
+Date: 2026-09-27.
+Status: accepted and implemented by the user's 2026-09-28 implementation request.
+
+The service MUST pin `training-clarification-v1` for each new training session.
+A parser clarification MUST NOT terminate a session that uses this rule version.
+A failed participant transition with an HTTP 4xx response MUST NOT consume the protocol-control termination allowance.
+Opening or cancelling an acceptance confirmation MUST NOT consume this allowance.
+These rules apply only to training mode.
+The bounded protocol-control rule MUST remain active in benchmark mode.
+
+After three consecutive clarifications, the response MUST include an actor-safe recovery object.
+The recovery object MUST contain the rule version, one supported message example, and one canonical session-end message.
+The example SHOULD identify unresolved terms when the parser supplies them.
+The session MUST remain active.
+The participant MUST remain the next actor.
+The recovery object MUST NOT change offer state, utility, or turn counters.
+The authenticated session projection MUST retain the recovery object while the clarification is pending.
+This rule MUST remain true after a service restart.
+
+The rule applies to new sessions.
+It does not reopen a terminal historical session.
+
 ## Implementation and verification
 
 Use the existing SQLite service and provider interfaces.

@@ -411,6 +411,9 @@ Week and quantity values MUST remain integral.
 The parser MUST request clarification for ambiguous units, several referents, missing baselines, unsupported calculations, and unsupported date expressions.
 It MUST NOT treat a relative amount as an absolute offer price.
 It MUST exclude questions and quotations before term extraction.
+It MUST exclude a complaint about a term before term extraction unless the same clause contains explicit proposal intent.
+This rule applies to every supported term, including price, payment, quantity, and delivery duration.
+The parser MUST evaluate contrast clauses such as `но`, `зато`, `однако`, and `however` independently.
 An explicit proposal clause in a mixed message MAY still create a counteroffer.
 
 An unlabelled short numeric answer MUST identify one unambiguous public focus or requested term.
@@ -456,6 +459,30 @@ It returns `clarification_required` with reason `parser_unavailable` and an acto
 The same participant remains `next_actor`.
 
 This fallback does not increment `substantive_turn_count` or consume a round.
+
+New training sessions pin `training-clarification-v1`.
+
+A parser clarification in such a session MUST NOT terminate the session.
+
+After three consecutive clarifications, the response MUST include `clarification.recovery`.
+
+The object contains `version`, `example`, and `end_session_message`.
+
+The example is actor-safe and uses supported proposal wording.
+
+When available, the example identifies unresolved required terms.
+
+The end message is `Прекращаю переговоры.` for Russian or `I walk away.` for English.
+
+The participant remains `next_actor` until a substantive action or explicit exit occurs.
+
+The authenticated session projection MUST retain the same recovery object while the clarification is pending.
+
+A reload or service restart MUST NOT remove this recovery object.
+
+Training-mode HTTP 4xx transition failures, acceptance-confirmation openings, and confirmation cancellations MUST NOT consume the protocol-control termination allowance.
+
+Benchmark mode retains the configured bounded protocol-control termination rule.
 
 ## Binding acceptance flow
 
@@ -556,6 +583,10 @@ An authored consecutive action remains inside the current round until both parti
 A clarification message and an acceptance-confirmation message are protocol-control messages.
 
 Protocol-control messages do not consume a negotiation round.
+
+In training sessions that pin `training-clarification-v1`, these messages do not consume a termination allowance.
+
+In benchmark sessions, the configured protocol-control limit remains authoritative.
 
 A valid `pass` consumes a turn.
 

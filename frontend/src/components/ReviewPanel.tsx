@@ -1,4 +1,4 @@
-import { ArrowRight, Award, CheckCircle2, Gauge, Handshake, Lightbulb, LoaderCircle, RotateCcw, Sparkles, Target, TrendingUp } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Award, CheckCircle2, Gauge, Handshake, Lightbulb, LoaderCircle, RotateCcw, Sparkles, Target, TrendingUp } from 'lucide-react'
 import { identifierLabel, translate } from '../i18n'
 import type { SessionReview, SessionStatus, UiLanguage } from '../types'
 import { formatNumber } from '../utils'
@@ -67,12 +67,22 @@ export function ReviewPanel({
   const hintsUsed = typeof review.assistance_usage?.hints_used === 'number'
     ? review.assistance_usage.hints_used
     : 0
+  const economics = review.training?.methodology?.economics
+  const belowEconomicFloor = review.outcome.agreement && (
+    economics?.meets_reservation === false
+    || (typeof economics?.surplus_over_batna === 'number' && economics.surplus_over_batna < 0)
+  )
+  const positiveOutcome = review.outcome.agreement && !belowEconomicFloor
 
   return (
     <section className="review-panel" aria-labelledby="review-title">
       <header className="review-hero">
         <div className="review-hero-copy">
-          <span className="review-hero-icon"><Award size={25} aria-hidden="true" /></span>
+          <span className={positiveOutcome ? 'review-hero-icon' : 'review-hero-icon warning'}>
+            {positiveOutcome
+              ? <Award size={25} aria-hidden="true" />
+              : <AlertTriangle size={25} aria-hidden="true" />}
+          </span>
           <div>
             <p className="eyebrow">{t('reviewTitle')}</p>
             <h2 id="review-title">{t(status)}</h2>
@@ -114,13 +124,10 @@ export function ReviewPanel({
 
       {review.training && <>
         <TrainingReviewPanel language={language} data={review.training} {...trainingActions} />
-        <p className="field-note">{language === 'ru'
-          ? 'Баллы навыков ниже — эвристическая диагностика, без подтверждённой оценки компетенции.'
-          : 'The skill scores below are heuristic diagnostics, not a validated competence assessment.'}</p>
       </>}
 
       <div className="review-detail-grid">
-        <section className="review-section skill-review">
+        {!review.training && <section className="review-section skill-review">
           <header>
             <div><TrendingUp size={18} aria-hidden="true" /><h3>{review.training
               ? language === 'ru' ? 'Эвристическая диагностика' : 'Heuristic diagnostics'
@@ -140,7 +147,7 @@ export function ReviewPanel({
               })}
             </div>
           ) : <p className="empty-review-copy">—</p>}
-        </section>
+        </section>}
 
         <section className="review-section utility-review">
           <header><div><Gauge size={18} aria-hidden="true" /><h3>{t('utilities')}</h3></div></header>
@@ -172,7 +179,7 @@ export function ReviewPanel({
           ) : <p className="empty-review-copy">{t('noKeyMoments')}</p>}
         </section>
 
-        {Boolean(review.recommendations?.length) && (
+        {!review.training && Boolean(review.recommendations?.length) && (
           <section className="review-section recommendations-review">
             <header><div><Lightbulb size={18} aria-hidden="true" /><h3>{review.training
               ? language === 'ru' ? 'Подсказки по диагностике' : 'Diagnostic suggestions'

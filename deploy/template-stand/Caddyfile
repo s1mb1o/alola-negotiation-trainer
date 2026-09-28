@@ -1,0 +1,12 @@
+@blocked path /llm-debug* /api/v1/admin/*
+respond @blocked 403
+
+handle /api/* {
+  reverse_proxy 127.0.0.1:8172
+}
+
+handle {
+  root * /opt/negotiation-trainer/frontend/dist
+  try_files {path} /index.html
+  file_server
+}

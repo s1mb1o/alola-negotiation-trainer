@@ -89,6 +89,7 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const t = (key: string) => translate(language, key)
   const [draft, setDraft] = useState('')
+  const [confirmingExit, setConfirmingExit] = useState(false)
   const timelineRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const wasActive = useRef(false)
@@ -140,6 +141,7 @@ export function ChatPanel({
   const cancelText = publication
     ? sessionLanguage === 'ru' ? 'Отменяю подтверждение' : 'I cancel confirmation'
     : sessionLanguage === 'ru' ? 'Не подтверждаю принятие предложения.' : 'I do not confirm acceptance of the offer.'
+  const exitText = sessionLanguage === 'ru' ? 'Прекращаю переговоры.' : 'I walk away.'
 
   return (
     <section className="chat-panel panel-card" aria-labelledby="conversation-title">
@@ -325,6 +327,23 @@ export function ChatPanel({
                 {busy ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
                 <span>{busy ? t('sending') : t('send')}</span>
               </button>
+            </div>
+            <div className="exit-controls">
+              {confirmingExit ? (
+                <div className="exit-confirmation" role="alertdialog" aria-label={t('endNegotiationConfirm')}>
+                  <span>{t('endNegotiationConfirm')}</span>
+                  <button type="button" className="button button-secondary" onClick={() => setConfirmingExit(false)} disabled={inputDisabled}>
+                    {t('keepNegotiating')}
+                  </button>
+                  <button type="button" className="button button-danger" onClick={() => { setConfirmingExit(false); onSend(exitText) }} disabled={inputDisabled}>
+                    {t('endNegotiation')}
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="end-negotiation-button" onClick={() => setConfirmingExit(true)} disabled={inputDisabled}>
+                  {t('endNegotiation')}
+                </button>
+              )}
             </div>
           </div>
         )}

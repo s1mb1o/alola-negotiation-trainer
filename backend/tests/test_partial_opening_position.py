@@ -135,6 +135,31 @@ def test_partial_opening_position_cannot_bind(client: TestClient) -> None:
     ]
 
 
+def test_training_4xx_failures_do_not_expire_partial_opening(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/sessions",
+        json=_supplier_v3_payload("partial-opening-recoverable", difficulty="normal"),
+    ).json()
+    current = created
+
+    for index in range(3):
+        response = client.post(
+            f"/api/v1/sessions/{created['session_id']}/messages",
+            headers=bearer(created["participant_token"]),
+            json={
+                "message": "Принимаю все условия предложения.",
+                "idempotency_key": f"accept-partial-opening-{index}",
+                "expected_revision": current["revision"],
+            },
+        )
+        assert response.status_code == 422
+        current = response.json()
+
+    assert current["status"] == "active"
+    assert current["next_actor"] == created["next_actor"]
+    assert current["observation"]["active_offers"][0]["terms"] == {"price": 120_000}
+
+
 def test_builtin_npc_discusses_incomplete_counteroffer_without_filling_missing_terms(
     client: TestClient,
 ) -> None:

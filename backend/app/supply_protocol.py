@@ -471,8 +471,13 @@ class SupplyProtocolMixin:
             connection, session["id"], context.revision, participant, message, session["language"]
         )
         if control:
-            count = self._record_protocol_control(state)
-            if count >= self._protocol_control_limit(scenario):
+            protected_training = self._training_recovery_active(session, state)
+            count = (
+                int(state.get("consecutive_protocol_controls", 0))
+                if protected_training
+                else self._record_protocol_control(state)
+            )
+            if not protected_training and count >= self._protocol_control_limit(scenario):
                 self._expire_protocol_controls(
                     connection,
                     session,

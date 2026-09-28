@@ -111,6 +111,9 @@ The public Player API does not accept typed actions from an external agent.
 [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md) extends the Player API without accepting typed external actions.
 The parser MUST distinguish questions, quotations, proposals, relative changes, and short answers before committing terms.
 Numeric questions and quotations MUST NOT create offers.
+A complaint about a supported term MUST NOT create an offer unless the same clause contains explicit proposal intent.
+The parser MUST apply this rule to price, payment, quantity, and delivery duration.
+A contrast clause that contains an explicit proposal MAY create a counteroffer without adopting a complained-about term from another clause.
 A mixed message MAY commit an explicitly scoped proposal clause while leaving a separate question non-binding.
 The service MUST derive parse context after participant authentication, revision checks, and turn checks.
 A relative change MUST use one active public offer revision and the scenario currency.
@@ -809,6 +812,27 @@ The same participant remains `next_actor`.
 
 The UI and external-agent runner MUST show the `clarification_required` result explicitly.
 
+New training sessions pin `training-clarification-v1`.
+They remain active after repeated parser clarification.
+Starting with the third consecutive clarification, the `clarification` object also contains:
+
+```json
+{
+  "recovery": {
+    "version": "training-clarification-v1",
+    "example": "Например: «Предлагаю цену 110 000 EUR, аванс 50% и поставку за 8 недель».",
+    "end_session_message": "Прекращаю переговоры."
+  }
+}
+```
+
+The recovery object is actor-safe.
+It does not change the offer, round, substantive turn count, or next actor.
+An authenticated session read returns the same recovery object while its clarification remains pending.
+A reload or service restart does not remove it.
+Training-mode HTTP 4xx transition failures and acceptance-confirmation controls do not consume a protocol-control termination allowance.
+Benchmark sessions retain the configured bounded allowance.
+
 Contextual numeric clarification can use `numeric_answer_requires_term`, `numeric_answer_requires_unit`, `relative_change_requires_baseline`, `ambiguous_numeric_reference`, or `ambiguous_relative_change`.
 Currency mismatch still uses `currency_mismatch`.
 These results preserve active offer terms and turn ownership.
@@ -894,7 +918,7 @@ Create-session credential delivery is the exception described above.
 GET /sessions/{id}
 ```
 
-The response contains the session identity and counters, `hints_enabled`, the actor-safe `observation`, and the participant's own pending protocol state: `pending_confirmation` (the exact offer revision awaiting confirmation) and `clarification` (reason code and question). Both are `null` when nothing is pending for the authenticated participant. A client uses this endpoint to restore a session after a reload.
+The response contains the session identity and counters, `hints_enabled`, the actor-safe `observation`, and the participant's own pending protocol state: `pending_confirmation` (the exact offer revision awaiting confirmation) and `clarification` (reason code, question, and recovery when active). Both are `null` when nothing is pending for the authenticated participant. The recovery survives a service restart because it is stored with the pending clarification. A client uses this endpoint to restore a session after a reload.
 
 ## Get observation
 

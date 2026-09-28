@@ -50,6 +50,14 @@ The engine MUST retain authority over economic results and social transitions.
 Model failure MUST preserve the deterministic report and committed state.
 The exact contracts and release rules are defined in [DR-36](decisions/2026-09-24_training-loop.md).
 
+New training sessions MUST pin `training-clarification-v1`.
+Parser clarification, acceptance-confirmation opening, acceptance-confirmation cancellation, and failed HTTP 4xx transitions MUST NOT terminate these sessions through the protocol-control allowance.
+The third consecutive clarification MUST add an actor-safe recovery example and a canonical exit message.
+This recovery path MUST preserve deal state, turn ownership, and substantive counters.
+The service MUST persist the recovery object with the pending clarification.
+Authenticated session reads MUST restore it after a reload or service restart.
+Benchmark sessions MUST retain the bounded protocol-control rule.
+
 The training configuration MUST be restricted to one human and one built-in NPC in training mode.
 The configuration MUST pin profile, relationship, shared background, private preparation, and rule versions.
 The engine MUST validate finite numeric targets against the scenario's scalar term grammar.

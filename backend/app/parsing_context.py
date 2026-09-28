@@ -62,15 +62,37 @@ _PROPOSAL_START = (
 )
 _INPUT_BOUNDARY = re.compile(
     r"(?<=[?!;])\s*|(?<=\.)\s+(?=[A-ZА-ЯЁ])|"
-    rf"(?i:,\s*(?:а\s+|and\s+|but\s+)?(?=(?:{_PROPOSAL_START}|почему|зачем|why|what|how)\b)|"
-    r"\s+(?:а|and)\s+(?=(?:почему|зачем|why|what|how)\b))",
+    rf"(?i:,\s*(?:(?:а|но|зато|однако|and|but|however)\s+)?"
+    rf"(?=(?:{_PROPOSAL_START}|почему|зачем|why|what|how)\b)|"
+    rf"\s+(?:а|но|зато|однако|and|but|however)\s+"
+    rf"(?=(?:{_PROPOSAL_START}|почему|зачем|why|what|how)\b))",
 )
 _REPORTED_POSITION = re.compile(
     r"\b(?:вы\s+(?:сказали|назвали|предложили|указали|просили|заявили)|"
     r"you\s+(?:said|quoted|offered|proposed|stated|asked)|"
     r"(?:your|their|previous|earlier|former)\s+(?:offer|price|rent|quote|proposal)|"
     r"(?:ваш\w*|их|прошл\w*|прежн\w*)\s+(?:предложени\w*|цен\w*|ставк\w*)|"
-    r"раньше\s+цен\w*|цен\w*\s+был[аи]|price\s+was)\b",
+    r"раньше\s+цен\w*|цен\w*\s+был[аи]|price\s+was|"
+    r"(?:предложени\w*|цен\w*|ставк\w*)\s+(?:конкурент\w*|друг\w*\s+поставщик\w*|альтернатив\w*)|"
+    r"(?:конкурент\w*|друг\w*\s+поставщик\w*|альтернатив\w*)\s+(?:предлага\w*|назвал\w*|дал\w*)|"
+    r"(?:competitor|another\s+supplier|alternative)\s+(?:offer|price|quote|propos\w*))\b",
+    re.IGNORECASE,
+)
+_THIRD_PARTY_POSITION = re.compile(
+    r"\b(?:(?:предложени\w*|цен\w*|ставк\w*)\s+"
+    r"(?:конкурент\w*|друг\w*\s+поставщик\w*|альтернатив\w*)|"
+    r"(?:конкурент\w*|друг\w*\s+поставщик\w*|альтернатив\w*)\s+"
+    r"(?:предлага\w*|назвал\w*|дал\w*)|"
+    r"(?:competitor|another\s+supplier|alternative)\s+"
+    r"(?:offer|price|quote|propos\w*))\b",
+    re.IGNORECASE,
+)
+_NON_PROPOSAL_CONCERN = re.compile(
+    r"\b(?:слишком\s+)?(?:много|дорог\w*|высок\w*|долг\w*|длинн\w*|"
+    r"медленн\w*|поздн\w*|неприемлем\w*)\b|"
+    r"\b(?:не\s+устраива\w*|не\s+подход\w*|не\s+готов\w*\s+(?:принять|согласовать))\b|"
+    r"\b(?:too\s+(?:much|high|expensive|long|slow|late)|expensive|unacceptable|"
+    r"does(?:n't|\s+not)\s+work)\b",
     re.IGNORECASE,
 )
 _NEGATED_TERM = re.compile(
@@ -140,7 +162,16 @@ def scope_asserted_message(message: str) -> tuple[str, bool]:
             if not positive:
                 continue
             clause = ": ".join(positive)
+        if (
+            _NON_PROPOSAL_CONCERN.search(clause)
+            and not re.search(rf"\b(?:{_PROPOSAL_START})\b", clause, re.IGNORECASE)
+        ):
+            # A complaint can repeat a value without proposing that value.
+            # Keep it out of the typed offer grammar.
+            continue
         reported = _REPORTED_POSITION.search(clause)
+        if _THIRD_PARTY_POSITION.search(clause):
+            continue
         if reported and (re.search(r"\d", clause) or reported.start() == 0) and not is_relative_change(clause):
             # Existing explicit "I can meet that price" references require this
             # adjacent public amount. Do not discard that established grammar.

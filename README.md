@@ -1,4 +1,230 @@
-# Negotiation Trainer
+# Контур — тренажёр переговоров
+
+«Контур» даёт безопасную практику деловых переговоров в браузере.
+Игрок пишет естественные реплики.
+Детерминированный движок отдельно проверяет условия сделки, ограничения, порог приемлемости и подтверждение соглашения.
+
+Три свойства отличают MVP от лекции, чат-бота и разовой ролевой игры:
+
+1. Движок хранит сделку как проверяемое состояние и не передаёт экономическую истину LLM.
+2. Игрок может вернуться к сохранённому решению и сравнить два фактических исхода на одном состоянии.
+3. Люди, внешние агенты и CLI используют один Player API. Это позволяет применять сценарии и для обучения, и для сопоставимых прогонов агентов.
+
+Локальные артефакты кандидата: [презентация](docs/release/Kontur_LCT2026_Task9_v2.pptx), [PDF](output/pdf/Kontur_LCT2026_Task9_v2.pdf) и [сценарий видео](docs/release/video-script.md).
+Внешние URL и точный публичный тег добавляют только после прохождения release gate.
+
+## Целевая аудитория, проблема и границы MVP
+
+Основная аудитория — специалисты по закупкам и продажам, руководители, HR-команды и корпоративные учебные центры.
+Им нужна повторяемая практика без риска для реальной сделки.
+Лекции объясняют методы, но не проверяют решение в диалоге.
+Групповая ролевая игра требует тренера, расписания и второго участника.
+Обычный LLM-чат может звучать естественно, но не гарантирует устойчивые правила сделки.
+
+MVP закрывает полный цикл: настройка, приватный бриф, диалог, явное предложение, безопасное подтверждение, выход без сделки, детерминированный результат и повтор решения.
+Репозиторий содержит девять опубликованных идентификаторов сценариев в четырёх доменах: поставка оборудования, SaaS, перевозка и аренда офиса.
+Основной демонстрационный кейс — `supplier_001` версии 6.
+
+MVP не является юридическим конструктором договора.
+Он не оценивает психологию человека.
+Он не выводит точную скрытую ZOPA из переписки.
+Шаблонный режим не выполняет LLM-коучинг, не меняет тон через модель и не обновляет социальные индикаторы.
+Эти элементы скрыты в сборке по умолчанию.
+
+## Архитектура и логика симуляции
+
+```text
+React Web UI / CLI / внешний агент
+                │ естественный текст
+                ▼
+         Player API (FastAPI)
+                │
+     parser → validation → state transition
+                │                  │
+                │                  └─ SQLite: transcript + typed events
+                ▼
+ deterministic NPC policy → template wording
+                │
+                └─ optional provider wording after action selection
+```
+
+Структурированное состояние является источником истины.
+Сценарий задаёт роли, публичный контекст, допустимые термины, ограничения и функции полезности.
+Парсер предлагает типизированное действие.
+Движок проверяет действие и только затем меняет состояние.
+LLM может формулировать уже выбранную реплику, но не может назначить полезность, скрытый факт или обязательное условие.
+
+Сервис хранит исходную переписку и структурированный журнал событий.
+Каждая сессия привязана к неизменяемой версии сценария.
+Контроль ревизии и идемпотентность защищают от повторной отправки.
+Соглашение требует отдельного подтверждения полного предложения.
+Фраза `согласен` без однозначного контекста не связывает сделку.
+
+### Контур конфигурации администратора
+
+В MVP администратор выбирает подготовленный сценарий и его версию.
+Игрок на стартовом экране выбирает доступные параметры сессии.
+Экономические правила остаются авторскими и не редактируются в свободном тексте.
+
+| Настройка | Фактический эффект | Не меняет |
+| --- | --- | --- |
+| Сценарий | Домен, роли, термины, бриф, ограничения и формулу результата | Правила уже опубликованной версии |
+| Роль | Приватный бриф и функцию полезности игрока | Скрытое состояние другой стороны |
+| Сложность | Объём брифа, подсказки и дополнительные отвлекающие факты | BATNA, порог приемлемости и ограничения |
+| История отношений | Формулировку приветствия и начальную социальную конфигурацию | Экономику сделки |
+| Общая предыстория | Разрешённый общий контекст диалога | Приватный план игрока |
+| План игрока | Приватные цели для итогового сопоставления | Решения и знания NPC |
+| Подсказки | До трёх детерминированных подсказок в поддерживаемых режимах | Допустимость предложения |
+| Стиль реплик | Доступен только в сборке с провайдером | Политику действий NPC |
+
+| Требование администратора | Поток в MVP | Ограничение интерфейса |
+| --- | --- | --- |
+| Выбрать учебный кейс | Выбор опубликованной версии сценария | Браузер не редактирует экономику сценария |
+| Задать роль и уровень помощи | Выбор параметров до создания сессии | Активная сессия сохраняет исходную конфигурацию |
+| Добавить новый кейс | Авторинг YAML/JSON и проверка линтером | Визуальный редактор отложен |
+| Опубликовать кейс | Новая неизменяемая версия и тесты | Опубликованная версия не меняется на месте |
+| Проверить результаты | Отзывы, журнал событий, CLI и API | MVP не заявляет измеренный эффект обучения |
+
+## Инструкция по сборке, запуску и демонстрации
+
+Нужны Python 3.11+, `uv`, Node.js 22+ и актуальный Chrome.
+Ключ внешнего API не нужен.
+
+В первом терминале выполните:
+
+```sh
+git clone https://github.com/s1mb1o/alola-negotiation-trainer negotiation-trainer
+cd negotiation-trainer
+uv sync --frozen --all-groups
+zsh scripts/run-template-api.zsh
+```
+
+В Windows PowerShell замените последнюю команду на:
+
+```powershell
+$env:NEGOTIATION_NPC_PROVIDER="template"
+$env:NEGOTIATION_LLM_TRACE="false"
+uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8172 --workers 1
+```
+
+Во втором терминале выполните:
+
+```sh
+cd negotiation-trainer/frontend
+npm ci
+npm run dev
+```
+
+Откройте <http://127.0.0.1:8171/training> в Chrome.
+Vite передаёт `/api` на `http://127.0.0.1:8172`.
+Если порты заняты, используйте `NEGOTIATION_API_PORT`, `VITE_API_PROXY_TARGET` и `VITE_DEV_PORT` как показано ниже в разделе [Run locally](#run-locally).
+
+### Как проверить за 5 минут
+
+1. Выберите основной кейс `supplier_001`, роль покупателя, деловой уровень и русский язык.
+2. Оставьте шаблонный режим без ключа.
+3. Отправьте приветствие. Система создаст точку возврата перед решением игрока.
+4. Отправьте: `Предлагаю цену 112 000 EUR, аванс 100% и поставку за 8 недель.`
+5. Завершите эту ветку или вернитесь к точке перед предложением.
+6. В новой ветке спросите: `Какие ваши приоритеты?`
+7. Затем отправьте: `Предлагаю цену 105 000 EUR, аванс 100% и поставку за 2 недели.`
+8. Сравните результат игрока: 26 в первой ветке и 70 во второй. Разница равна +44.
+9. Отдельно нажмите `Завершить переговоры` и подтвердите выход. Сессия должна получить статус `walked_away` и сформировать разбор.
+
+Демонстрация показывает, что порядок действий и полный пакет меняют исход.
+Она не раскрывает скрытые пределы другой стороны.
+
+### Как формулировка влияет на состояние
+
+| Формулировка | Интерпретация | Эффект |
+| --- | --- | --- |
+| `Предлагаю цену 105 000 EUR, аванс 100% и поставку за 2 недели.` | Полное явное предложение | Создаёт новую редакцию предложения после проверки |
+| `Аванс 50% для нас много.` | Возражение, а не предложение | Не принимает и не изменяет предложение |
+| `Конкурент предлагал 108 000 EUR.` | Сообщение о третьей стороне | Не переносит чужое число в предложение игрока |
+| `Какие ваши приоритеты?` | Вопрос об интересах | Не изменяет условия сделки |
+| `Согласен.` | Недостаточно контекста | Запрашивает уточнение |
+| `Принимаю все условия предложения.` | Намерение принять полный пакет | Открывает отдельное подтверждение |
+| `Подтверждаю принятие полного предложения без дополнительных условий.` | Точное подтверждение | Заключает обязательное соглашение |
+| `Прекращаю переговоры.` | Явный выход | Завершает сессию без соглашения |
+
+### Завершения сессии
+
+| Завершение | Условие | Что видит игрок |
+| --- | --- | --- |
+| Соглашение | Отдельно подтверждено одно полное предложение | Условия, полезность и предупреждение о пороге |
+| Выход | Игрок явно завершил переговоры | Разбор без соглашения и доступные доказательства |
+| Истечение времени | Сработало настоящее ограничение сессии | Причина завершения без выдуманной сделки |
+| Техническая остановка | Движок не может безопасно продолжить | Нейтральное сообщение и диагностический код |
+
+Запрос уточнения в учебном режиме не является завершением.
+Он сохраняет условия сделки и предлагает безопасный пример следующей реплики.
+
+## Методы, библиотеки и внешние сервисы
+
+Экономический результат использует авторские кусочно-линейные функции полезности, жёсткие ограничения и `reservation_utility`.
+BATNA является входом в порог приемлемости, но может отличаться от него.
+Линтер сценария проверяет ожидаемое наличие ZOPA.
+Точный скрытый диапазон не показывается игроку.
+
+Гарвардский подход отражён через интересы, варианты, объективные критерии, BATNA и взаимовыгодные обмены.
+При наличии валидированного модельного разбора Voss-карточка отделяет наблюдаемую коммуникацию от экономического результата.
+SPIN не используется как отдельная автоматическая оценка навыка.
+Вопросы ситуации, проблемы и последствий можно практиковать в диалоге, но MVP не присваивает им выдуманный балл.
+
+| Компонент | Назначение | Версия или фиксация | Условия доступа |
+| --- | --- | --- | --- |
+| [Python](https://www.python.org/) | Движок, CLI и тесты | 3.11+ | Открытый runtime |
+| [FastAPI](https://fastapi.tiangolo.com/) и [Pydantic](https://docs.pydantic.dev/) | HTTP API и типизированные контракты | 0.141.1 и 2.13.4 в `uv.lock` | Открытые библиотеки |
+| [SQLite](https://sqlite.org/) | Локальные сессии, события и отзывы | Модуль Python | Входит в Python |
+| [React](https://react.dev/), TypeScript и [Vite](https://vite.dev/) | Веб-интерфейс и сборка | 19.2.8, 5.7.3 и 6.4.3 в `package-lock.json` | Открытые библиотеки |
+| Pytest, Vitest и Ruff | Регрессии и статический контроль | 8.4.2, 2.1.9 и CI-пин 0.15.5 | Открытые инструменты |
+| OpenAI Responses API | Опциональные агенты и формулировки | Серверный адаптер | Нужен отдельный ключ |
+| QwenCloud Chat Completions API | Опциональные формулировки и коучинг | Серверный адаптер | Нужен отдельный ключ |
+| Шаблонный renderer | Основной отказоустойчивый режим | Версионируемые шаблоны | Ключ не нужен; внешних запросов нет |
+
+## Внедрение и вовлечение
+
+Первый канал внедрения - корпоративные учебные центры для продаж и закупок.
+Второй канал - интеграция через Player API и CLI в существующую LMS или программу обучения.
+Повтор строится вокруг возврата к одной точке решения и сравнения двух исходов.
+MVP не содержит подтверждённой оценки рынка, конверсии или эффекта обучения.
+Пилот с 1-2 незнакомыми пользователями проверяет только понятность пути и доступность запуска.
+
+## Краткое описание концепции для сдачи §7.1
+
+«Контур» — веб-тренажёр переговоров для закупок, продаж, руководителей и корпоративного обучения.
+Он закрывает разрыв между теорией и безопасной повторяемой практикой.
+Игрок ведёт естественный диалог, а детерминированный движок проверяет условия, ограничения, полезность и явное подтверждение сделки.
+Сценарии задают разные роли и экономику.
+Возврат к точке решения позволяет сравнить две тактики на одинаковом состоянии.
+Шаблонный режим работает без внешнего ключа.
+Опциональная LLM отвечает только за формулировку уже разрешённых действий и за отдельный итоговый разбор.
+
+## План до финала для сдачи §7.1
+
+До финальной фиксации команда выполняет только релизные работы.
+Команда блокирует семантически опасные формулировки парсера, проверяет ключевой путь на `supplier_001` версии 6 и фиксирует один SHA кандидата.
+Команда готовит публичный очищенный репозиторий с историей, шаблонный стенд без ключей, презентацию по шаблону и видеодемонстрацию 3–5 минут.
+После фиксации разрешены только перезапуск стенда и проверка доступности.
+Новые продуктовые функции переносятся после хакатона.
+
+## Ключевые решения и компромиссы
+
+- Движок решает, что произошло. LLM решает только, как это сказать.
+- Мы выбрали модульный монолит и SQLite для воспроизводимого MVP на одном хосте.
+- Мы используем неизменяемые версии сценариев вместо редактирования активной экономики.
+- Мы разделяем экономический результат и качество формулировок.
+- Мы требуем два шага для принятия предложения человеком или агентом.
+- Мы сохраняем шаблонный режим как основной отказоустойчивый путь без платного API.
+- Мы показываем эвристики как диагностику, а не как валидированную оценку компетенции.
+
+## План развития после хакатона
+
+Следующий этап добавит проверенный редактор сценариев, серверную БД для нескольких хостов, валидированный live-LLM профиль и исследование SPIN-рубрики.
+Экономическая сложность и социальная политика потребуют отдельных версионированных решений.
+Они не входят в текущий MVP.
+
+## English technical reference
 
 Negotiation Trainer is an API-first training and simulation service.
 
@@ -59,9 +285,9 @@ Full coaching quality remains unvalidated on live Qwen dialogues.
 - The benchmark runner creates fresh trials, swaps model roles, records safe telemetry, retries transient provider errors before attributing a failure, records the provider-reported model id and per-seat seeds, and separates technical failures from negotiation outcomes.
 - Benchmark reviews remain sealed until the declared run set is terminal.
 - The Telegram adapter maps a chat to the same participant-scoped Player API. It does not require a specific Telegram framework.
-- Nine current published scenarios cover freight, office lease, SaaS, and industrial-computer supply negotiations. The new integration-and-reserve scenario supports Russian and English.
+- Nine current scenario IDs cover freight, office lease, SaaS, and industrial-computer supply negotiations. The integration-and-reserve scenario supports Russian and English.
 
-The current versions are supplier version 5, office-lease version 4 in both languages, freight version 3 in both languages, and SaaS version 3 in both languages.
+The current versions are supplier version 6, office-lease version 4 in both languages, freight version 4 in Russian and version 3 in English, and SaaS version 3 in both languages.
 These versions add grounded motives, conversation styles, and candidate grids for validated exchanges.
 They preserve the earlier economic truth, utility rules, hard constraints, and opening terms.
 Earlier published versions remain available for explicit-version sessions and replay.
@@ -74,43 +300,54 @@ Prepared NPC reply variants live in [reply_examples_v1.json](backend/data/reply_
 ## Run locally
 
 See [COMMANDS.md](COMMANDS.md) for complete start, stop, restart, and status commands for this Mac's API on port 8172 and UI on port 8171.
-The selected local launcher uses API port 8172. Bare Uvicorn and CLI examples elsewhere can retain the generic port 8170.
+The portable defaults use API port 8172 and UI port 8171.
 
 Use Python 3.11 or later and Node.js 22 or later.
 
-The selected route uses QwenCloud Pay-as-you-go.
-The local launcher reads `QWENCLOUD_PAYGO_API_KEY` from the interactive zsh environment and uses API port `8172`.
-This command loads `~/.zshrc`.
+For the no-key template mode, start the API from the repository root.
 
 ```sh
-uv sync --all-groups
-/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
+uv sync --frozen --all-groups
+zsh scripts/run-template-api.zsh
 ```
-
-Use `NEGOTIATION_NPC_PROVIDER=template` for offline tests without provider requests.
-Omitting the provider also selects template mode.
 
 Start the Web UI in another terminal.
 
 ```sh
 cd frontend
 npm ci
-VITE_API_BASE=http://127.0.0.1:8172/api/v1 npm run dev -- --port 8171 --strictPort
+npm run dev
 ```
 
-Open `http://127.0.0.1:8171`.
+Open `http://127.0.0.1:8171/training` in Chrome.
 
-The development UI defaults to a proxy on `http://127.0.0.1:8170`. The command above explicitly selects API port 8172.
+The development UI proxies `/api` to `http://127.0.0.1:8172` by default.
+No provider credential is required.
+The template build hides provider-only controls by default.
 
-If another project uses port 8170, start this backend on a free port.
-For backend port 8172, start the UI with `VITE_API_BASE=http://127.0.0.1:8172/api/v1 npm run dev -- --port 8171`.
-Do not stop an unrelated project to free the default port.
+To use other local ports, set matching values before startup.
+
+```sh
+NEGOTIATION_API_PORT=8272 zsh scripts/run-template-api.zsh
+cd frontend
+VITE_API_PROXY_TARGET=http://127.0.0.1:8272 VITE_DEV_PORT=8271 npm run dev
+```
+
+Do not stop an unrelated service to free a port.
+
+The selected paid route uses QwenCloud Pay-as-you-go.
+The local launcher reads `QWENCLOUD_PAYGO_API_KEY` from the interactive zsh environment.
+This command loads `~/.zshrc`.
+
+```sh
+/bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
+```
 
 Set an administrator token before service startup to enable the Session Inspector.
 
 ```sh
 export NEGOTIATION_ADMIN_TOKEN='replace-with-a-local-secret'
-uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8170
+uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8172
 ```
 
 Open `http://127.0.0.1:8171/inspector`.
@@ -340,14 +577,14 @@ uv run python -m benchmarks \
 
 Set the same `NEGOTIATION_ADMIN_TOKEN` for the backend and runner. The runner sends it on benchmark session creation, which the backend requires when the token is configured, and uses it to close failed trials.
 
-Provider calls retry rate limits, 5xx responses, timeouts, and connection errors with backoff. Use `--provider-max-attempts` and `--provider-retry-backoff` to change the defaults; the run configuration records both. The agent prompt version is `natural-language-agent-v4`. It uses English instructions for Russian and English sessions. Identify prompt-version differences when comparing artifacts. Training social classification and coaching use one transport attempt per model call.
+Provider calls retry rate limits, 5xx responses, timeouts, and connection errors with backoff. Use `--provider-max-attempts` and `--provider-retry-backoff` to change the defaults; the run configuration records both. The agent prompt version is `natural-language-agent-v5`. It uses English instructions for Russian and English sessions. Identify prompt-version differences when comparing artifacts. Training social classification and coaching use one transport attempt per model call.
 
 The runner passes a seed only when the provider supports that parameter.
 A seed does not guarantee identical provider output.
 
 ## Built-in NPC validation
 
-The DR-28 smoke suite uses supplier version 5 in Russian and office version 4 in English.
+The DR-28 smoke suite uses supplier version 6 in Russian and office version 4 in English.
 It checks public state, numeric quotes, source revisions, partial terms, and clarification recovery.
 The default matrix includes three cases per language and all four difficulty levels.
 These are training-path checks, not an agent-versus-agent benchmark.
@@ -400,15 +637,15 @@ uv run python -m benchmarks.dialogue_quality analyze benchmarks/fixtures/dialogu
 
 ```sh
 uv run pytest
-ruff check backend clients benchmarks
-ruff format --check backend clients benchmarks
+uv run ruff check backend clients benchmarks scripts/release
 
 cd frontend
+npm audit
 npm test
 npm run build
 ```
 
-The CI workflow runs the Python suite, Ruff, frontend tests, and the production build.
+The CI workflow runs the Python suite, Ruff, the npm audit, frontend tests, and the production build.
 
 See the [DR-28 validation-suite report](docs/reports/2026-09-07-dr28-dialogue-validation.md) for the latest offline matrix and test evidence.
 See the [DR-28 implementation report](docs/reports/2026-09-06-grounded-negotiation-dialogue.md) for runtime changes and earlier verification.
@@ -430,14 +667,14 @@ The [two-stage plan](docs/plans/05_reference-supply-and-generalization.md) keeps
 
 - The built-in NPC uses a deterministic MVP policy. An optional provider can write contextual non-binding replies after the engine selects the action and disclosures.
 - The parser supports bounded proposal clauses, questions, quotations, corrections, and one explicit relative `на` or `by` change against the active offer. It does not implement unrestricted arithmetic or date interpretation.
-- The current supplier scenario is immutable version 5. Its public opening position states only the price and leaves prepayment and whole-order delivery unresolved.
+- The current scalar supplier scenario is immutable version 6. Its public opening position states only the price and leaves prepayment and whole-order delivery unresolved.
 - Supplier version 2 retains its complete opening offer. Version 3 retains its partial opening position. Both remain available for replay.
 - Conditional exchanges use only authored candidates. The renderer can quote existing public numbers only through validated reference slots.
 - Human conversation ratings require an offline source-attributed scorecard. Technical checks do not provide an automatic humanity score.
 - The supplier scenario executes price, prepayment, and whole-order delivery terms. It does not bind split delivery, FOC, reserve, or contingent RMA structures.
 - The parser requests clarification when one message contains several offer packages.
 - The authored knowledge model, evidence-to-belief updates, participant hypotheses, and runtime composite-term DSL remain specification-level capabilities. They are not active runtime features.
-- The service does not yet implement exact-revision session forks or MESO offer sets.
+- The service implements exact-revision training forks from recorded checkpoints. MESO offer sets remain outside the current UI.
 - Browser STT and TTS depend on Web Speech support. The canonical stored input remains text.
 - SQLite supports one host with a shared local database file.
 - Multiple local service processes use atomic render claims and compare-and-swap delivery against the same database.

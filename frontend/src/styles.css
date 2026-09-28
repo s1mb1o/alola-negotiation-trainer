@@ -1836,6 +1836,62 @@ p {
   padding: 5px 7px 7px 10px;
 }
 
+.exit-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 7px 8px;
+  width: 100%;
+}
+
+.end-negotiation-button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 2px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.end-negotiation-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.exit-confirmation {
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 9px;
+  width: 100%;
+}
+
+.exit-confirmation > span {
+  margin-right: auto;
+}
+
+.button-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.clarification-recovery {
+  background: var(--surface-soft);
+  border-radius: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+.clarification-recovery p {
+  margin: 5px 0;
+}
+
 .composer-tools {
   display: flex;
   align-items: center;
@@ -2509,6 +2565,11 @@ p {
   border-radius: 16px;
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+.review-hero-icon.warning {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .review-hero .eyebrow {

@@ -16,7 +16,7 @@ Each implementation directory contains a local `CLAUDE.md` file.
 
 ## Submission readiness
 
-- [Plan 14](docs/plans/14_reach-90-plus.md) defines the proposed execution order for a 90+ internal readiness target. It prioritizes semantic safety, a complete training journey, access, and the jury package. It includes evidence gates, dependencies, effort, and freeze rules. It does not authorize deployment or publication.
+- [Plan 14](docs/plans/14_reach-90-plus.md) now uses release gates as the primary target. Its September 27 amendment starts access, filtered publication preparation, and jury artifacts alongside semantic repairs. The user's September 28 request authorizes the locally resolvable implementation work. Publication, deployment, moderator contact, recording, and submission still require separate owner action.
 - [Plan 13](docs/plans/13_hackathon-readiness.md) retains the underlying defect reproductions and requirement analysis. Accepted decisions and core specifications remain authoritative.
 
 ## API documentation

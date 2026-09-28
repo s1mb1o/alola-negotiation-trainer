@@ -81,7 +81,13 @@ from .scenarios import (
 from .supply import is_supply_scenario, supply_financial_summary
 from .supply_extraction import VERSION as SUPPLY_EXTRACTOR_VERSION
 from .supply_protocol import SupplyProtocolMixin, supply_current, supply_envelope
-from .training import apply_social, initialize_training, npc_training_context, training_observation
+from .training import (
+    CLARIFICATION_RECOVERY_VERSION,
+    apply_social,
+    initialize_training,
+    npc_training_context,
+    training_observation,
+)
 from .training_service import TrainingServiceMixin
 
 RELATIONSHIP_GREETING_VERSION = "relationship-greeting-v1"
@@ -251,7 +257,12 @@ def _key_moment_summary(
         elif event_type == "session.walked_away":
             summary = f"{actor} прекратил переговоры."
         elif event_type == "session.expired":
-            summary = "Лимит раундов исчерпан без соглашения."
+            reason = payload.get("reason")
+            summary = (
+                "Сессия завершена после повторных протокольных действий."
+                if reason in {"clarification_limit_reached", "protocol_control_limit_reached"}
+                else "Лимит раундов исчерпан без соглашения."
+            )
         else:
             summary = f"Зафиксировано событие {event_type}."
         if unresolved:
@@ -268,7 +279,12 @@ def _key_moment_summary(
     elif event_type == "session.walked_away":
         summary = f"{actor} walked away."
     elif event_type == "session.expired":
-        summary = "The round limit expired without agreement."
+        reason = payload.get("reason")
+        summary = (
+            "The session ended after repeated protocol-control actions."
+            if reason in {"clarification_limit_reached", "protocol_control_limit_reached"}
+            else "The round limit expired without agreement."
+        )
     else:
         summary = f"The session recorded {event_type}."
     if unresolved:
@@ -289,7 +305,7 @@ def _review_recommendations(
     texts = {
         "ru": {
             "probing": "Задайте больше открытых вопросов об интересах партнёра до того, как менять цену.",
-            "conditional_trading": "Связывайте уступки с встречными условиями: «готовы на X, если вы …».",
+            "conditional_trading": "Формулируйте обмен полным пакетом: «предлагаю X и Y», затем объясните взаимосвязь условий.",
             "package_design": "Предлагайте полный пакет сразу: все условия вместе, а не по одному.",
             "clarity": "Формулируйте одно полное предложение в сообщении, без нескольких альтернатив.",
             "outcome_below_reservation": "Сделка ниже вашего порога приемлемости: сравнивайте пакет с альтернативой (BATNA) до принятия.",
@@ -298,7 +314,7 @@ def _review_recommendations(
         },
         "en": {
             "probing": "Ask more open questions about the counterpart's interests before moving on price.",
-            "conditional_trading": "Tie each concession to a condition: 'we can do X if you …'.",
+            "conditional_trading": "State the exchange as one complete package: 'I propose X and Y', then explain how the terms relate.",
             "package_design": "Propose the complete package at once instead of one term at a time.",
             "clarity": "State one complete offer per message, without several alternatives.",
             "outcome_below_reservation": "The deal is below your reservation level: compare the package with your BATNA before accepting.",
@@ -621,6 +637,8 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 "completed_rounds": 0,
                 "delivered_distractors": delivered_distractors,
             }
+            if str(request.run_mode) == "training":
+                state["clarification_recovery_version"] = CLARIFICATION_RECOVERY_VERSION
             if request.training is not None:
                 try:
                     state["training"] = initialize_training(
@@ -1830,11 +1848,21 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             reason = parsed.reason_code or "ambiguous_message"
             clarification_count = int(state.get("consecutive_clarifications", 0)) + 1
             state["consecutive_clarifications"] = clarification_count
-            protocol_control_count = self._record_protocol_control(state)
+            protected_training = self._training_recovery_active(session, state)
+            maximum = self._protocol_control_limit(scenario)
+            protocol_control_count = (
+                int(state.get("consecutive_protocol_controls", 0))
+                if protected_training
+                else self._record_protocol_control(state)
+            )
+            clarification_payload = {"reason_code": reason, **parsed.details}
+            if protected_training and clarification_count >= maximum:
+                clarification_payload["recovery"] = self._clarification_recovery(
+                    session["language"], reason, parsed.details
+                )
             state["pending_clarification"] = {
                 "participant_id": participant["id"],
-                "reason_code": reason,
-                **parsed.details,
+                **clarification_payload,
             }
             self._insert_message(
                 connection,
@@ -1844,7 +1872,6 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 message,
                 session["language"],
             )
-            clarification_payload = {"reason_code": reason, **parsed.details}
             event_id = self._insert_event(
                 connection,
                 session["id"],
@@ -1854,9 +1881,8 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 clarification_payload,
                 {"parser_action": parsed.action, **parsed.details},
             )
-            maximum = self._protocol_control_limit(scenario)
             terminal_reason: str | None = None
-            if protocol_control_count >= maximum:
+            if not protected_training and protocol_control_count >= maximum:
                 terminal_reason = (
                     "clarification_limit_reached"
                     if clarification_count >= maximum
@@ -1978,8 +2004,16 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 },
                 {},
             )
-            protocol_control_count = self._record_protocol_control(state)
-            if protocol_control_count >= self._protocol_control_limit(scenario):
+            protected_training = self._training_recovery_active(session, state)
+            protocol_control_count = (
+                int(state.get("consecutive_protocol_controls", 0))
+                if protected_training
+                else self._record_protocol_control(state)
+            )
+            if (
+                not protected_training
+                and protocol_control_count >= self._protocol_control_limit(scenario)
+            ):
                 self._expire_protocol_controls(
                     connection,
                     session,
@@ -2046,8 +2080,16 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 {},
                 {},
             )
-            protocol_control_count = self._record_protocol_control(state)
-            if protocol_control_count >= self._protocol_control_limit(scenario):
+            protected_training = self._training_recovery_active(session, state)
+            protocol_control_count = (
+                int(state.get("consecutive_protocol_controls", 0))
+                if protected_training
+                else self._record_protocol_control(state)
+            )
+            if (
+                not protected_training
+                and protocol_control_count >= self._protocol_control_limit(scenario)
+            ):
                 self._expire_protocol_controls(
                     connection,
                     session,
@@ -3479,6 +3521,63 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         return count
 
     @staticmethod
+    def _training_recovery_active(session: sqlite3.Row, state: dict[str, Any]) -> bool:
+        return (
+            str(session["run_mode"]) == "training"
+            and state.get("clarification_recovery_version")
+            == CLARIFICATION_RECOVERY_VERSION
+        )
+
+    @staticmethod
+    def _clarification_recovery(
+        language: str, reason: str, details: dict[str, Any]
+    ) -> dict[str, str]:
+        unresolved = [str(item) for item in details.get("unresolved_required_terms", [])]
+        if language == "ru":
+            if unresolved:
+                example = (
+                    "Укажите одно полное предложение. Назовите условия: "
+                    + ", ".join(unresolved[:4])
+                    + "."
+                )
+            elif reason == "currency_mismatch":
+                expected = details.get("expected_currency") or "валюту сценария"
+                example = f"Например: «Предлагаю цену 110 000 {expected}»."
+            elif "numeric" in reason or "relative" in reason:
+                example = (
+                    "Например: «Предлагаю цену 110 000 EUR и поставку за 8 недель»."
+                )
+            else:
+                example = (
+                    "Например: «Предлагаю цену 110 000 EUR, аванс 50% и поставку за 8 недель»."
+                )
+            end_message = "Прекращаю переговоры."
+        else:
+            if unresolved:
+                example = (
+                    "State one complete proposal. Name these terms: "
+                    + ", ".join(unresolved[:4])
+                    + "."
+                )
+            elif reason == "currency_mismatch":
+                expected = details.get("expected_currency") or "the scenario currency"
+                example = f'For example: "I propose a price of 110,000 {expected}."'
+            elif "numeric" in reason or "relative" in reason:
+                example = (
+                    'For example: "I propose EUR 110,000 and delivery in 8 weeks."'
+                )
+            else:
+                example = (
+                    'For example: "I propose EUR 110,000, 50% prepayment, and delivery in 8 weeks."'
+                )
+            end_message = "I walk away."
+        return {
+            "version": CLARIFICATION_RECOVERY_VERSION,
+            "example": example,
+            "end_session_message": end_message,
+        }
+
+    @staticmethod
     def _protocol_control_limit(scenario: dict[str, Any]) -> int:
         return int(scenario["protocol"].get("max_consecutive_clarifications", 3))
 
@@ -3535,9 +3634,17 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             {"error": code},
             {"description": description, **(extra or {})},
         )
-        protocol_control_count = self._record_protocol_control(state)
+        protected_training = self._training_recovery_active(session, state)
+        protocol_control_count = (
+            int(state.get("consecutive_protocol_controls", 0))
+            if protected_training
+            else self._record_protocol_control(state)
+        )
         terminal_reason: str | None = None
-        if protocol_control_count >= self._protocol_control_limit(scenario):
+        if (
+            not protected_training
+            and protocol_control_count >= self._protocol_control_limit(scenario)
+        ):
             terminal_reason = "protocol_control_limit_reached"
             self._expire_protocol_controls(
                 connection,
@@ -4052,12 +4159,22 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         for row in event_rows:
             payload = _loads(row["public_payload_json"])
             actor_role = role_by_participant.get(row["participant_id"])
+            title = _KEY_MOMENT_TITLES.get(language, _KEY_MOMENT_TITLES["en"]).get(
+                row["type"], row["type"].replace(".", " ").replace("_", " ").title()
+            )
+            if row["type"] == "session.expired" and payload.get("reason") in {
+                "clarification_limit_reached",
+                "protocol_control_limit_reached",
+            }:
+                title = (
+                    "Лимит протокольных действий"
+                    if language == "ru"
+                    else "Protocol-control limit"
+                )
             moment: dict[str, Any] = {
                 "event_id": row["event_id"],
                 "type": row["type"],
-                "title": _KEY_MOMENT_TITLES.get(language, _KEY_MOMENT_TITLES["en"]).get(
-                    row["type"], row["type"].replace(".", " ").replace("_", " ").title()
-                ),
+                "title": title,
                 "summary": _key_moment_summary(
                     language, row["type"], actor_role, payload, scenario
                 ),
@@ -4072,12 +4189,22 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                     excerpt = excerpt[:157].rstrip() + "…"
                 moment["detail"] = f"«{excerpt}»" if language == "ru" else f"“{excerpt}”"
             key_moments.append(moment)
+        termination_reason = str(session["status"])
+        if termination_reason == "expired":
+            expired_event = next(
+                (row for row in reversed(event_rows) if row["type"] == "session.expired"),
+                None,
+            )
+            expired_payload = (
+                _loads(expired_event["public_payload_json"]) if expired_event is not None else {}
+            )
+            termination_reason = str(expired_payload.get("reason") or "round_limit_reached")
         public = {
             "session_id": session["id"],
             "revision": session["revision"],
             "outcome": {
                 "agreement": session["status"] == "agreement_reached",
-                "termination_reason": session["status"],
+                "termination_reason": termination_reason,
                 "agreement_terms": terms,
             },
             "assistance_usage": {
@@ -4262,7 +4389,14 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         difficulty = session["difficulty"]
         if difficulty not in {"guided", "easy"}:
             return None
-        own_priorities = list(scenario["roles"][participant["role"]]["interests"])
+        interests = scenario["roles"][participant["role"]]["interests"]
+        own_priorities = sorted(
+            interests,
+            key=lambda key: (
+                interests[key].get("weight", 0) if isinstance(interests[key], dict) else 0
+            ),
+            reverse=True,
+        )
         public_text = " ".join(
             item["message"].casefold()
             for item in messages

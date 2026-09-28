@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { identifierLabel, translate } from '../i18n'
 import type { SessionEnvelope, SessionReview, TimelineMessage, UiLanguage } from '../types'
 import { isTerminalStatus } from '../utils'
+import { PROVIDER_FEATURES_ENABLED } from '../features'
 import { ChatPanel } from './ChatPanel'
 import { ContextPanel } from './ContextPanel'
 import { OfferPanel } from './OfferPanel'
@@ -75,6 +76,7 @@ export function NegotiationWorkspace({
   onDiscardMessage,
   onRetryReview,
   onNewSession,
+  providerFeatures = PROVIDER_FEATURES_ENABLED,
   ...trainingActions
 }: NegotiationWorkspaceProps) {
   const t = (key: string) => translate(language, key)
@@ -147,6 +149,7 @@ export function NegotiationWorkspace({
         <div className="terminal-layout">
           <ReviewPanel
             {...trainingActions}
+            providerFeatures={providerFeatures}
             language={language}
             status={session.status}
             review={review}
@@ -231,7 +234,9 @@ export function NegotiationWorkspace({
               busy={busy || locked || assisting || rewindingRevision !== undefined}
               onRequestHint={onRequestHint}
             />
-            <SocialIndicators language={language} state={session.observation.training?.social_state} />
+            {providerFeatures && (
+              <SocialIndicators language={language} state={session.observation.training?.social_state} />
+            )}
           </div>
         </div>
       )}

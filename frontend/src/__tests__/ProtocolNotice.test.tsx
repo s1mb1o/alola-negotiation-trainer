@@ -21,6 +21,29 @@ describe('ProtocolNotice', () => {
     expect(screen.getByText('Вы принимаете всё предложение?')).toBeInTheDocument()
   })
 
+  it('shows the bounded training recovery format', () => {
+    render(
+      <ProtocolNotice
+        language="ru"
+        clarification={{
+          question: 'Уточните условия.',
+          recovery: {
+            version: 'training-clarification-v1',
+            example: 'Например: «Предлагаю цену 110 000 EUR».',
+            end_session_message: 'Прекращаю переговоры.',
+          },
+        }}
+        busy={false}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Поддерживаемый формат')).toBeInTheDocument()
+    expect(screen.getByText('Например: «Предлагаю цену 110 000 EUR».')).toBeInTheDocument()
+    expect(screen.getByText(/Прекращаю переговоры/)).toBeInTheDocument()
+  })
+
   it('requires an explicit confirmation callback', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()

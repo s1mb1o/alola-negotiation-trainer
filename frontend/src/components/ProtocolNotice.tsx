@@ -41,6 +41,13 @@ export function ProtocolNotice({
               ))}
             </div>
           )}
+          {clarification.recovery && (
+            <div className="clarification-recovery">
+              <strong>{t('clarificationRecovery')}</strong>
+              <p>{clarification.recovery.example}</p>
+              <small>{t('clarificationOrEnd')} «{clarification.recovery.end_session_message}»</small>
+            </div>
+          )}
         </div>
       </section>
     )

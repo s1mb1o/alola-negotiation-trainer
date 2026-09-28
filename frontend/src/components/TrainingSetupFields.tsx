@@ -1,12 +1,13 @@
 import type { ScenarioSummary, TrainingSetup, UiLanguage } from '../types'
+import { PROVIDER_FEATURES_ENABLED } from '../features'
 
 export const defaultTraining = (): TrainingSetup => ({
-  profile: 'concise_skeptical', relationship: 'successful_history', player_name: 'Александр', shared_background: '', personal_detail: false,
+  profile: 'concise_skeptical', relationship: 'successful_history', player_name: '', shared_background: '', personal_detail: false,
   preparation: { target: '', unacceptable_result: '', available_trades: '', information_to_discover: '', targets: [] },
 })
 
-export function TrainingSetupFields({ language, value, scenario, onChange }: {
-  language: UiLanguage; value: TrainingSetup; scenario?: ScenarioSummary; onChange: (value: TrainingSetup) => void
+export function TrainingSetupFields({ language, value, scenario, onChange, providerFeatures = PROVIDER_FEATURES_ENABLED }: {
+  language: UiLanguage; value: TrainingSetup; scenario?: ScenarioSummary; onChange: (value: TrainingSetup) => void; providerFeatures?: boolean
 }) {
   const text = (ru: string, en: string) => language === 'ru' ? ru : en
   const fields = [
@@ -18,14 +19,18 @@ export function TrainingSetupFields({ language, value, scenario, onChange }: {
   const numeric = value.preparation.targets[0]
   return <div className="training-setup">
     <details open>
-      <summary>{text('Собеседник и предыстория', 'Counterpart and shared history')}</summary>
+      <summary>{text('Контур конфигурации сессии', 'Session configuration contour')}</summary>
+      <p className="field-note">{text(
+        'Роли, экономика и допустимые условия заданы автором сценария. Здесь можно настроить только общий контекст тренировки.',
+        'The scenario author defines roles, economics, and supported terms. This section changes shared training context only.',
+      )}</p>
       <div className="form-row two-columns">
-        <label className="form-field">{text('Характер собеседника', 'Counterpart style')}
+        {providerFeatures && <label className="form-field">{text('Стиль реплик собеседника', 'Counterpart wording style')}
           <select value={value.profile} onChange={event => onChange({ ...value, profile: event.target.value as TrainingSetup['profile'] })}>
-            <option value="concise_skeptical">{text('Сдержанный, просит обоснования', 'Concise, asks for evidence')}</option>
-            <option value="sociable">{text('Общительный, ценит отношения', 'Sociable, values relationships')}</option>
+            <option value="concise_skeptical">{text('Краткие деловые формулировки', 'Concise business wording')}</option>
+            <option value="sociable">{text('Более тёплые формулировки', 'Warmer wording')}</option>
           </select>
-        </label>
+        </label>}
         <label className="form-field">{text('Общий опыт', 'Shared experience')}
           <select value={value.relationship} onChange={event => onChange({ ...value, relationship: event.target.value as TrainingSetup['relationship'] })}>
             <option value="first_meeting">{text('Первая встреча', 'First meeting')}</option>
@@ -45,7 +50,7 @@ export function TrainingSetupFields({ language, value, scenario, onChange }: {
       </label>
       <label className="training-check"><input type="checkbox" checked={value.personal_detail}
         onChange={event => onChange({ ...value, personal_detail: event.target.checked })} />
-        {text('Добавить личную деталь: собака Гуффи', 'Add a personal detail: Goofy the dog')}
+        {text('Разрешить факт для диалога: у собеседника есть собака Гуффи', 'Allow one dialogue fact: the counterpart has a dog named Goofy')}
       </label>
     </details>
     <details>

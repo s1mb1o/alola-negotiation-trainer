@@ -21,8 +21,12 @@ class ParsedAction:
 
 _WALK_AWAY = (
     "ухожу из переговоров",
+    "уходим из переговоров",
+    "выходим из переговоров",
     "прекращаю переговоры",
+    "прекращаем переговоры",
     "отказываюсь от сделки",
+    "отказываемся от сделки",
     "сделки не будет",
     "walk away",
     "end negotiations",
@@ -489,17 +493,17 @@ _UNSUPPORTED_COMPOSITE_TERM_PATTERNS = (
     ),
 )
 
-_ABUSIVE_CUES = (
-    "дурак",
-    "дура",
-    "идиот",
-    "тупой",
-    "тупая",
-    "заткнись",
-    "fuck you",
-    "idiot",
-    "stupid",
-    "shut up",
+_ABUSIVE_PATTERNS = (
+    re.compile(r"\bдурак\w*\b", re.IGNORECASE),
+    re.compile(r"\bдур(?:а|ы|ой|е|ам|ами|ах)\b", re.IGNORECASE),
+    re.compile(r"\bидиот\w*\b", re.IGNORECASE),
+    re.compile(r"\bтуп(?:ой|ая|ые|ого|ых|ым|ыми)\b", re.IGNORECASE),
+    re.compile(r"\bжули(?:к|ки|ков|кам|ками|ках)\b", re.IGNORECASE),
+    re.compile(r"\bзаткнись\b", re.IGNORECASE),
+    re.compile(r"\bfuck\s+you\b", re.IGNORECASE),
+    re.compile(r"\bidiots?\b", re.IGNORECASE),
+    re.compile(r"\bstupid\b", re.IGNORECASE),
+    re.compile(r"\bshut\s+up\b", re.IGNORECASE),
 )
 _GREETING_CUES = (
     "добрый день",
@@ -520,6 +524,11 @@ _INTEREST_QUESTION_CUES = (
     "какие условия для вас важ",
     "ваши приоритет",
     "что для вас приоритет",
+    "какие условия для вас принципиальны",
+    "какое условие для вас принципиально",
+    "что для вас самое важное",
+    "что для вас наиболее важно",
+    "какие условия наиболее важны",
     "what matters to you",
     "what matters most to you",
     "what terms matter to you",
@@ -742,10 +751,18 @@ def _extract_terms(message: str, term_definitions: dict[str, Any]) -> dict[str, 
         if money_candidates:
             result[monetary_term] = money_candidates[0]
 
+    zero_prepayment = bool(re.search(
+        r"\b(?:без|нулев\w*)\s+(?:предоплат\w*|аванс\w*)\b|"
+        r"\b(?:no|zero)\s+(?:prepayment|advance)\b",
+        lowered,
+        re.IGNORECASE,
+    ))
     percentage_match = re.search(
         r"(?<!\d)(\d{1,3}(?:[.,]\d+)?)\s*(?:%|процент\w*|percent)", message, re.IGNORECASE
     )
-    if percentage_match and any(
+    if zero_prepayment and "prepayment_fraction" in term_definitions:
+        result["prepayment_fraction"] = 0.0
+    elif percentage_match and any(
         token in lowered for token in ("аванс", "предоплат", "prepay", "advance")
     ):
         fraction = float(percentage_match.group(1).replace(",", ".")) / 100.0
@@ -836,6 +853,44 @@ def _numeric_ambiguity_reason(message: str) -> str | None:
     return None
 
 
+def _prepayment_values(message: str) -> set[float]:
+    """Return explicit prepayment values for contradiction detection."""
+
+    values: set[float] = set()
+    if re.search(
+        r"\b(?:без|нулев\w*)\s+(?:предоплат\w*|аванс\w*)\b|"
+        r"\b(?:no|zero)\s+(?:prepayment|advance)\b",
+        message,
+        re.IGNORECASE,
+    ):
+        values.add(0.0)
+    for match in re.finditer(
+        r"(?<!\d)(\d{1,3}(?:[.,]\d+)?)\s*(?:%|процент\w*|percent)",
+        message,
+        re.IGNORECASE,
+    ):
+        if re.search(
+            r"(?:предоплат\w*|аванс\w*|prepay\w*|advance)",
+            message[max(0, match.start() - 32):match.end() + 32],
+            re.IGNORECASE,
+        ):
+            values.add(float(match.group(1).replace(",", ".")) / 100.0)
+    return values
+
+
+def _supported_relative_change(message: str) -> bool:
+    """Ignore qualitative cost language that does not edit a deal term."""
+
+    for clause in re.split(r"[.!?;\n]+", message):
+        if not is_relative_change(clause):
+            continue
+        if re.search(r"\d", clause):
+            return True
+        if any(pattern.search(clause) for pattern in _INPUT_TERM_PATTERNS.values()):
+            return True
+    return False
+
+
 def _contextual_numeric_action(
     message: str,
     term_definitions: dict[str, Any],
@@ -844,7 +899,7 @@ def _contextual_numeric_action(
 ) -> ParsedAction | None:
     """Resolve only bounded relative edits and unambiguous short numeric answers."""
 
-    relative = is_relative_change(message)
+    relative = _supported_relative_change(message)
     if relative and not re.search(r"\d|\b(?:наполовину|вдвое|half)\b", message, re.IGNORECASE):
         # A qualitative willingness to change a term is discussion evidence.
         # It is not a numeric edit to the active offer.
@@ -904,6 +959,29 @@ def _contextual_numeric_action(
             "provided_currencies": [context.active_offer_currency] if context.active_offer_currency else [],
         })
     numbers = _INPUT_NUMBER_PATTERN.findall(message)
+    target_match = re.search(
+        rf"\b(?:до|to)\s+(?P<value>{_INPUT_NUMBER})\s*"
+        r"(?P<unit>%|процент\w*|percent|недел\w*|нед\.?|weeks?|wks?)?",
+        message,
+        re.IGNORECASE,
+    )
+    if target_match and len(numbers) == 1:
+        value = _number(target_match.group("value"))
+        unit = (target_match.group("unit") or "").casefold()
+        percentage = unit == "%" or unit.startswith(("процент", "percent"))
+        weeks = bool(unit) and not percentage
+        if term_id == "prepayment_fraction":
+            if not percentage:
+                return ParsedAction("clarification", reason_code="numeric_answer_requires_unit")
+            value = float(Decimal(str(value)) / Decimal(100))
+        elif percentage or (weeks and term_id not in _WEEK_TERM_IDS):
+            return ParsedAction("clarification", reason_code="numeric_answer_requires_unit")
+        if term_id in (*_WEEK_TERM_IDS, "quantity") and value != int(value):
+            return ParsedAction("clarification", reason_code="numeric_answer_requires_unit")
+        return ParsedAction("counter_offer", {term_id: value}, details={
+            "baseline_offer_id": context.active_offer_id,
+            "baseline_offer_revision": context.active_offer_revision,
+        })
     if len(numbers) != 1 or not re.search(r"\b(?:на|by)\s+", message, re.IGNORECASE):
         return ParsedAction("clarification", reason_code="ambiguous_relative_change")
     percent = bool(re.search(r"%|процент|percent", message, re.IGNORECASE))
@@ -957,6 +1035,8 @@ def parse_message(
         return ParsedAction("walk_away")
 
     expected_currency = scenario_currency.upper() if scenario_currency else None
+    if len(_prepayment_values(asserted_message)) > 1:
+        return ParsedAction("clarification", reason_code="multiple_offer_candidates")
     ambiguity_reason = _numeric_ambiguity_reason(asserted_message)
     if ambiguity_reason:
         return ParsedAction("clarification", reason_code=ambiguity_reason)
@@ -987,6 +1067,19 @@ def parse_message(
                 "expected_currency": expected_currency,
                 "provided_currencies": sorted(explicit_currencies),
             },
+        )
+
+    mentioned_terms = {
+        term_id
+        for term_id, pattern in _INPUT_TERM_PATTERNS.items()
+        if term_id in term_definitions and pattern.search(proposal_clause)
+    }
+    missing_asserted_terms = sorted(mentioned_terms - set(terms))
+    if terms and missing_asserted_terms:
+        return ParsedAction(
+            "clarification",
+            reason_code="unsupported_term_value",
+            details={"term_id": missing_asserted_terms[0]},
         )
 
     if pending_confirmation:
@@ -1132,7 +1225,7 @@ def classify_npc_speech_act(message: str, player_action: str) -> str:
     """Select a non-binding NPC speech act from the latest public player message."""
 
     normalized = _normalized(message)
-    if any(cue in normalized for cue in _ABUSIVE_CUES):
+    if any(pattern.search(normalized) for pattern in _ABUSIVE_PATTERNS):
         return "abusive_language_boundary"
     if any(normalized.startswith(cue) for cue in _INTEREST_QUESTION_PREFIXES) or any(
         cue in normalized for cue in _INTEREST_QUESTION_CUES

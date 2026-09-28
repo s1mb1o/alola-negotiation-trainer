@@ -63,6 +63,34 @@ describe('training loop', () => {
     expect(changed.mock.lastCall?.[0]).toMatchObject({ shared_background: 'Общая история', preparation: { target: 'Скрытая цель' } })
   })
 
+  it('keeps deterministic review evidence and hides provider-only evidence in template mode', () => {
+    render(<TrainingReviewPanel
+      language="ru"
+      providerFeatures={false}
+      data={{ ...data, offer_history: [{
+        source_revision: 2,
+        event_id: 'event-2',
+        type: 'offer.created',
+        terms: { price: 105000 },
+      }] }}
+    />)
+    expect(screen.getByText('История предложений')).toBeInTheDocument()
+    expect(screen.getByText(/105\s000/)).toBeInTheDocument()
+    expect(screen.queryByText('Разбор с тренером')).not.toBeInTheDocument()
+    expect(screen.queryByText('Динамика отношений')).not.toBeInTheDocument()
+  })
+
+  it('hides provider wording controls without hiding shared training context', () => {
+    render(<TrainingSetupFields
+      language="ru"
+      value={defaultTraining()}
+      providerFeatures={false}
+      onChange={vi.fn()}
+    />)
+    expect(screen.queryByText('Стиль реплик собеседника')).not.toBeInTheDocument()
+    expect(screen.getByText('Общий опыт')).toBeInTheDocument()
+  })
+
   it('requests coaching only on click and retries the selected checkpoint', async () => {
     const user = userEvent.setup(), coach = vi.fn(), fork = vi.fn()
     render(<TrainingReviewPanel language="ru" data={data} onCoaching={coach} onFork={fork} />)

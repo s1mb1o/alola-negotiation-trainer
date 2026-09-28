@@ -25,6 +25,7 @@ import { SessionInspector } from './components/SessionInspector'
 import { SessionSetup, type SessionSetupValue } from './components/SessionSetup'
 import { StatsView } from './components/StatsView'
 import { apiErrorLabel, translate } from './i18n'
+import { PROVIDER_FEATURES_ENABLED } from './features'
 import { applyTheme, applyUiLanguage, initialTheme, initialUiLanguage } from './preferences'
 import { appViewFromPathname, appViewPath } from './routing'
 import type {
@@ -70,11 +71,10 @@ interface PendingMessageAttempt {
 
 const fallbackScenario = (language: UiLanguage): ScenarioSummary => ({
   scenario_id: 'supplier_001',
-  version: 3,
+  version: 6,
   title: translate(language, 'scenarioFallback'),
   description: translate(language, 'scenarioFallbackDescription'),
   languages: ['ru', 'en'],
-  duration_minutes: 20,
   roles: [
     { role_id: 'buyer', title: translate(language, 'roleBuyer') },
     { role_id: 'seller', title: translate(language, 'roleSeller') },
@@ -776,7 +776,7 @@ export default function App() {
           onRewind={session.observation.training?.rewind
             ? (revision) => void rewindDialogue(revision)
             : undefined}
-          onAnswerForMe={session.observation.training
+          onAnswerForMe={PROVIDER_FEATURES_ENABLED && session.observation.training
             ? () => void answerForMe()
             : undefined}
           onSend={submitMessage}

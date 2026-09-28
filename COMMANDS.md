@@ -1,6 +1,6 @@
 # Service commands
 
-Last checked: 2026-09-23.
+Last checked: 2026-09-27.
 These commands are for local development on macOS with zsh.
 Use two terminal tabs: one for the API and one for the Web UI.
 
@@ -19,9 +19,27 @@ Run `uv run pytest backend/tests/test_openapi.py` to validate the API documentat
 See the [OpenAPI guide](docs/openapi-guide.md) for the authentication workflow.
 
 Use API port `8172` for this Mac's previously tested configuration.
-Port `8170` is also assigned to another project. Do not stop that project.
-The repository's default Vite proxy still points to `8170`.
-The UI command below explicitly selects `8172`.
+The repository's default Vite proxy points to `8172`.
+Do not stop another project to free a port.
+
+### No-key template route
+
+Use this route for the release candidate and jury smoke test.
+It makes no provider request.
+
+```zsh
+zsh scripts/run-template-api.zsh
+```
+
+In the second terminal, start the UI.
+
+```zsh
+cd frontend
+npm ci
+npm run dev
+```
+
+Open <http://127.0.0.1:8171/training> in Chrome.
 
 ## Prepare dependencies
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { identifierLabel } from '../i18n'
 import type { TrainingComparison, TrainingReview, UiLanguage } from '../types'
 import { TermsList } from './TermsList'
+import { PROVIDER_FEATURES_ENABLED } from '../features'
 
 export interface TrainingReviewActions {
   onCoaching?: () => void
@@ -9,9 +10,10 @@ export interface TrainingReviewActions {
   trainingBusy?: boolean
   trainingError?: string
   comparison?: TrainingComparison
+  providerFeatures?: boolean
 }
 
-export function TrainingReviewPanel({ language, data, onCoaching, onFork, trainingBusy, trainingError, comparison }: {
+export function TrainingReviewPanel({ language, data, onCoaching, onFork, trainingBusy, trainingError, comparison, providerFeatures = PROVIDER_FEATURES_ENABLED }: {
   language: UiLanguage; data: TrainingReview
 } & TrainingReviewActions) {
   const text = (ru: string, en: string) => language === 'ru' ? ru : en
@@ -62,7 +64,7 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
       </> : <p>{text('Соглашение не заключено. Выгода сделки не рассчитана. Выход из переговоров сам по себе не означает успех или неудачу.', 'No agreement was reached. Deal surplus is not calculated. Ending negotiations alone does not prove success or failure.')}</p>}
       <p className="field-note">{text('BATNA — лучшая альтернатива без сделки. Порог приемлемости может отличаться от её полезности. Точная зона возможного соглашения (ZOPA) по переписке не определяется.', 'BATNA is the best alternative without a deal. Reservation utility can differ from its utility. An exact zone of possible agreement (ZOPA) is not inferred from the transcript.')}</p>
     </section>}
-    <section className="review-section" aria-busy={trainingBusy}>
+    {providerFeatures && <section className="review-section" aria-busy={trainingBusy}>
       <h3>{text('Разбор с тренером', 'Coaching review')}</h3>
       {coaching.evidence_truncated && <p className="field-note">{text('Разбор использует сокращённую историю. Выводы относятся только к приведённым фрагментам.', 'This review uses a shortened history. Conclusions apply only to the included excerpts.')}</p>}
       {coaching.status === 'complete' ? <>
@@ -89,7 +91,7 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
         </button>}
       </>}
       {trainingError && <p role="alert" className="review-error-detail">{trainingError}</p>}
-    </section>
+    </section>}
     <section className="review-section">
       <h3>{text('Повторить решение', 'Retry a decision')}</h3>
       <p>{text('Выберите состояние перед вашим ходом. Повтор сохранит предысторию и условия на этот момент.', 'Select the state before your turn. The retry preserves history and conditions at that point.')}</p>
@@ -119,12 +121,12 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
         <TermsList terms={offer.terms} locale={language === 'ru' ? 'ru-RU' : 'en-US'} />
       </article>)}
     </details>
-    <details className="review-section">
+    {providerFeatures && <details className="review-section">
       <summary>{text('Динамика отношений', 'Relationship changes')}</summary>
       <p className="field-note">{text('Параметры симуляции от 0 до 100. Это не психологическая оценка.', 'Simulation parameters from 0 to 100. These are not psychological assessments.')}</p>
       <div className="training-table-wrap"><table><thead><tr><th>{text('Параметр', 'Parameter')}</th><th>{text('Начало', 'Initial')}</th><th>{text('Конец', 'Final')}</th></tr></thead>
         <tbody>{Object.keys(data.initial_social).map(axis => <tr key={axis}><td>{axes[axis] ?? axis}</td><td>{data.initial_social[axis]}</td><td>{data.final_social[axis]}</td></tr>)}</tbody>
       </table></div>
-    </details>
+    </details>}
   </div>
 }

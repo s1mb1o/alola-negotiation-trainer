@@ -15,6 +15,11 @@ Language = Literal["ru", "en"]
 SessionStatus = Literal[
     "active", "agreement_reached", "walked_away", "expired", "aborted", "technical_failure"
 ]
+TerminationReason = SessionStatus | Literal[
+    "round_limit_reached",
+    "clarification_limit_reached",
+    "protocol_control_limit_reached",
+]
 PublicTerms = Annotated[
     dict[str, JsonValue],
     Field(
@@ -386,6 +391,12 @@ class CreateSessionResponse(SessionPosition):
     committed_actions: list[CommittedAction]
 
 
+class ClarificationRecovery(Contract):
+    version: Literal["training-clarification-v1"]
+    example: str
+    end_session_message: str
+
+
 class Clarification(Contract):
     reason_code: str
     question: str
@@ -401,6 +412,7 @@ class Clarification(Contract):
     baseline_offer_id: str | None = None
     baseline_offer_revision: int | None = None
     provided_currencies: list[str] | None = None
+    recovery: ClarificationRecovery | None = None
 
 
 class SessionResponse(SessionPosition):
@@ -509,7 +521,7 @@ class CloseResponse(Contract):
 
 class Outcome(Contract):
     agreement: bool
-    termination_reason: SessionStatus
+    termination_reason: TerminationReason
     agreement_terms: PublicTerms | None
     financial_summary: FinancialSummary | None = None
 

@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 VERSION = "human-training-v1"
 SOCIAL_VERSION = "social-events-v1"
+CLARIFICATION_RECOVERY_VERSION = "training-clarification-v1"
 PROFILES = {
     "concise_skeptical": "Be concise and professional. Ask for relevant evidence. Explain objections without hostility. Pursue your own approved interests.",
     "sociable": "Be warm and conversational. Briefly acknowledge personal context when relevant. Pursue your own approved interests. Warmth never implies a concession.",
@@ -109,7 +110,10 @@ def initialize_training(setup: TrainingSetup, owner_id: str, scenario: dict, san
     for key in ("target", "unacceptable_result", "available_trades", "information_to_discover"):
         payload["preparation"][key] = sanitize(payload["preparation"][key])
     return {
-        "version": VERSION, "social_rule_version": SOCIAL_VERSION, "owner_id": owner_id,
+        "version": VERSION,
+        "social_rule_version": SOCIAL_VERSION,
+        "clarification_recovery_version": CLARIFICATION_RECOVERY_VERSION,
+        "owner_id": owner_id,
         "setup": payload, "initial_social": dict(values), "social": values,
         "last_social_change": {
             "source_revision": 0,

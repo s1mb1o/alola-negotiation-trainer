@@ -85,12 +85,21 @@ def test_explicit_currency_mismatch_requires_actor_safe_clarification(
     assert valid.json()["observation"]["active_offers"][0]["terms"]["price"] == 1_200_000
 
 
-def test_acceptance_cancel_cycle_expires_at_protocol_control_limit(
+def test_benchmark_acceptance_cancel_cycle_expires_at_protocol_control_limit(
     client: TestClient,
 ) -> None:
+    payload = create_payload("accept-cancel-limit", both_external=True)
+    payload.update(
+        run_mode="benchmark",
+        hints_enabled=False,
+        benchmark_run_id="acceptance-control-bound",
+        trial_id="trial-1",
+        benchmark_expected_trials=1,
+    )
     created = client.post(
         "/api/v1/sessions",
-        json=create_payload("accept-cancel-limit", both_external=True),
+        json=payload,
+        headers=bearer("test-admin"),
     ).json()
     tokens = credentials(created)
     session_id = created["session_id"]
@@ -148,6 +157,64 @@ def test_acceptance_cancel_cycle_expires_at_protocol_control_limit(
         event for event in reversed(history["events"]) if event["type"] == "session.expired"
     )
     assert terminal_event["payload"]["reason"] == "protocol_control_limit_reached"
+    review = client.get(
+        f"/api/v1/sessions/{session_id}/review",
+        headers=bearer(tokens["seller"]),
+    ).json()
+    assert review["outcome"]["termination_reason"] == "protocol_control_limit_reached"
+    assert review["key_moments"][-1]["title"] == "Лимит протокольных действий"
+
+
+def test_training_acceptance_controls_do_not_expire_session(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/sessions",
+        json=create_payload("training-accept-cancel", both_external=True),
+    ).json()
+    tokens = credentials(created)
+    session_id = created["session_id"]
+
+    offer = client.post(
+        f"/api/v1/sessions/{session_id}/messages",
+        headers=bearer(tokens["buyer"]),
+        json={
+            "message": "Предлагаю цену 1 200 000 рублей.",
+            "idempotency_key": "training-cycle-offer",
+            "expected_revision": created["revision"],
+        },
+    ).json()
+    intent = client.post(
+        f"/api/v1/sessions/{session_id}/messages",
+        headers=bearer(tokens["seller"]),
+        json={
+            "message": "Принимаю все условия предложения.",
+            "idempotency_key": "training-cycle-intent-1",
+            "expected_revision": offer["revision"],
+        },
+    ).json()
+    cancelled = client.post(
+        f"/api/v1/sessions/{session_id}/messages",
+        headers=bearer(tokens["seller"]),
+        json={
+            "message": "Отменяю принятие.",
+            "idempotency_key": "training-cycle-cancel",
+            "expected_revision": intent["revision"],
+        },
+    ).json()
+    repeated = client.post(
+        f"/api/v1/sessions/{session_id}/messages",
+        headers=bearer(tokens["seller"]),
+        json={
+            "message": "Принимаю все условия предложения.",
+            "idempotency_key": "training-cycle-intent-2",
+            "expected_revision": cancelled["revision"],
+        },
+    )
+
+    assert repeated.status_code == 200
+    body = repeated.json()
+    assert body["status"] == "active"
+    assert body["result"] == "confirmation_required"
+    assert body["next_actor"] == offer["next_actor"]
 
 
 def test_package_design_scores_only_explicit_term_delta(client: TestClient) -> None:
