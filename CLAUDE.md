@@ -16,8 +16,8 @@ Each implementation directory contains a local `CLAUDE.md` file.
 
 ## Submission readiness
 
-- [Plan 14](docs/plans/14_reach-90-plus.md) now uses release gates as the primary target. Its September 27 amendment starts access, filtered publication preparation, and jury artifacts alongside semantic repairs. The user's September 28 request authorizes the locally resolvable implementation work. Publication, deployment, moderator contact, recording, and submission still require separate owner action.
-- [Plan 13](docs/plans/13_hackathon-readiness.md) retains the underlying defect reproductions and requirement analysis. Accepted decisions and core specifications remain authoritative.
+- Plan 14 now uses release gates as the primary target. Its September 27 amendment starts access, filtered publication preparation, and jury artifacts alongside semantic repairs. The user's September 28 request authorizes the locally resolvable implementation work. Publication, deployment, moderator contact, recording, and submission still require separate owner action.
+- Plan 13 retains the underlying defect reproductions and requirement analysis. Accepted decisions and core specifications remain authoritative.
 
 ## API documentation
 
@@ -38,12 +38,12 @@ Each implementation directory contains a local `CLAUDE.md` file.
 - [DR-40](docs/decisions/2026-09-24_llm-debug-window.md): a separate LLM trace window at `/llm-debug`. [DR-41](docs/decisions/2026-09-24_local-llm-debug-access.md) permits direct local access without sign-in. See the [usage guide](docs/llm-debug-guide.md). Keep traces redacted, bounded, in memory, and outside Player API and benchmark sessions.
 
 - [Human training guide](docs/human-training-guide.md) and [DR-36](docs/decisions/2026-09-24_training-loop.md): implemented private preparation, shared background, social state, cached LLM coaching, checkpoint retry, and observed comparison. See the guide for verification limits.
-- [Training precedents and hackathon priorities](docs/research/lct2026-task9-training-precedents-2026-09-23.md): source-linked research and proposed preparation, coaching, retry, comparison, and pilot design. No implementation is authorized by this research.
+- Training precedents and hackathon priorities: source-linked research and proposed preparation, coaching, retry, comparison, and pilot design. No implementation is authorized by this research.
 - [DR-34](docs/decisions/2026-09-23_prompt-language.md): English instructions for all application-owned LLM tasks. Runtime tasks were audited.
 - [DR-43](docs/decisions/2026-09-24_ste-system-prompts.md): STE-style English for all application-owned LLM instructions. Use short, active sentences with one instruction or idea per sentence. Preserve exact identifiers and Russian source text. External-agent prompt version is `natural-language-agent-v5`.
 - [DR-35](docs/decisions/2026-09-23_player-background.md): configurable player background known to the NPC, including successful prior deals. The bounded implementation is in DR-36.
 - [DR-33](docs/decisions/2026-09-23_goal-based-llm-review.md): final LLM analysis of goal progress and evidence-linked recommendations. The bounded implementation is in DR-36.
-- [Task 9 compliance assessment](docs/research/lct2026-task9-compliance-2026-09-23.md): requirement coverage, current evidence, and proposed preparation priorities for MEMORY and STATUS. This assessment does not authorize implementation.
+- Task 9 compliance assessment: requirement coverage, current evidence, and proposed preparation priorities for MEMORY and STATUS. This assessment does not authorize implementation.
 - [DR-31](docs/decisions/2026-09-23_human-first-negotiation.md): stored case-specific NPC greeting and human first live turn in human-versus-built-in-NPC training.
 - [DR-47](docs/decisions/2026-09-26_relationship-aware-opening-greetings.md): deterministic varied opening greetings for `successful_history` without invented historical details.
 - [DR-50](docs/decisions/2026-09-26_grounded-goal-directed-dialogue.md): actor-safe scenario context, immutable opening-value placeholders, and goal-directed dialogue wording.
@@ -52,7 +52,7 @@ Each implementation directory contains a local `CLAUDE.md` file.
 - [DR-38](docs/decisions/2026-09-24_context-gated-reply-rag.md): context-gated SaaS few-shot examples, query variants, diverse selection, and a bounded Qwen comparison. See the [NPC dialogue guide](docs/npc-dialogue-guide.md).
 - [Social state and LLM protection design](docs/social-state-and-llm-dialogue.md): broader MEMORY, STATUS, persona, and OWASP design. The implemented subset is defined by DR-36.
 - [Reference implementation guide](docs/reference-supply-guide.md): bounded RU/EN composite negotiation, source-bound confirmation, optional semantic normalization, and verification limits.
-- [Actual offline reference dialogue](docs/reports/2026-09-08-supply-offline-dialogue.md): four isolated API trajectories, not a live model ranking.
+- Actual offline reference dialogue: four isolated API trajectories, not a live model ranking.
 
 - [DR-29](docs/decisions/2026-09-08_reference-before-generalization.md): accepted order of one complete supply reference, then generalization.
 - [Resolved supply contract](docs/reference-supply-contract.md): accepted package, preliminary negotiation, confirmation, synthetic economics, and reserve rules under DR-30.
@@ -62,7 +62,7 @@ Each implementation directory contains a local `CLAUDE.md` file.
 - [DR-28](docs/decisions/2026-09-06_grounded-negotiation-dialogue.md): contextual parsing, bounded exchange selection, exact public numeric references, dialogue profiles, and evaluation boundaries.
 - [DR-52](docs/decisions/2026-09-27_deepseek-v41-dialogue-route.md): selected DeepSeek V4.1 Flash dialogue route and safety boundaries.
 - [Dialogue evaluation rubric](docs/dialogue-evaluation-rubric.md): offline diagnostics and source-linked human ratings.
-- [Verification report](docs/reports/2026-09-06-conversation-continuity.md): completed checks and live-test limits.
+- Verification report: completed checks and live-test limits.
 
 ## Commands
 

@@ -238,21 +238,21 @@ Browser restoration and catalog/state reads passed without submitting a dialogue
 The OpenAI continuity smoke attempt produced 11 `provider_failure` fallbacks.
 It does not verify live generated replies or conversational quality.
 The network retry remains blocked by automatic safety review until fresh explicit transmission consent is available.
-See `docs/reports/2026-09-06-conversation-continuity.md` for the earlier DR-27 evidence and limits.
+See the private verification archive for the earlier DR-27 evidence and limits.
 The DR-28 sections below define the new acceptance checks.
 Run them with fake providers or template mode unless a live transmission is separately authorized.
 
 The final DR-28 local run passed 655 Python tests and 70 frontend tests.
 The frontend build and `git diff --check` passed.
 No external model call was made for DR-28 verification.
-See the [DR-28 verification report](docs/reports/2026-09-06-grounded-negotiation-dialogue.md).
+See the DR-28 verification report.
 
 The DR-28 validation-harness run on 2026-09-07 passed 761 Python tests.
 The offline matrix passed 48 sessions and 232 scripted messages with four workers.
 It checked supplier version 5 in Russian and office version 4 in English at all four difficulty levels.
 It used offline fixtures and made zero external model calls.
 The frontend was not changed or retested in this increment.
-See the [validation-suite report](docs/reports/2026-09-07-dr28-dialogue-validation.md).
+See the validation-suite report.
 
 ### Executable DR-28 smoke matrix
 
@@ -283,7 +283,7 @@ The [validation guide](docs/dr28-dialogue-validation.md) defines live execution 
 
 Composite-supply checks implement [DR-30](docs/decisions/2026-09-08_reference-supply-implementation.md).
 Run `.venv/bin/python -m pytest backend/tests/test_supply*.py` for typed economics, source-bound parsing, confirmation, replay, optional semantic extraction, and renderer regressions.
-The [offline report](docs/reports/2026-09-08-supply-offline-dialogue.md) contains four completed reference trajectories.
+The offline report contains four completed reference trajectories.
 No live-model naturalness or model ranking is claimed.
 
 ### Versioned schemas

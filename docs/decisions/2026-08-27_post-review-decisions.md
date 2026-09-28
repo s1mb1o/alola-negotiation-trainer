@@ -1,7 +1,7 @@
 # Decision Records — 2026-08-27 (post-review)
 
 - **Decided by**: Alexander Shmelev.
-- **Context**: answers to the open questions in §10 of [the review](../reviews/claude-fable-max-20260827.md). Recorded by Claude Fable 5 from the discussion; consequences sections are the reviewer's analysis of the decisions.
+- **Context**: answers to the open questions in §10 of the review. Recorded by Claude Fable 5 from the discussion; consequences sections are the reviewer's analysis of the decisions.
 - **Timeline note**: ~2 weeks remain before the hackathon start. This changes the scope calculus of the review's §6.
 
 ---

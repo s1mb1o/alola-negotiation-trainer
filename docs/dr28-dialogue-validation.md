@@ -198,7 +198,7 @@ In live mode, `network_calls` is `null` because the harness does not measure com
 The live `network_call_upper_bound` equals `provider_calls` because retries are disabled.
 An invocation can fail before an HTTP request starts.
 
-See the [verification report](reports/2026-09-07-dr28-dialogue-validation.md) for the completed offline run and its limits.
+See the verification report for the completed offline run and its limits.
 
 ## Review the exported dialogue
 

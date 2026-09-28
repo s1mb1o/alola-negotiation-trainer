@@ -1,0 +1,283 @@
+{
+  "date": "2026-09-27",
+  "synthetic_data_only": true,
+  "network_calls": 8,
+  "max_provider_calls": 8,
+  "retries": false,
+  "original_coaching_prompt_version": "goal-coaching-v3",
+  "initial_probe": {
+    "date": "2026-09-27",
+    "methodology_version": "harvard-batna-voss-v1",
+    "live_evidence": true,
+    "synthetic_data_only": true,
+    "max_provider_calls": 8,
+    "network_calls": 7,
+    "retries": false,
+    "calls": [
+      {
+        "stage": "opening",
+        "model": "deepseek-v4-flash-0731",
+        "text": "{\"reply\":\"ZXQOPENB, добрый день. Рад снова с вами работать. По теме «ZXQOPENA» предлагаю опираться на условия: ZXQOPENC. Что вы хотите обсудить первым?\"}",
+        "latency_ms": 2541.699332999997,
+        "model_reported": "deepseek-v4-flash-0731",
+        "usage": {
+          "prompt_tokens": 739,
+          "completion_tokens": 54,
+          "total_tokens": 793,
+          "prompt_tokens_details.cached_tokens": 0
+        }
+      },
+      {
+        "stage": "opening",
+        "model": "deepseek-v4-flash-0731",
+        "text": "{\"safe\":true}",
+        "latency_ms": 2001.1851669987664,
+        "model_reported": "deepseek-v4-flash-0731",
+        "usage": {
+          "prompt_tokens": 585,
+          "completion_tokens": 5,
+          "total_tokens": 590,
+          "prompt_tokens_details.cached_tokens": 0
+        }
+      },
+      {
+        "stage": "interests",
+        "model": "qwen-flash-character",
+        "text": "{\n\"speech_act\": \"ask_question\",\n\"reply\": \"Какие сроки для вас принципиальны? При необходимости мы можем скорректировать этапы.\"\n}\nВажность сжатых сроков понятна. Учитывая ускоренный старт, нам необходима дополнительная информация о конкретных потребностях, чтобы предложить подходящее решение. Какие ключевые параметры должна отразить спецификация для успешного старта?\"",
+        "latency_ms": 2003.7177499616519,
+        "model_reported": "qwen-flash-character",
+        "usage": {
+          "prompt_tokens": 2209,
+          "completion_tokens": 104,
+          "total_tokens": 2313,
+          "prompt_tokens_details.cached_tokens": 0
+        }
+      },
+      {
+        "stage": "supply_package",
+        "model": "qwen-flash-character",
+        "text": "{\n\"reply\": \"Запуск проекта - это действительно приоритет. Наша текущая оценка показывает, что мы сможем приступить к поставкам в течение шести недель после подписания контракта. Хотите, чтобы я ускорил этот процесс?\"\n}",
+        "latency_ms": 1345.8084999583662,
+        "model_reported": "qwen-flash-character",
+        "usage": {
+          "prompt_tokens": 779,
+          "completion_tokens": 65,
+          "total_tokens": 844,
+          "prompt_tokens_details.cached_tokens": 0
+        }
+      },
+      {
+        "stage": "supply_package",
+        "model": "deepseek-v4-flash-0731",
+        "text": "{\"safe\":false}",
+        "latency_ms": 2037.2593339998275,
+        "model_reported": "deepseek-v4-flash-0731",
+        "usage": {
+          "prompt_tokens": 518,
+          "completion_tokens": 5,
+          "total_tokens": 523,
+          "prompt_tokens_details.cached_tokens": 0
+        }
+      },
+      {
+        "stage": "coaching",
+        "model": "qwen3.8-max",
+        "text": "{\"summary\":\"Переговоры завершились без соглашения. Ваша итоговая полезность составила 40, что равно вашей альтернативе (BATNA) и ниже резервной полезности 60. Решение отказаться от сделки экономически обосновано, так как доступные условия не достигли вашего минимального порога. В предоставленной записи содержится только одно сообщение — объявление о прекращении переговоров. Эта запись не позволяет оценить процесс обсуждения интересов, вариантов или критериев до момента завершения.\",\"goal_assessment\":\"Подготовленная цель заключалась в поиске приемлемого пакета перед принятием решения о сделке. Поскольку соглашение не было достигнуто, ни один из условий сделки не был реализован. Итоговая полезность 40 совпадает с вашей BATNA-полезностью и не достигает резервной полезности 60. Отказ от сделки соответствует экономическому базовому сценарию: при невозможности превысить резервный порог завершение переговоров является рациональным выбором. Запись ограничена одним сообщением, поэтому невозможно определить, какие именно шаги предпринимались для поиска приемлемого пакета до принятия окончательного решения. Оценка достижения цели основана исключительно на финальном результате и отсутствии истории предложений.\",\"cards\":[{\"dimension\":\"economics\",\"assessment\":\"observed\",\"evidence_refs\":[\"message:1\"],\"observation\":\"Сделка не состоялась. Полученная полезность 40 равна значению BATNA и ниже резервного уровня 60. Завершение переговоров без соглашения в данном случае экономически оправдано, поскольку ни одно предложение не достигло минимально приемлемого порога.\",\"recommendation\":\"Решение отказаться от сделки корректно. В будущих переговорах рекомендуется заранее рассчитывать резервную полезность и использовать её как чёткий ориентир для принятия решения об уходе. Это поможет быстрее распознавать отсутствие зоны возможного соглашения.\",\"alternative_phrase\":\"Текущие условия дают мне полезность ниже моего минимального порога, поэтому я вынужден завершить переговоры.\",\"next_practice\":\"Перед следующими переговорами запишите точное числовое значение вашей резервной полезности и потренируйтесь вслух формулировать отказ, опираясь на этот порог.\"},{\"dimension\":\"process\",\"assessment\":\"insufficient_evidence\",\"evidence_refs\":[\"message:1\"],\"observation\":\"В предоставленной записи присутствует только сообщение о прекращении переговоров. История предложений пуста. Невозможно оценить, обсуждались ли интересы сторон, объективные критерии или варианты до момента завершения. Отсутствие данных не означает ошибку, а отражает ограничение записи.\",\"recommendation\":\"До объявления о завершении полезно кратко обозначить причину отказа, сославшись на несовпадение по ключевым параметрам. Это сохраняет профессиональный подход и оставляет возможность для возобновления контакта в будущем, если условия изменятся.\",\"alternative_phrase\":\"Мы пока не смогли найти вариант, который бы соответствовал моим минимальным требованиям, поэтому предлагаю приостановить обсуждение.\",\"next_practice\":\"Потренируйтесь перед зеркалом произносить фразу о приостановке переговоров, указывая одну конкретную причину, не переходя к обвинениям.\"},{\"dimension\":\"communication\",\"assessment\":\"insufficient_evidence\",\"evidence_refs\":[\"message:1\"],\"observation\":\"Единственное доступное сообщение представляет собой прямое объявление о прекращении переговоров. Запись не содержит диалога, поэтому невозможно оценить навыки слушания, задавание вопросов или использование техник эмпатии. Ограничение записи одним сообщением не позволяет сделать выводы о коммуникативном поведении в ходе сессии.\",\"recommendation\":\"При необходимости завершить переговоры используйте нейтральную формулировку, которая объясняет решение через ваши объективные ограничения, а не через оценку действий собеседника. Это снижает риск эскалации конфликта.\",\"alternative_phrase\":\"Исходя из моих текущих ограничений, я не могу принять эти условия и вынужден завершить наше обсуждение.\",\"next_practice\":\"Запишите себя на диктофон, произнося три разных варианта вежливого завершения переговоров, и выберите наиболее спокойный тон.\"}]}",
+        "latency_ms": 23257.51920894254,
+        "model_reported": "qwen3.8-max",
+        "usage": {
+          "completion_tokens": 873,
+          "prompt_tokens": 944,
+          "prompt_tokens_details.cached_tokens": 0,
+          "prompt_tokens_details.text_tokens": 944,
+          "total_tokens": 1817
+        }
+      },
+      {
+        "stage": "coaching",
+        "model": "qwen3.8-max",
+        "text": "{\"safe\":true}",
+        "latency_ms": 1807.0920419413596,
+        "model_reported": "qwen3.8-max",
+        "usage": {
+          "completion_tokens": 5,
+          "prompt_tokens": 1421,
+          "prompt_tokens_details.cached_tokens": 0,
+          "prompt_tokens_details.text_tokens": 1421,
+          "total_tokens": 1426
+        }
+      }
+    ],
+    "cases": [
+      {
+        "name": "opening",
+        "result": {
+          "text": "Александр, добрый день. Рад снова с вами работать. По теме «Поставка 100 промышленных компьютеров» предлагаю опираться на условия: цена 120 000 €, срок поставки 8 недель. Что вы хотите обсудить первым?",
+          "mode": "llm",
+          "provider": "qwen",
+          "model": "deepseek-v4-flash-0731",
+          "fallback_used": false,
+          "failure_reason": null,
+          "validation_failure": null,
+          "latency_ms": 4543.79,
+          "attempted_generation": true
+        },
+        "checks": {
+          "live_generation": true,
+          "exact_public_terms": true,
+          "player_name": true,
+          "one_question": true
+        }
+      },
+      {
+        "name": "interests",
+        "result": {
+          "text": "Что мешает согласовать условия?",
+          "mode": "template",
+          "provider": "qwen",
+          "model": "qwen-flash-character",
+          "fallback_used": true,
+          "failure_reason": "output_invalid",
+          "validation_failure": "format",
+          "latency_ms": 2004.21,
+          "attempted_generation": true
+        },
+        "checks": {
+          "live_generation": false,
+          "at_most_one_question": true
+        }
+      },
+      {
+        "name": "supply_package",
+        "result": {
+          "text": "Давайте обсудим график.\n\nОсновная партия: 109 500 EUR.\nРезерв: не указан.",
+          "mode": "template",
+          "provider": "qwen",
+          "model": "qwen-flash-character",
+          "fallback_used": true,
+          "failure_reason": "output_invalid",
+          "validation_failure": null,
+          "latency_ms": null,
+          "attempted_generation": true
+        },
+        "checks": {
+          "live_generation": false,
+          "exact_package": true
+        }
+      },
+      {
+        "name": "coaching",
+        "result": {
+          "prompt_version": "goal-coaching-v3",
+          "source_revision": 2,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "status": "complete",
+          "summary": "Переговоры завершились без соглашения. Ваша итоговая полезность составила 40, что равно вашей альтернативе (BATNA) и ниже резервной полезности 60. Решение отказаться от сделки экономически обосновано, так как доступные условия не достигли вашего минимального порога. В предоставленной записи содержится только одно сообщение — объявление о прекращении переговоров. Эта запись не позволяет оценить процесс обсуждения интересов, вариантов или критериев до момента завершения.",
+          "goal_assessment": "Подготовленная цель заключалась в поиске приемлемого пакета перед принятием решения о сделке. Поскольку соглашение не было достигнуто, ни один из условий сделки не был реализован. Итоговая полезность 40 совпадает с вашей BATNA-полезностью и не достигает резервной полезности 60. Отказ от сделки соответствует экономическому базовому сценарию: при невозможности превысить резервный порог завершение переговоров является рациональным выбором. Запись ограничена одним сообщением, поэтому невозможно определить, какие именно шаги предпринимались для поиска приемлемого пакета до принятия окончательного решения. Оценка достижения цели основана исключительно на финальном результате и отсутствии истории предложений.",
+          "cards": [
+            {
+              "dimension": "economics",
+              "assessment": "observed",
+              "evidence_refs": [
+                "message:1"
+              ],
+              "observation": "Сделка не состоялась. Полученная полезность 40 равна значению BATNA и ниже резервного уровня 60. Завершение переговоров без соглашения в данном случае экономически оправдано, поскольку ни одно предложение не достигло минимально приемлемого порога.",
+              "recommendation": "Решение отказаться от сделки корректно. В будущих переговорах рекомендуется заранее рассчитывать резервную полезность и использовать её как чёткий ориентир для принятия решения об уходе. Это поможет быстрее распознавать отсутствие зоны возможного соглашения.",
+              "alternative_phrase": "Текущие условия дают мне полезность ниже моего минимального порога, поэтому я вынужден завершить переговоры.",
+              "next_practice": "Перед следующими переговорами запишите точное числовое значение вашей резервной полезности и потренируйтесь вслух формулировать отказ, опираясь на этот порог.",
+              "evidence": [
+                {
+                  "ref": "message:1",
+                  "text": "Прекращаю переговоры.",
+                  "source_revision": 1,
+                  "role": "buyer",
+                  "is_player": true
+                }
+              ],
+              "alternative_is_hypothesis": true
+            },
+            {
+              "dimension": "process",
+              "assessment": "insufficient_evidence",
+              "evidence_refs": [
+                "message:1"
+              ],
+              "observation": "В предоставленной записи присутствует только сообщение о прекращении переговоров. История предложений пуста. Невозможно оценить, обсуждались ли интересы сторон, объективные критерии или варианты до момента завершения. Отсутствие данных не означает ошибку, а отражает ограничение записи.",
+              "recommendation": "До объявления о завершении полезно кратко обозначить причину отказа, сославшись на несовпадение по ключевым параметрам. Это сохраняет профессиональный подход и оставляет возможность для возобновления контакта в будущем, если условия изменятся.",
+              "alternative_phrase": "Мы пока не смогли найти вариант, который бы соответствовал моим минимальным требованиям, поэтому предлагаю приостановить обсуждение.",
+              "next_practice": "Потренируйтесь перед зеркалом произносить фразу о приостановке переговоров, указывая одну конкретную причину, не переходя к обвинениям.",
+              "evidence": [
+                {
+                  "ref": "message:1",
+                  "text": "Прекращаю переговоры.",
+                  "source_revision": 1,
+                  "role": "buyer",
+                  "is_player": true
+                }
+              ],
+              "alternative_is_hypothesis": true
+            },
+            {
+              "dimension": "communication",
+              "assessment": "insufficient_evidence",
+              "evidence_refs": [
+                "message:1"
+              ],
+              "observation": "Единственное доступное сообщение представляет собой прямое объявление о прекращении переговоров. Запись не содержит диалога, поэтому невозможно оценить навыки слушания, задавание вопросов или использование техник эмпатии. Ограничение записи одним сообщением не позволяет сделать выводы о коммуникативном поведении в ходе сессии.",
+              "recommendation": "При необходимости завершить переговоры используйте нейтральную формулировку, которая объясняет решение через ваши объективные ограничения, а не через оценку действий собеседника. Это снижает риск эскалации конфликта.",
+              "alternative_phrase": "Исходя из моих текущих ограничений, я не могу принять эти условия и вынужден завершить наше обсуждение.",
+              "next_practice": "Запишите себя на диктофон, произнося три разных варианта вежливого завершения переговоров, и выберите наиболее спокойный тон.",
+              "evidence": [
+                {
+                  "ref": "message:1",
+                  "text": "Прекращаю переговоры.",
+                  "source_revision": 1,
+                  "role": "buyer",
+                  "is_player": true
+                }
+              ],
+              "alternative_is_hypothesis": true
+            }
+          ]
+        },
+        "checks": {
+          "complete": true,
+          "three_dimensions": true,
+          "exact_evidence": true
+        }
+      }
+    ]
+  },
+  "grounding_recheck": {
+    "prompt_version": "goal-coaching-v4",
+    "previous_calls": 7,
+    "network_calls": 1,
+    "target": "captured_false_economic_justification",
+    "synthetic_data_only": true,
+    "text": "{\"safe\":false}",
+    "model_reported": "qwen3.8-max",
+    "latency_ms": 1597.3875409690663,
+    "usage": {
+      "completion_tokens": 5,
+      "prompt_tokens": 1536,
+      "prompt_tokens_details.cached_tokens": 0,
+      "prompt_tokens_details.text_tokens": 1536,
+      "total_tokens": 1541
+    }
+  },
+  "manual_findings": {
+    "opening": "Passed exact values, prior relationship, and one question. Wording closely followed the authored template.",
+    "interests": "Failed. The Character response changed speech_act and added text outside JSON. The safe template was delivered.",
+    "supply_package": "Failed. The Character response invented a six-week delivery period. The control model rejected it. The exact engine package was preserved.",
+    "coaching": "Failed before correction. Three dimensions and references were valid, but the text asserted a justified economic exit without offer evidence. The original model grounder accepted this unsupported claim."
+  },
+  "correction": {
+    "prompt_version": "goal-coaching-v4",
+    "deterministic_guard": "No agreement and no offer evidence require insufficient_evidence for economics.",
+    "captured_response_offline_replay": "unavailable; rejected before model grounding",
+    "offline_replay_network_calls": 0,
+    "live_grounding_recheck": "safe:false",
+    "fresh_review_regeneration": "not performed; eight-call limit reached"
+  }
+}

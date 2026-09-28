@@ -135,7 +135,7 @@ Run the full Python suite:
 ```
 
 Run `npm test -- --run` and `npm run build` from `frontend`.
-The [offline transcript report](reports/2026-09-08-supply-offline-dialogue.md) contains four completed API trajectories.
+The offline transcript report contains four completed API trajectories.
 Tests cover both languages, both NPC roles, actor isolation, exact confirmation, retries, restart, and rendering failure.
 Fixture tests exercise the LLM rendering and normalization paths without external calls.
 Verification on 2026-09-08 passed the 972-test full Python suite and two additional client-contract tests.

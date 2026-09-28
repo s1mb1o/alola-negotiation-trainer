@@ -647,22 +647,22 @@ npm run build
 
 The CI workflow runs the Python suite, Ruff, the npm audit, frontend tests, and the production build.
 
-See the [DR-28 validation-suite report](docs/reports/2026-09-07-dr28-dialogue-validation.md) for the latest offline matrix and test evidence.
-See the [DR-28 implementation report](docs/reports/2026-09-06-grounded-negotiation-dialogue.md) for runtime changes and earlier verification.
-See [the conversation-continuity report](docs/reports/2026-09-06-conversation-continuity.md) for the earlier DR-27 evidence.
+See the DR-28 validation-suite report for the latest offline matrix and test evidence.
+See the DR-28 implementation report for runtime changes and earlier verification.
+See the conversation-continuity report for the earlier DR-27 evidence.
 DR-28 acceptance checks are listed in [SMOKE_TESTS.md](SMOKE_TESTS.md).
 
-See [the initial implementation report](docs/reports/2026-08-28-implementation-validation.md) for the original MVP validation.
+See the initial implementation report for the original MVP validation.
 
-See [the OpenAI agent benchmark report](docs/reports/2026-08-28-openai-agent-benchmark.md) for the authorized Luna and Terra self-play results.
+See the OpenAI agent benchmark report for the authorized Luna and Terra self-play results.
 
-See [the full LLM matrix report](docs/reports/2026-08-29-full-llm-matrix.md) for the 11-model Russian and English comparison.
+See the full LLM matrix report for the 11-model Russian and English comparison.
 
 ## Current boundaries
 
 The next delivery order is accepted in [DR-29](docs/decisions/2026-09-08_reference-before-generalization.md): complete one reference supply scenario, then generalize its deal model for another domain.
 The bounded reference scenario is implemented under [DR-30](docs/decisions/2026-09-08_reference-supply-implementation.md).
-See the [implementation guide](docs/reference-supply-guide.md) and [actual offline dialogue](docs/reports/2026-09-08-supply-offline-dialogue.md).
+See the [implementation guide](docs/reference-supply-guide.md) and actual offline dialogue.
 The [two-stage plan](docs/plans/05_reference-supply-and-generalization.md) keeps live language validation pending before generalization.
 
 - The built-in NPC uses a deterministic MVP policy. An optional provider can write contextual non-binding replies after the engine selects the action and disclosures.
@@ -704,5 +704,5 @@ The target authored-world and runtime-emergent-state model is specified in [docs
 
 ## Hackathon research
 
-- [Task 9 verified insights and source map](docs/research/lct2026-task9-insights.md): official requirements, Telegram clarifications, deadlines, resources, and open questions.
-- [Task 9 Telegram monitoring ledger](docs/research/telegram-task9-monitor.md): message-level evidence and coverage state.
+- Task 9 verified insights and source map: official requirements, Telegram clarifications, deadlines, resources, and open questions.
+- Task 9 Telegram monitoring ledger: message-level evidence and coverage state.
