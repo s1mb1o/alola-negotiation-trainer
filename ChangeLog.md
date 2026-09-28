@@ -2,7 +2,8 @@
 
 ## 2026-09-28
 
-- Renamed the visible Web UI product from `Контур` / `Kontur` to `Alola`. Updated the Russian and English browser titles, header brand, metadata fallback, tests, and public README.
+- Standardized the product brand as uppercase `ALOLA`. Removed the remaining previous-brand text from the Web UI and public release materials. Renamed the release presentation and PDF artifacts.
+- Replaced the previous visible Web UI brand with `ALOLA`. Updated the Russian and English browser titles, header brand, metadata fallback, tests, and public README.
 - Separated the public product repository from private plans and release-control tooling. The public `scripts/` directory now contains runtime launchers only.
 - Prepared the template-only release candidate for Task 9.
 - Added parser safety regressions for term complaints, contrast-clause proposals, third-party numbers, conditional trades, interest questions, insult boundaries, and explicit exits.

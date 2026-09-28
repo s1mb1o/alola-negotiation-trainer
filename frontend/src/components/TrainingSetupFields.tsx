@@ -19,7 +19,7 @@ export function TrainingSetupFields({ language, value, scenario, onChange, provi
   const numeric = value.preparation.targets[0]
   return <div className="training-setup">
     <details open>
-      <summary>{text('Контур конфигурации сессии', 'Session configuration contour')}</summary>
+      <summary>{text('Параметры сессии', 'Session settings')}</summary>
       <p className="field-note">{text(
         'Роли, экономика и допустимые условия заданы автором сценария. Здесь можно настроить только общий контекст тренировки.',
         'The scenario author defines roles, economics, and supported terms. This section changes shared training context only.',
