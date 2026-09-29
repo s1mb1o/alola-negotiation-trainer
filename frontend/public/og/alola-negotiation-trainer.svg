@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">ALOLA negotiation trainer</title>
+  <desc id="desc">A structured negotiation training workspace with dialogue, deal terms, and evidence-linked review.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10251e"/>
+      <stop offset="1" stop-color="#274d3d"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffdf6"/>
+      <stop offset="1" stop-color="#e9eedf"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1085" cy="90" r="210" fill="#d8ff73" opacity=".08"/>
+  <circle cx="100" cy="620" r="250" fill="#62d8ab" opacity=".08"/>
+  <g transform="translate(70 70)">
+    <rect width="72" height="72" rx="20" fill="#d8ff73"/>
+    <path d="M17 52 32 19h8l15 33H45l-3-7H29l-3 7Zm15-16h7l-3.5-8Z" fill="#12261f"/>
+    <text x="92" y="52" fill="#fffdf6" font-family="Arial, sans-serif" font-size="48" font-weight="800" letter-spacing="6">ALOLA</text>
+  </g>
+  <text x="70" y="235" fill="#fffdf6" font-family="Arial, sans-serif" font-size="62" font-weight="750">Practice difficult decisions.</text>
+  <text x="70" y="304" fill="#d7e2dc" font-family="Arial, sans-serif" font-size="31">Structured business negotiation training</text>
+  <g transform="translate(70 370)">
+    <rect width="310" height="145" rx="28" fill="url(#card)"/>
+    <circle cx="48" cy="48" r="17" fill="#ff8b61"/>
+    <rect x="82" y="34" width="175" height="15" rx="7" fill="#496258"/>
+    <rect x="30" y="79" width="240" height="12" rx="6" fill="#b7c5ba"/>
+    <rect x="30" y="105" width="190" height="12" rx="6" fill="#d0d9d0"/>
+    <rect x="342" width="310" height="145" rx="28" fill="url(#card)"/>
+    <text x="374" y="48" fill="#12261f" font-family="Arial, sans-serif" font-size="21" font-weight="700">DEAL STATE</text>
+    <rect x="374" y="70" width="205" height="14" rx="7" fill="#62d8ab"/>
+    <rect x="374" y="101" width="146" height="14" rx="7" fill="#d8ff73"/>
+    <rect x="684" width="376" height="145" rx="28" fill="url(#card)"/>
+    <text x="716" y="48" fill="#12261f" font-family="Arial, sans-serif" font-size="21" font-weight="700">EVIDENCE-LINKED REVIEW</text>
+    <rect x="716" y="70" width="286" height="12" rx="6" fill="#b7c5ba"/>
+    <rect x="716" y="96" width="236" height="12" rx="6" fill="#d0d9d0"/>
+  </g>
+  <text x="70" y="579" fill="#d8ff73" font-family="Arial, sans-serif" font-size="23" font-weight="700">negotiation.alolalab.com</text>
+</svg>

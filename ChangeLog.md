@@ -1,5 +1,9 @@
 # Change Log
 
+## 2026-09-29
+
+- Added public Russian and English marketing pages for the deployed product. Added canonical and language URLs, social metadata, `WebApplication` structured data, a sitemap, crawler rules, a favicon, a web manifest, and a 1200 by 630 share image. Moved canonical trainer routes under `/app/*`. Added non-indexing rules, legacy redirects, immutable asset caching, real public 404 behavior, route tests, SEO contract tests, and DR-53. Preserved the private trainer and API admission boundary.
+
 ## 2026-09-28
 
 - Standardized the product brand as uppercase `ALOLA`. Removed the remaining previous-brand text from the Web UI and public release materials. Renamed the release presentation and PDF artifacts.

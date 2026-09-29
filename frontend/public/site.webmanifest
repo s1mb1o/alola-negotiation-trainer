@@ -1,0 +1,17 @@
+{
+  "name": "ALOLA — Negotiation Trainer",
+  "short_name": "ALOLA",
+  "description": "A structured business negotiation trainer with deterministic deal validation and evidence-linked review.",
+  "start_url": "/ru/",
+  "display": "standalone",
+  "background_color": "#f4f3ed",
+  "theme_color": "#12261f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

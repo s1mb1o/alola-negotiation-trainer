@@ -59,7 +59,7 @@ const createdSession: SessionEnvelope = {
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
-  window.history.replaceState({}, '', '/training')
+  window.history.replaceState({}, '', '/app/training')
   vi.clearAllMocks()
   // Drop queued one-time results so a failing test cannot leak them into the next one.
   for (const mock of [apiMocks.createSession, apiMocks.getReview, apiMocks.getSession, apiMocks.requestHint, apiMocks.sendMessage]) {

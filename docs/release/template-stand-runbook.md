@@ -34,7 +34,7 @@ The SQLite file MUST remain under `/var/lib/negotiation-trainer`.
 
 Run these checks from an external network:
 
-1. Open `/training` in Chrome on a phone.
+1. Open `/app/training` in Chrome on a phone.
 2. Complete the pinned README journey.
 3. Confirm that `/llm-debug` returns 403.
 4. Confirm that `/api/v1/admin/sessions` returns 403.

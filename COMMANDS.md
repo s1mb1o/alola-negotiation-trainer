@@ -8,8 +8,8 @@ Use two terminal tabs: one for the API and one for the Web UI.
 
 | Component | Address |
 | --- | --- |
-| Training UI | [Training](http://127.0.0.1:8171/training) |
-| Session Inspector | [Inspector](http://127.0.0.1:8171/inspector) |
+| Training UI | [Training](http://127.0.0.1:8171/app/training) |
+| Session Inspector | [Inspector](http://127.0.0.1:8171/app/inspector) |
 | API health | [Health](http://127.0.0.1:8172/api/v1/health) |
 | API documentation | [Swagger UI](http://127.0.0.1:8172/docs) |
 | API schema | [OpenAPI JSON](http://127.0.0.1:8172/openapi.json) |
@@ -39,7 +39,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:8171/training> in Chrome.
+Open <http://127.0.0.1:8171/app/training> in Chrome.
 
 ## Prepare dependencies
 
@@ -154,7 +154,7 @@ cd /Volumes/T7_2TB/Projects-T7_2TB/2026_LCT_Hackatons/9-Negotiation_trainer/fron
 VITE_API_BASE=http://127.0.0.1:8172/api/v1 npm run dev -- --port 8171 --strictPort
 ```
 
-Open [Training](http://127.0.0.1:8171/training).
+Open [Training](http://127.0.0.1:8171/app/training).
 Keep `/api/v1` in `VITE_API_BASE`. Do not add a trailing slash.
 The explicit API base bypasses the default proxy to port `8170`.
 Restart Vite after changing `VITE_API_BASE`.
@@ -166,7 +166,7 @@ Use another terminal tab:
 
 ```zsh
 curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8172/api/v1/health
-curl --fail --head --max-time 5 http://127.0.0.1:8171/training
+curl --fail --head --max-time 5 http://127.0.0.1:8171/app/training
 lsof -nP -iTCP:8172 -sTCP:LISTEN
 lsof -nP -iTCP:8171 -sTCP:LISTEN
 ```

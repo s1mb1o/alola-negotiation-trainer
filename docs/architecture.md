@@ -1,5 +1,21 @@
 # Architecture
 
+## Public marketing and private trainer boundary (DR-53)
+
+The deployment MUST publish static Russian and English marketing pages at `/ru/` and `/en/`.
+The root path MUST redirect to `/ru/`.
+The marketing pages MUST contain useful HTML without JavaScript execution.
+They MUST publish canonical, language, social, and structured metadata.
+The deployment MUST publish valid crawler discovery files.
+Unknown public paths MUST return HTTP 404.
+
+The trainer MUST use `/app/training`, `/app/progress`, and `/app/inspector`.
+The previous trainer paths MUST redirect to these canonical paths.
+The trainer and bootstrap API MUST retain the deployment admission control.
+Trainer and API responses MUST remain non-indexable.
+Content-hashed frontend assets MAY be public and use immutable caching.
+The full boundary is defined in [DR-53](decisions/2026-09-29_public-marketing-private-trainer.md).
+
 ## Negotiation methodologies (DR-51)
 
 [DR-51](decisions/2026-09-26_negotiation-methodologies.md) defines Harvard, BATNA/ZOPA, and Voss behavior.

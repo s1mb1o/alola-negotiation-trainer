@@ -1,5 +1,17 @@
 # Product Model
 
+## Public product page and private trainer (DR-53)
+
+The deployed product MUST provide a public Russian page at `/ru/` and a public English page at `/en/`.
+Each page MUST explain the implemented trainer, scenario coverage, deterministic validation, evidence-linked review, and shared Player API.
+Each page MUST contain indexable HTML and complete search metadata.
+The pages MUST NOT claim validated learning outcomes.
+
+The trainer MUST remain behind deployment admission control under `/app/*`.
+The canonical trainer routes are `/app/training`, `/app/progress`, and `/app/inspector`.
+Trainer and API responses MUST remain non-indexable.
+The full delivery and metadata rules are defined in [DR-53](decisions/2026-09-29_public-marketing-private-trainer.md).
+
 ## Required OpenAPI documentation (DR-37)
 
 The product MUST provide a machine-readable OpenAPI 3.1 document at `/openapi.json` and interactive Swagger UI at `/docs`.

@@ -1,9 +1,9 @@
 export type AppView = 'training' | 'stats' | 'inspector'
 
 const VIEW_PATHS: Record<AppView, string> = {
-  training: '/training',
-  stats: '/progress',
-  inspector: '/inspector',
+  training: '/app/training',
+  stats: '/app/progress',
+  inspector: '/app/inspector',
 }
 
 export function appViewPath(view: AppView): string {

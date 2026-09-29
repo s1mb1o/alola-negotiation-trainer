@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /ru/
+Allow: /en/
+Allow: /landing.css
+Allow: /favicon.svg
+Allow: /og/
+Disallow: /app/
+Disallow: /api/
+Disallow: /docs
+Disallow: /redoc
+Disallow: /openapi.json
+Disallow: /llm-debug
+
+Sitemap: https://negotiation.alolalab.com/sitemap.xml

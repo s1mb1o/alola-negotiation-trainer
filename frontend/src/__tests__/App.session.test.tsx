@@ -80,7 +80,7 @@ let confirmSpy: MockInstance<(message?: string) => boolean>
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
-  window.history.replaceState({}, '', '/training')
+  window.history.replaceState({}, '', '/app/training')
   vi.clearAllMocks()
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
   apiMocks.listScenarios.mockResolvedValue([scenario])

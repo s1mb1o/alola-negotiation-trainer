@@ -1,5 +1,18 @@
 # MVP Plan
 
+## Public marketing and private trainer release gate (DR-53)
+
+The MVP deployment MUST publish static Russian and English marketing pages.
+The root path MUST redirect to the Russian page.
+The pages MUST define canonical, language, social, and structured metadata.
+The deployment MUST publish valid `robots.txt` and `sitemap.xml` files.
+Unknown public paths MUST return HTTP 404.
+
+The trainer MUST use the `/app/*` namespace and retain admission control.
+Trainer and API responses MUST remain non-indexable.
+The release checks MUST cover the public pages, discovery files, redirects, private routes, and immutable asset caching.
+The detailed requirements are defined in [DR-53](decisions/2026-09-29_public-marketing-private-trainer.md).
+
 ## OpenAPI release gate (DR-37)
 
 The MVP MUST publish an OpenAPI 3.1 document at `/openapi.json` and interactive Swagger UI at `/docs`.

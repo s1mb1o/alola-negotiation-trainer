@@ -1,12 +1,62 @@
 @blocked path /llm-debug* /api/v1/admin/*
-respond @blocked 403
+handle @blocked {
+  header X-Robots-Tag "noindex, nofollow"
+  respond "Forbidden" 403
+}
 
 handle /api/* {
+  header X-Robots-Tag "noindex, nofollow"
   reverse_proxy 127.0.0.1:8172
 }
 
-handle {
+@root path /
+redir @root /ru/ 308
+
+@ru_without_slash path /ru
+redir @ru_without_slash /ru/ 308
+
+@en_without_slash path /en
+redir @en_without_slash /en/ 308
+
+@old_training path /training /training/
+redir @old_training /app/training 308
+
+@old_progress path /progress /progress/
+redir @old_progress /app/progress 308
+
+@old_inspector path /inspector /inspector/
+redir @old_inspector /app/inspector 308
+
+@app_root path /app /app/
+redir @app_root /app/training 308
+
+handle /assets/* {
+  header Cache-Control "public, max-age=31536000, immutable"
+  root * /opt/negotiation-trainer/frontend/dist
+  file_server
+}
+
+@public_files path /landing.css /favicon.svg /site.webmanifest /og/* /robots.txt /sitemap.xml /version.txt
+handle @public_files {
+  header Cache-Control "public, max-age=3600"
+  root * /opt/negotiation-trainer/frontend/dist
+  file_server
+}
+
+@marketing path /ru/* /en/*
+handle @marketing {
+  header Cache-Control "public, max-age=300"
+  root * /opt/negotiation-trainer/frontend/dist
+  file_server
+}
+
+handle /app/* {
+  header X-Robots-Tag "noindex, nofollow"
   root * /opt/negotiation-trainer/frontend/dist
   try_files {path} /index.html
   file_server
+}
+
+handle {
+  respond "Not Found" 404
 }

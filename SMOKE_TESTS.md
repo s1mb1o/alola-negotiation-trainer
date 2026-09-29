@@ -370,16 +370,28 @@ No live-model naturalness or model ranking is claimed.
 
 ### Web UI routes
 
-- Open `/training` directly.
+- Open `/app/training` directly.
 - Verify that the training view is active.
-- Open `/progress` directly.
+- Open `/app/progress` directly.
 - Verify that the progress view is active.
-- Open `/inspector` directly.
+- Open `/app/inspector` directly.
 - Verify that the Inspector view is active.
 - Navigate between all three views.
 - Verify that browser Back and Forward restore the corresponding view.
-- Open `/` and an unknown path.
-- Verify that the Web UI replaces each path with `/training`.
+- Open `/app` and an unknown `/app/*` path through the application fallback.
+- Verify that the Web UI replaces each path with `/app/training`.
+- Open `/` on the deployed site.
+- Verify an HTTP 308 redirect to `/ru/`.
+- Open `/ru/` and `/en/` without credentials.
+- Verify HTTP 200 and the correct page language, title, canonical URL, `hreflang`, social metadata, and structured data.
+- Open `/robots.txt`, `/sitemap.xml`, `/favicon.svg`, and `/site.webmanifest` without credentials.
+- Verify HTTP 200 and the correct content type for each file.
+- Open an unknown public path.
+- Verify HTTP 404.
+- Open a content-hashed `/assets/*` file.
+- Verify public immutable caching.
+- Open `/app/training` without credentials.
+- Verify HTTP 401 and `X-Robots-Tag: noindex, nofollow`.
 
 ### Admin Session Inspector
 
@@ -403,7 +415,7 @@ No live-model naturalness or model ranking is claimed.
 - Verify that the session has `review_state: sealed` and `review: null`.
 - Complete the declared run set.
 - Verify that the Inspector exposes only `reviews.public_json`.
-- Open `/inspector` in Russian and English.
+- Open `/app/inspector` in Russian and English.
 - Verify list filters, session selection, tabs, and pagination.
 - Verify light and dark themes at 1440 by 900 pixels and 390 by 844 pixels.
 - Disconnect administrator access.

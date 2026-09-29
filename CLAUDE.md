@@ -23,6 +23,12 @@ Each implementation directory contains a local `CLAUDE.md` file.
 
 - [DR-45](docs/decisions/2026-09-26_live-social-indicators.md) defines the owner-only live social projection and the Web UI indicators.
 
+## Public delivery routes
+
+- [DR-53](docs/decisions/2026-09-29_public-marketing-private-trainer.md) defines the public `/ru/` and `/en/` marketing pages and the private `/app/*` trainer namespace.
+- Use `/app/training`, `/app/progress`, and `/app/inspector` as the canonical trainer routes.
+- Keep trainer and API responses non-indexable.
+
 ## Dialogue documentation
 
 - [DR-51](docs/decisions/2026-09-26_negotiation-methodologies.md): versioned Harvard, BATNA/ZOPA, and Voss wording rules. New render plans retain `methodology_version`. Completed owner-only reviews calculate the learner's economic margins. New coaching requires three evidence-linked dimensions. Preserve canonical actions, hidden economics, legacy render plans, and cached coaching.

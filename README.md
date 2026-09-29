@@ -115,7 +115,7 @@ npm ci
 npm run dev
 ```
 
-Откройте <http://127.0.0.1:8171/training> в Chrome.
+Откройте <http://127.0.0.1:8171/app/training> в Chrome.
 Vite передаёт `/api` на `http://127.0.0.1:8172`.
 Если порты заняты, используйте `NEGOTIATION_API_PORT`, `VITE_API_PROXY_TARGET` и `VITE_DEV_PORT` как показано ниже в разделе [Run locally](#run-locally).
 
@@ -319,7 +319,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:8171/training` in Chrome.
+Open `http://127.0.0.1:8171/app/training` in Chrome.
 
 The development UI proxies `/api` to `http://127.0.0.1:8172` by default.
 No provider credential is required.
@@ -350,7 +350,7 @@ export NEGOTIATION_ADMIN_TOKEN='replace-with-a-local-secret'
 uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8172
 ```
 
-Open `http://127.0.0.1:8171/inspector`.
+Open `http://127.0.0.1:8171/app/inspector`.
 Enter the same token in the access form.
 The browser keeps this credential in `sessionStorage` only.
 The Inspector never returns raw session state, private event payloads, credentials, or sealed benchmark reviews.
