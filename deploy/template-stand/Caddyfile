@@ -36,7 +36,23 @@ handle /assets/* {
   file_server
 }
 
-@public_files path /landing.css /favicon.svg /site.webmanifest /og/* /robots.txt /sitemap.xml /version.txt
+@sitemap path /sitemap.xml
+handle @sitemap {
+  header Cache-Control "public, max-age=3600"
+  header Content-Type "application/xml; charset=utf-8"
+  root * /opt/negotiation-trainer/frontend/dist
+  file_server
+}
+
+@manifest path /site.webmanifest
+handle @manifest {
+  header Cache-Control "public, max-age=3600"
+  header Content-Type "application/manifest+json; charset=utf-8"
+  root * /opt/negotiation-trainer/frontend/dist
+  file_server
+}
+
+@public_files path /landing.css /favicon.svg /og/* /robots.txt /version.txt
 handle @public_files {
   header Cache-Control "public, max-age=3600"
   root * /opt/negotiation-trainer/frontend/dist
