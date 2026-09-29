@@ -1,5 +1,36 @@
 # Smoke Tests
 
+## Hackathon landing page — DR-53
+
+- Run `npm test` and `npm run build` in `frontend/`.
+- Open `/hackaton/` without application credentials.
+- Check the pitch, demonstration path, architecture, and resource sections.
+- Check that the hero contains the real Nord Systems dialogue screenshot.
+- Check the matching assessment screenshot and the recorded score of 73.325 / 100.
+- Check the rounded headline score of 73 / 100. Open `Об этом прогоне` for the exact value and financial terms.
+- Check that primary body copy is at least 18 px and visible supporting text is at least 14 px. Exclude text inside source screenshots.
+- Check that recording details and `Код и API` are collapsed initially. Open both disclosures with the keyboard.
+- Check the base price of EUR 109,500 and the maximum liability of EUR 112,785.
+- Check that the page labels these values as one recorded demonstration, not validated skill improvement.
+- Open both screenshots. Close each modal with its button, Escape, and a backdrop click.
+- Check that focus returns to the screenshot link. Check modified-click behavior.
+- Open the bundled presentation PDF without application credentials.
+- Check that protected resources show access instructions before following the trainer, GitHub, and Swagger links.
+- Check the page at 320 px, 390 px, 768 px, and 1440 px widths. Check horizontal overflow.
+- Check that the hero CTA is visible in the initial 390 by 844 and 1440 by 900 viewports.
+- Check the system light and dark themes. Check the manual theme cycle and the return to system preference.
+- Check keyboard navigation, visible focus, the skip link, and the mobile section links.
+- Disable JavaScript. Check that the pitch, screenshot links, PDF link, and system theme remain usable.
+- Check that `/hackaton` redirects to `/hackaton/` in the deployment.
+- Check that `robots.txt` disallows `/hackaton` and `/presentation`.
+- Check that the sitemap and public navigation omit these routes.
+- Check the hackathon `noindex` metadata, `X-Robots-Tag`, `no-store`, and `no-referrer` headers.
+- Check the team name, all six resource links, and both credential cards.
+- Check copy buttons and the manual clipboard fallback.
+- Check that `/presentation` returns the approved PDF without authentication.
+- Check that deployed HTML contains the approved credentials and no placeholders. Do not save credentials in test output or screenshots.
+
+
 ## Negotiation methodologies — DR-51
 
 - Run `uv run pytest backend/tests/test_methodology.py backend/tests/test_training_loop.py backend/tests/test_conditional_exchange_policy.py backend/tests/test_grounded_goal_dialogue.py backend/tests/test_supply_dialogue.py backend/tests/test_openapi.py`.

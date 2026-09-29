@@ -7,6 +7,7 @@ Read [`../CLAUDE.md`](../CLAUDE.md) and [`../AGENTS.md`](../AGENTS.md) first.
 - Keep participant credentials in memory or session storage only.
 - Keep the administrator credential in memory or session storage only.
 - Never send the administrator credential to a Player API endpoint.
+- The administrator context form uses `/admin/training-presets` for authored goals. It MUST clear administrator data before calling normal session creation. It MUST pass only public scenario metadata and player settings. Follow DR-56.
 - Do not call model providers from the browser.
 - Support Russian and English UI text.
 - Follow the system light or dark preference by default.
@@ -25,3 +26,11 @@ Read [`../CLAUDE.md`](../CLAUDE.md) and [`../AGENTS.md`](../AGENTS.md) first.
 - Show `financial_summary` only when the service returns it. Do not calculate utility or infer missing totals in the browser.
 - Keep supply term and constraint labels in the shared `identifierLabel` map. Briefs and assistance use that map too. Format `maximum_total_liability` with the observation currency.
 - Use `explanatory-copy` for long non-binding and financial explanations. Keep uppercase styles for short headings only.
+
+## Hackathon delivery
+
+The user-approved jury access page is separate from authenticated application state.
+Keep `__HACKATON_SITE_PASSWORD__` and `__HACKATON_INSPECTOR_TOKEN__` placeholders in its source HTML.
+The private deployment renderer inserts the approved values into the built page.
+Keep `/hackaton` and `/presentation` out of the sitemap and public navigation.
+Keep the page non-indexable.

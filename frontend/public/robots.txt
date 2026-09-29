@@ -5,6 +5,8 @@ Allow: /landing.css
 Allow: /favicon.svg
 Allow: /og/
 Disallow: /app/
+Disallow: /hackaton
+Disallow: /presentation
 Disallow: /api/
 Disallow: /docs
 Disallow: /redoc

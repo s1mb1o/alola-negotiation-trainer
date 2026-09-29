@@ -2,6 +2,8 @@
 
 ## 2026-09-29
 
+- Added the Shrubberies submission links and jury access cards to `/hackaton/`. Added copy controls. Kept deployed credentials outside public source files. Excluded the page and presentation from crawling, indexing, sitemap, and public navigation. Added anonymous presentation routing and credential-page cache controls.
+
 - Added public Russian and English marketing pages for the deployed product. Added canonical and language URLs, social metadata, `WebApplication` structured data, a sitemap, crawler rules, a favicon, a web manifest, and a 1200 by 630 share image. Moved canonical trainer routes under `/app/*`. Added non-indexing rules, legacy redirects, immutable asset caching, real public 404 behavior, route tests, SEO contract tests, and DR-53. Preserved the private trainer and API admission boundary.
 - Set explicit `application/xml` and `application/manifest+json` response types in the public Caddy template. This keeps the sitemap and web manifest usable when `X-Content-Type-Options: nosniff` is active.
 

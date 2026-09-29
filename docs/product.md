@@ -7,6 +7,26 @@ Each page MUST explain the implemented trainer, scenario coverage, deterministic
 Each page MUST contain indexable HTML and complete search metadata.
 The pages MUST NOT claim validated learning outcomes.
 
+The deployed product MUST provide a Russian hackathon landing page at `/hackaton/`.
+The hackathon page MUST identify the team as `Shrubberies`.
+The page MUST show the submitted repository, documentation, presentation, prototype, additional-materials, and landing URLs.
+The page MUST show the user-approved jury username, password, and inspector Bearer token.
+The deployment MUST insert those two secret values from its environment into the built HTML.
+The public repository MUST contain placeholders instead of the secret values.
+The `/hackaton` redirect, `/hackaton/*` files, and `/presentation` MUST work without Basic Authentication.
+The page MUST declare `noindex, nofollow, noarchive, nosnippet`.
+The deployment MUST send the same `X-Robots-Tag` value and `Cache-Control: no-store` for these routes.
+The page MUST use the `no-referrer` policy.
+The `robots.txt` file MUST disallow `/hackaton` and `/presentation`.
+The sitemap and public navigation MUST NOT link to these routes.
+Crawler controls do not enforce access control. Anyone with the URL can read the page.
+The `/presentation` route MUST serve the approved presentation PDF.
+The page MUST contain the project pitch, the verified demonstration path, the architecture boundary, and project resource links.
+The page MUST show approved screenshots of a recorded negotiation and its assessment.
+The page MUST label recorded scores as product scores from one demonstration run.
+The page MUST NOT label these scores as independently validated skill measurements or learning improvement.
+The page MUST provide an anonymous presentation download and explicit access instructions for protected resources.
+
 The trainer MUST remain behind deployment admission control under `/app/*`.
 The canonical trainer routes are `/app/training`, `/app/progress`, and `/app/inspector`.
 Trainer and API responses MUST remain non-indexable.

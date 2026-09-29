@@ -3,9 +3,23 @@
 ## Public marketing and private trainer boundary (DR-53)
 
 The deployment MUST publish static Russian and English marketing pages at `/ru/` and `/en/`.
+The deployment MUST publish the static Russian hackathon landing page at `/hackaton/`.
+The hackathon page MUST identify the team as `Shrubberies`.
+The page MUST show the submitted repository, documentation, presentation, prototype, additional-materials, and landing URLs.
+The page MUST show the user-approved jury username, password, and inspector Bearer token.
+The deployment MUST insert those two secret values from its environment into the built HTML.
+The public repository MUST contain placeholders instead of the secret values.
+The `/hackaton` redirect, `/hackaton/*` files, and `/presentation` MUST work without Basic Authentication.
+The page MUST declare `noindex, nofollow, noarchive, nosnippet`.
+The deployment MUST send the same `X-Robots-Tag` value and `Cache-Control: no-store` for these routes.
+The page MUST use the `no-referrer` policy.
+The `robots.txt` file MUST disallow `/hackaton` and `/presentation`.
+The sitemap and public navigation MUST NOT link to these routes.
+Crawler controls do not enforce access control. Anyone with the URL can read the page.
+The `/presentation` route MUST serve the approved presentation PDF.
 The root path MUST redirect to `/ru/`.
-The marketing pages MUST contain useful HTML without JavaScript execution.
-They MUST publish canonical, language, social, and structured metadata.
+The marketing pages and hackathon landing page MUST contain useful HTML without JavaScript execution.
+The Russian and English marketing pages MUST publish canonical, language, social, and structured metadata.
 The deployment MUST publish valid crawler discovery files.
 Unknown public paths MUST return HTTP 404.
 
@@ -13,6 +27,10 @@ The trainer MUST use `/app/training`, `/app/progress`, and `/app/inspector`.
 The previous trainer paths MUST redirect to these canonical paths.
 The trainer and bootstrap API MUST retain the deployment admission control.
 Trainer and API responses MUST remain non-indexable.
+The hackathon landing page MUST expose only approved product resources, protected product routes, and the user-approved jury credential block.
+The public build MUST include only privacy-reviewed demonstration screenshots.
+The public build MUST NOT include the private source report or its machine-readable recording.
+The pitch, screenshots, resource links, and system theme MUST remain usable without JavaScript.
 Content-hashed frontend assets MAY be public and use immutable caching.
 The full boundary is defined in [DR-53](decisions/2026-09-29_public-marketing-private-trainer.md).
 

@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
           app: resolve(process.cwd(), 'index.html'),
           ru: resolve(process.cwd(), 'ru/index.html'),
           en: resolve(process.cwd(), 'en/index.html'),
+          hackaton: resolve(process.cwd(), 'hackaton/index.html'),
         },
       },
     },

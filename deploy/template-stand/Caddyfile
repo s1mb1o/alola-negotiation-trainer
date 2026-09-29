@@ -18,6 +18,16 @@ redir @ru_without_slash /ru/ 308
 @en_without_slash path /en
 redir @en_without_slash /en/ 308
 
+@jury_resources path /hackaton /hackaton/* /presentation /presentation/
+header @jury_resources {
+  X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+  Cache-Control "no-store"
+  Referrer-Policy "no-referrer"
+}
+
+@hackaton_without_slash path /hackaton
+redir @hackaton_without_slash /hackaton/ 308
+
 @old_training path /training /training/
 redir @old_training /app/training 308
 
@@ -52,9 +62,22 @@ handle @manifest {
   file_server
 }
 
-@public_files path /landing.css /favicon.svg /og/* /robots.txt /version.txt
+@public_files path /landing.css /hackaton.css /favicon.svg /og/* /robots.txt /version.txt
 handle @public_files {
   header Cache-Control "public, max-age=3600"
+  root * /opt/negotiation-trainer/frontend/dist
+  file_server
+}
+
+@presentation path /presentation /presentation/
+handle @presentation {
+  root * /opt/negotiation-trainer/frontend/dist
+  rewrite * /hackaton/alola-presentation-v6.pdf
+  header Content-Disposition "inline; filename=ALOLA-LCT2026.pdf"
+  file_server
+}
+
+handle /hackaton/* {
   root * /opt/negotiation-trainer/frontend/dist
   file_server
 }
