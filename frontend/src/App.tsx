@@ -20,6 +20,7 @@ import {
   sendMessage,
 } from './api'
 import { AppHeader } from './components/AppHeader'
+import { AdminContextSetup } from './components/AdminContextSetup'
 import { NegotiationWorkspace } from './components/NegotiationWorkspace'
 import { SessionInspector } from './components/SessionInspector'
 import { SessionSetup, type SessionSetupValue } from './components/SessionSetup'
@@ -27,7 +28,7 @@ import { StatsView } from './components/StatsView'
 import { apiErrorLabel, translate } from './i18n'
 import { PROVIDER_FEATURES_ENABLED } from './features'
 import { applyTheme, applyUiLanguage, initialTheme, initialUiLanguage } from './preferences'
-import { appViewFromPathname, appViewPath } from './routing'
+import { appViewFromPathname, appViewPath, type AppView } from './routing'
 import type {
   AggregateStatsResponse,
   ScenarioSummary,
@@ -159,7 +160,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  const navigateToView = useCallback((view: 'training' | 'stats' | 'inspector') => {
+  const navigateToView = useCallback((view: AppView) => {
     const path = appViewPath(view)
     if (window.location.pathname !== path) window.history.pushState({ view }, '', path)
     setActiveView(view)
@@ -729,7 +730,11 @@ export default function App() {
         onNewSession={newSession}
       />
 
-      {activeView === 'inspector' ? (
+      {activeView === 'admin' ? (
+        <AdminContextSetup language={language} creating={creating} error={setupError}
+          hasActiveSession={Boolean(session && !isTerminalStatus(session.status))}
+          onStart={startSession} />
+      ) : activeView === 'inspector' ? (
         <SessionInspector language={language} />
       ) : activeView === 'stats' ? (
         <StatsView

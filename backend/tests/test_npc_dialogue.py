@@ -1021,6 +1021,9 @@ def test_task_specific_model_routes(settings: Settings) -> None:
         assert service.social_provider.config.enable_thinking is False
         assert service.review_provider.config.model == "qwen3.8-max"
         assert service.review_provider.config.enable_thinking is False
+        assert service.review_provider.config.max_output_tokens == 5000
+        assert service.review_provider.config.max_attempts == 1
+        assert service.review_provider.config.timeout <= 45
 
 
 def test_settings_read_task_specific_model_routes(monkeypatch, tmp_path) -> None:

@@ -808,7 +808,8 @@ _RELATIVE_MULTI_REFERENCE = re.compile(
 
 
 def _input_focused_term(
-    message: str, term_definitions: dict[str, Any], context: ParseContext | None
+    message: str, term_definitions: dict[str, Any], context: ParseContext | None,
+    *, prefer_expected: bool = False,
 ) -> tuple[str | None, str | None]:
     mentioned = [
         term_id for term_id, pattern in _INPUT_TERM_PATTERNS.items()
@@ -820,6 +821,8 @@ def _input_focused_term(
         return mentioned[0], None
     if context is None:
         return None, "numeric_answer_requires_term"
+    if prefer_expected and context.expected_term_id in term_definitions:
+        return context.expected_term_id, None
     choices = {
         term for term in (context.expected_term_id, context.focused_term_id)
         if term is not None
@@ -912,7 +915,9 @@ def _contextual_numeric_action(
     if not relative and short is None:
         return None
     explicit_currencies = _explicit_currencies(message)
-    term_id, focus_reason = _input_focused_term(message, term_definitions, context)
+    term_id, focus_reason = _input_focused_term(
+        message, term_definitions, context, prefer_expected=short is not None,
+    )
     if short and explicit_currencies:
         term_id = _defined_term(term_definitions, _MONETARY_TERM_IDS)
         focus_reason = None if term_id else "numeric_answer_requires_term"
@@ -1019,6 +1024,51 @@ def _contextual_numeric_action(
     })
 
 
+def _contextual_package_action(
+    message: str, term_definitions: dict[str, Any], context: ParseContext | None,
+    expected_currency: str | None,
+) -> ParsedAction | None:
+    """Combine separately scoped relative edits without choosing between alternatives."""
+    mentioned = {term for term, pattern in _INPUT_TERM_PATTERNS.items()
+                 if term in term_definitions and pattern.search(message)}
+    if len(mentioned) < 2 or not re.search(r"\d", message) or not _supported_relative_change(message):
+        return None
+    if re.search(r"\b(?:если|if|unless)\b", message, re.I):
+        # Preserve the existing clarification for conditional branches. Only
+        # conjunctions of distinct asserted edits are combined here.
+        return None
+    if re.search(r"\b(?:или|либо|иначе|or|otherwise|either)\b", message, re.I):
+        return ParsedAction("clarification", reason_code="multiple_offer_candidates")
+    clauses = re.split(r";|,(?!\d)|\b(?:и|and)\b", message, flags=re.I)
+    if len(clauses) < 2:
+        return None
+    terms: dict[str, Any] = {}
+    details: dict[str, Any] = {}
+    for clause in clauses:
+        clause_terms = {term for term, pattern in _INPUT_TERM_PATTERNS.items()
+                        if term in term_definitions and pattern.search(clause)}
+        if not clause_terms and not re.search(r"\d", clause):
+            continue
+        if len(clause_terms) != 1:
+            return ParsedAction("clarification", reason_code="ambiguous_numeric_reference")
+        action = _contextual_numeric_action(clause, term_definitions, context, expected_currency)
+        if action is not None and action.action == "clarification":
+            return action
+        selected, reason = _select_proposal_clause(clause, term_definitions)
+        if reason:
+            return ParsedAction("clarification", reason_code=reason)
+        values = action.terms_delta if action else _extract_terms(selected, term_definitions)
+        if set(values) != clause_terms:
+            return ParsedAction("clarification", reason_code="unsupported_term_value",
+                                details={"term_id": next(iter(clause_terms))})
+        if terms.keys() & values.keys():
+            return ParsedAction("clarification", reason_code="multiple_offer_candidates")
+        terms.update(values)
+        if action:
+            details.update(action.details)
+    return ParsedAction("counter_offer", terms, details=details) if terms else None
+
+
 def parse_message(
     message: str,
     term_definitions: dict[str, Any],
@@ -1040,7 +1090,9 @@ def parse_message(
     ambiguity_reason = _numeric_ambiguity_reason(asserted_message)
     if ambiguity_reason:
         return ParsedAction("clarification", reason_code=ambiguity_reason)
-    contextual = _contextual_numeric_action(
+    contextual = _contextual_package_action(
+        asserted_message, term_definitions, context, expected_currency
+    ) or _contextual_numeric_action(
         asserted_message, term_definitions, context, expected_currency
     )
     if contextual is not None and contextual.action == "clarification":
@@ -1049,6 +1101,11 @@ def parse_message(
     if extraction_reason is not None:
         return ParsedAction("clarification", reason_code=extraction_reason)
     terms = contextual.terms_delta if contextual else _extract_terms(proposal_clause, term_definitions)
+    if not contextual:
+        # One monetary anchor can have explicit secondary terms in later sentences.
+        # Attribution, questions, and negation were removed before this extraction.
+        terms.update({key: value for key, value in _extract_terms(asserted_message, term_definitions).items()
+                      if key not in _MONETARY_TERM_IDS})
     if terms and _contains_unsupported_composite_term(message):
         return ParsedAction("clarification", reason_code="unscored_proposal")
 
@@ -1072,8 +1129,10 @@ def parse_message(
     mentioned_terms = {
         term_id
         for term_id, pattern in _INPUT_TERM_PATTERNS.items()
-        if term_id in term_definitions and pattern.search(proposal_clause)
+        if term_id in term_definitions and pattern.search(asserted_message)
     }
+    if len(terms) > 1 and re.search(r"\b(?:или|либо|иначе|or|otherwise|either)\b", asserted_message, re.I):
+        return ParsedAction("clarification", reason_code="multiple_offer_candidates")
     missing_asserted_terms = sorted(mentioned_terms - set(terms))
     if terms and missing_asserted_terms:
         return ParsedAction(
@@ -1365,6 +1424,9 @@ def npc_message_options(
     conversation_style: str = "pragmatic",
     requested_label: str | None = None,
     exchange_labels: tuple[str, ...] = (),
+    changed_labels: tuple[str, ...] = (),
+    retained_labels: tuple[str, ...] = (),
+    objection_labels: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
     """Return the closed set of engine-approved natural replies for one speech act."""
 
@@ -1375,15 +1437,32 @@ def npc_message_options(
     other_priorities = ", ".join(priority_labels[1:])
     missing = ", ".join(missing_labels)
     focused = ", ".join(focused_labels)
+    comparison = ""
+    if speech_act == "complete_counteroffer" and changed_labels:
+        changed = ", ".join(changed_labels)
+        retained = ", ".join(retained_labels)
+        if language == "ru":
+            comparison = f"Спасибо за предложение. В этом пакете мне нужно изменить условия: {changed}. "
+            if retained:
+                comparison += f"В моём встречном пакете сохраняются ваши условия: {retained}. "
+        else:
+            comparison = f"Thank you for the proposal. In this package, I need to change: {changed}. "
+            if retained:
+                comparison += f"My counteroffer retains your terms for: {retained}. "
 
     if reason_texts:
         explanation = " ".join(reason_texts)
         return (explanation,)
+    if speech_act == "offer_rejection" and objection_labels:
+        objections = ", ".join(objection_labels)
+        if language == "ru":
+            return (f"Спасибо за предложение. В этом пакете мне не подходят условия: {objections}. Предлагаю пересмотреть их и снова оценить пакет целиком.",)
+        return (f"Thank you for the proposal. In this package, these terms do not work for me: {objections}. I suggest revising them so we can evaluate the whole package again.",)
     if speech_act == "complete_counteroffer" and exchange_labels:
         trade = ", ".join(exchange_labels)
         if language == "ru":
-            return (f"Предлагаю обмен уступками: изменение цены связано с изменением условий «{trade}». Полный пакет: {package}.",)
-        return (f"I propose a trade: the price change depends on changes to {trade}. The complete package is: {package}.",)
+            return (f"{comparison}Предлагаю обмен уступками: изменение цены связано с изменением условий «{trade}». Полный пакет: {package}.",)
+        return (f"{comparison}I propose a trade: the price change depends on changes to {trade}. The complete package is: {package}.",)
     if speech_act == "public_position_restatement":
         if language == "ru":
             unresolved = f" Пока не согласовано: {missing}." if missing else ""
@@ -1399,6 +1478,10 @@ def npc_message_options(
             f"My latest offer was: {package}.{unresolved}",
         )
     if requested_label:
+        if speech_act == "acknowledge_partial_offer":
+            if language == "ru":
+                return (f"Спасибо, учёл предложенные условия. Чтобы оценить пакет, уточните, пожалуйста, условие «{requested_label}».",)
+            return (f"Thank you, I have noted your proposed terms. To evaluate the package, please specify {requested_label}.",)
         if language == "ru":
             lead = "Давайте разберём это по шагам." if difficulty in {"guided", "easy"} else "Продолжим обсуждение."
             if conversation_style == "relationship_focused":
@@ -1456,10 +1539,10 @@ def npc_message_options(
             return (f"I accept the complete offer: {package}.",)
         if speech_act == "offer_rejection":
             return (
-                "I reject the current offer because it does not meet our acceptable deal terms.",
+                "Thank you for the proposal. I cannot accept this combination of terms. Which term could you reconsider?",
             )
         if speech_act == "complete_counteroffer":
-            return (f"My complete counteroffer is: {package}.",)
+            return (f"{comparison}My complete counteroffer is: {package}.",)
         if speech_act == "greeting":
             return (
                 f"Hello. I am ready to discuss the {subject} and understand your proposed package.",
@@ -1521,9 +1604,9 @@ def npc_message_options(
     if speech_act == "offer_acceptance":
         return (f"Принимаю полное предложение: {package}.",)
     if speech_act == "offer_rejection":
-        return ("Отклоняю текущее предложение: оно не соответствует приемлемым условиям сделки.",)
+        return ("Спасибо за предложение. Пока не могу принять такое сочетание условий. Какое из условий вы готовы пересмотреть?",)
     if speech_act == "complete_counteroffer":
-        return (f"Моё полное встречное предложение: {package}.",)
+        return (f"{comparison}Моё полное встречное предложение: {package}.",)
     if speech_act == "greeting":
         return (
             f"Добрый день. Готов обсудить {subject} и понять, какой пакет вы предлагаете.",
@@ -1634,7 +1717,37 @@ def clarification_text(
     reason_code: str,
     *,
     expected_currency: str | None = None,
+    term_label: str | None = None,
 ) -> str:
+    # Numeric input errors are not acceptance questions. Preserve the specific cause.
+    messages = {
+        "numeric_answer_requires_term": (
+            "К какому условию относится указанное число? Укажите название условия вместе со значением.",
+            "Which term does this number refer to? Please give the term and its value.",
+        ),
+        "numeric_answer_requires_unit": (
+            f"Уточните, пожалуйста, единицу измерения{f' для условия «{term_label}»' if term_label else ''}: сумму, проценты или недели.",
+            f"Please specify the unit{f' for {term_label}' if term_label else ''}: money, percent, or weeks.",
+        ),
+        "ambiguous_numeric_reference": (
+            "Уточните, пожалуйста, какое значение вы предлагаете для каждого условия. Укажите одно значение на условие.",
+            "Please specify the value you propose for each term. Give one value per term.",
+        ),
+        "relative_change_requires_baseline": (
+            "Неясно, от какого предложения считать изменение. Укажите, пожалуйста, итоговое значение условия.",
+            "It is unclear which offer is the baseline. Please specify the resulting term value.",
+        ),
+        "ambiguous_relative_change": (
+            "Уточните, пожалуйста, итоговое значение после изменения. Для предоплаты укажите итоговый процент.",
+            "Please specify the resulting value after the change. For prepayment, give the final percentage.",
+        ),
+        "unsupported_term_value": (
+            f"Не удалось определить значение{f' условия «{term_label}»' if term_label else ' одного из условий'}. Укажите, пожалуйста, его явно.",
+            f"I could not identify the value{f' for {term_label}' if term_label else ' of one term'}. Please state it explicitly.",
+        ),
+    }
+    if reason_code in messages:
+        return messages[reason_code][language == "en"]
     if language == "en":
         if reason_code == "multiple_offer_candidates":
             return (
@@ -1653,7 +1766,9 @@ def clarification_text(
             )
         if reason_code == "ambiguous_confirmation":
             return "Do you confirm acceptance of the complete displayed offer, or cancel it?"
-        return "Do you accept the complete active offer, or only agree with one condition?"
+        if reason_code == "ambiguous_agreement_scope":
+            return "Do you accept the complete active offer, or only agree with one condition?"
+        return "Please clarify which change you propose to the deal terms."
     if reason_code == "multiple_offer_candidates":
         return "Отправьте один пакет предложения. Несколько альтернатив пока не поддерживаются."
     if reason_code == "currency_mismatch":
@@ -1669,4 +1784,6 @@ def clarification_text(
         )
     if reason_code == "ambiguous_confirmation":
         return "Вы подтверждаете принятие всего показанного предложения или отменяете его?"
-    return "Вы принимаете всё активное предложение или соглашаетесь только с одним условием?"
+    if reason_code == "ambiguous_agreement_scope":
+        return "Вы принимаете всё активное предложение или соглашаетесь только с одним условием?"
+    return "Уточните, пожалуйста, какое изменение условий сделки вы предлагаете."

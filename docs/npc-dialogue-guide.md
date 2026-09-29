@@ -3,6 +3,35 @@
 Дата: 2026-09-07.
 Руководство описывает [DR-27](decisions/2026-09-06_conversation-continuity.md), [DR-28](decisions/2026-09-06_grounded-negotiation-dialogue.md), [DR-32](decisions/2026-09-23_retrieved-reply-examples.md), [DR-38](decisions/2026-09-24_context-gated-reply-rag.md) и [DR-50](decisions/2026-09-26_grounded-goal-directed-dialogue.md).
 
+## Additional relevance check (DR-59)
+
+The configured LLM runtime enables `NEGOTIATION_NPC_RELEVANCE_CHECK=true` by default.
+New human training render plans record `npc-relevance-v1`.
+Set the switch to `false` to omit the policy from new plans.
+Stored plan versions and delivered replies remain unchanged.
+
+Generated conversational replies receive a separate check through the control provider.
+The check covers the latest question, all stated concerns, repeated questions, topic, tone, and action consistency.
+A valid negative verdict permits one correction from fixed application guidance.
+The correction uses the same action and package. All checks run again.
+An invalid verdict, unavailable checker, or failed correction selects the deterministic engine fallback.
+The fallback does not imply AI approval.
+
+An ordinary generated reply adds one control call.
+A correction adds generation, grounding, and another relevance call.
+The rendering path uses at most six logical provider calls. Configured transport retries remain separate.
+Other turn tasks, including social classification, are outside this bound.
+This increases latency and provider usage. It does not guarantee a relevant answer.
+
+Canonical financial messages remain engine-owned. They do not receive this check.
+Revision-zero openings retain their existing validation.
+Template mode, benchmarks, external-agent training, and historical unversioned plans do not add calls.
+The checker does not receive private player preparation or private economic limits.
+Restricted traces label these calls `npc_relevance`.
+Renderer metadata can report `passed`, `corrected`, `failed`, `unavailable`, `invalid`, or `repair_failed`.
+The UI retains the final chat and agreement dialog. The player opens analysis explicitly.
+See [DR-59](decisions/2026-09-29_npc-relevance-check.md) for the authority and compatibility rules.
+
 ## Grounded opening and dialogue goal
 
 A new immutable scenario version MAY define `dialogue_strategy` on the authored opening role.

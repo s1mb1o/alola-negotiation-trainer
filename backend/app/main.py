@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import re
 import secrets
-from typing import Annotated, AsyncIterator
+from typing import Annotated, AsyncIterator, Literal
 
 from fastapi import APIRouter, Depends, FastAPI, Header, Query, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
@@ -164,6 +164,7 @@ def _configured_dialogue_renderer(settings: Settings) -> NpcDialogueRenderer:
     return LlmNpcDialogueRenderer(
         text_provider,
         grounding_provider=control_provider or text_provider,
+        relevance_check_enabled=settings.npc_relevance_check,
     )
 
 
@@ -242,7 +243,7 @@ def create_app(
             configured, "review", original_control_provider
         )
         social_provider = _bounded_provider(original_control_provider, 350)
-        review_provider = _bounded_provider(original_review_provider, 2200)
+        review_provider = _bounded_provider(original_review_provider, 5000)
         player_assist_provider = _bounded_provider(original_review_provider, 700)
         recorder = LlmTraceRecorder(
             enabled=configured.llm_trace_enabled,
@@ -256,6 +257,9 @@ def create_app(
             )
             renderer._grounding_provider = TracedProvider(
                 original_control_provider, recorder, "npc_grounding"
+            )
+            renderer._relevance_provider = TracedProvider(
+                original_control_provider, recorder, "npc_relevance"
             )
             social_provider = TracedProvider(social_provider, recorder, "social") if social_provider else None
             review_provider = TracedProvider(review_provider, recorder, "coaching") if review_provider else None
@@ -849,6 +853,32 @@ def create_app(
         if error is not None:
             return error
         return _json_result(negotiation_service.close_session(session_id, body))
+
+    @router.get(
+        "/admin/training-presets",
+        **document(
+            "listAdminTrainingPresets",
+            contracts.AdminTrainingPresetsResponse,
+            "List administrator context presets",
+            ADMIN + "Approved domain, topic, NPC role and authored goal bundles. "
+            "Each bundle pins a published scenario version. Objectives are privileged authoring "
+            "data. No raw source or economic limits are returned. Create the selected session "
+            "through the ordinary Player API without forwarding this administrator credential.",
+            tag="Administration", errors=(401, 422, 503),
+            example={"items": [], "count": 0},
+        ),
+    )
+    def list_admin_training_presets(
+        negotiation_service: Annotated[NegotiationService, Depends(get_service)],
+        authorization: Annotated[str | None, Depends(get_admin_authorization)] = None,
+        language: Literal["ru", "en"] | None = None,
+    ) -> JSONResponse:
+        error = _administrator_error(authorization, configured.admin_token)
+        if error is not None:
+            return error
+        items = negotiation_service.list_training_presets(language)
+        return JSONResponse(content={"items": items, "count": len(items)},
+                            headers={"Cache-Control": "no-store"})
 
     @router.get(
         "/admin/sessions",

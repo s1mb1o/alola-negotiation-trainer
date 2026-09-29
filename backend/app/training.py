@@ -71,6 +71,7 @@ class Preparation(BaseModel):
 class TrainingSetup(BaseModel):
     model_config = ConfigDict(extra="forbid")
     profile: Literal["concise_skeptical", "sociable"] = "concise_skeptical"
+    authored_tone: bool = False
     relationship: Literal["first_meeting", "successful_history"] = "first_meeting"
     player_name: str = Field(default="", max_length=100)
     shared_background: str = Field(default="", max_length=800)
@@ -90,6 +91,20 @@ class TrainingSetup(BaseModel):
                 "player_name can contain only letters, spaces, hyphens, apostrophes, and periods"
             )
         return normalized
+
+
+def authored_tone_options(options: tuple[str, ...], setup: dict, language: str,
+                          speech_act: str) -> tuple[str, ...]:
+    """Opt-in non-binding courtesy. Preserve formal messages and legacy sessions."""
+    if not setup.get("authored_tone") or setup.get("profile") != "sociable":
+        return options
+    if speech_act not in {
+        "greeting", "general_answer", "qualitative_interest_answer",
+        "acknowledge_information", "focused_discussion", "request_complete_offer",
+    }:
+        return options
+    prefix = "Давайте рассмотрим это вместе. " if language == "ru" else "Let us explore this together. "
+    return tuple(prefix + option for option in options)
 
 
 def initialize_training(setup: TrainingSetup, owner_id: str, scenario: dict, sanitize) -> dict:

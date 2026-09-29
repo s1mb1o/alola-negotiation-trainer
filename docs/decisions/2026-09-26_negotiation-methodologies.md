@@ -47,6 +47,12 @@ Without agreement, both agreement margins MUST be null.
 No agreement MUST NOT automatically mean failure or success.
 The assessment MUST NOT infer an exact ZOPA from a transcript or expose NPC private limits.
 
+Presentation clarification accepted on 2026-09-29:
+Economic comparison labels MUST use plain language. Explain positive, zero, and negative values in scenario points.
+The authored minimum MUST remain distinct from the private preparation target and the best option without a deal.
+The difference MUST NOT be presented as money, a percentage, or remaining concession capacity.
+Keep the formulas and API identifiers unchanged.
+
 New methodology coaching MUST provide exactly one card for each dimension:
 
 - `economics`: BATNA, reservation utility, and the observed outcome.

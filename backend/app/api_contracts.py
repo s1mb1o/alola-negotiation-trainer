@@ -7,6 +7,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from .models import Controller, Difficulty, RunMode
+from .behavior import BehaviorItem, BehaviorReview
+from .dialogue_relevance import IssueCode as RelevanceIssue, Status as RelevanceStatus
 from .training import Preparation, Target
 
 Count = Annotated[int, Field(ge=0)]
@@ -54,6 +56,7 @@ class LlmTraceSummary(Contract):
         "npc_dialogue",
         "npc_opening",
         "npc_grounding",
+        "npc_relevance",
         "social",
         "coaching",
         "player_assist",
@@ -142,6 +145,22 @@ class ScenarioResponse(Contract):
 
 class ScenarioListResponse(Contract):
     items: list[ScenarioResponse]
+    count: Count
+
+
+class AdminTrainingPreset(Contract):
+    preset_id: str
+    domain_id: str
+    domain: str
+    topic_id: str
+    topic: str
+    npc_role: str
+    npc_goal: str
+    scenario: ScenarioResponse
+
+
+class AdminTrainingPresetsResponse(Contract):
+    items: list[AdminTrainingPreset]
     count: Count
 
 
@@ -346,6 +365,14 @@ class OfferReference(Contract):
     offer_revision: Version
 
 
+class RelevanceCheckMetadata(Contract):
+    version: Literal["npc-relevance-v1"]
+    status: RelevanceStatus
+    check_attempts: Annotated[int, Field(ge=1, le=2)]
+    repair_attempted: bool
+    issues: Annotated[list[RelevanceIssue], Field(max_length=5)]
+
+
 class RendererMetadata(Contract):
     mode: Literal["template", "llm"]
     provider: str | None
@@ -355,6 +382,7 @@ class RendererMetadata(Contract):
     validation_failure: str | None
     latency_ms: float | None
     attempted_generation: bool
+    relevance_check: RelevanceCheckMetadata | None = None
 
 
 class CommittedAction(Contract):
@@ -602,11 +630,24 @@ class CoachingMetadata(Contract):
     evidence_truncated: bool | None = None
 
 
+class BehaviorCriterionResult(BehaviorItem):
+    evidence: list[Evidence] = Field(max_length=3)
+    alternative_is_hypothesis: Literal[True]
+
+
+class PlayerBehaviorReview(BehaviorReview):
+    version: Literal["player-behavior-v1"]
+    criteria: list[BehaviorCriterionResult] = Field(min_length=7, max_length=7)
+
+
 class CompleteCoaching(CoachingMetadata):
     status: Literal["complete"]
     summary: str = Field(min_length=1, max_length=900)
     goal_assessment: str = Field(min_length=1, max_length=900)
     cards: list[CoachingCard] = Field(min_length=1, max_length=3)
+    behavior: PlayerBehaviorReview | None = Field(
+        default=None, description="Required for goal-coaching-v5. Absent in historical cached coaching."
+    )
 
 
 class UnavailableCoaching(CoachingMetadata):

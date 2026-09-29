@@ -1,5 +1,50 @@
 # Architecture
 
+## Additional AI relevance check (DR-59)
+
+New human training render plans MUST attach `npc-relevance-v1` when the configured LLM renderer enables relevance checking.
+The configured runtime MUST enable this feature by default. `NEGOTIATION_NPC_RELEVANCE_CHECK=false` MUST disable it for new plans.
+A separate stateless control-provider call MUST check generated conversational replies after validation and grounding.
+The check MUST cover response relevance, all stated issues, repeated questions, topic, respectful tone, and selected-action consistency.
+It MUST receive only actor-safe context and MUST return a strict verdict with bounded issue codes.
+One correction attempt MAY use fixed application guidance for those codes. It MUST preserve the action and package and repeat validation, grounding, and relevance.
+The rendering path MUST use at most six logical provider calls. Transport retries and other turn tasks remain separate. Failure MUST select the engine fallback without claiming AI approval.
+Canonical financial replies, revision-zero openings, templates, benchmarks, and historical unversioned plans MUST retain their existing authority and call behavior.
+Restricted traces MUST identify `npc_relevance`. Safe metadata MAY expose only bounded status, counts, and issue codes.
+The DR-58 completion dialog MUST remain in place. See [DR-59](decisions/2026-09-29_npc-relevance-check.md).
+
+## Contextual replies and agreement presentation (DR-58)
+
+The parser MUST combine explicit supported conditions from one proposed package.
+A short numeric reply MUST prefer the latest delivered engine-selected requested term over an older discussion focus.
+Partial-offer reply plans MUST select one missing term. The renderer MUST preserve that question.
+Clarification text MUST match the parser reason. Numeric ambiguity MUST NOT become a question about acceptance.
+Canonical counterproposals MUST identify changed and retained terms without exposing private economic values.
+Rejections MUST identify supported NPC term objections when available. They MUST NOT invent a reason or disclose a hidden limit.
+Questions, quotations, negation, alternatives, missing units, and unsupported conditional branches MUST retain their safety checks.
+The engine MUST retain all existing eligibility and confirmation checks.
+The Web UI MUST show the final conversation and an agreement dialog before analysis.
+Analysis presentation MUST require a user action. The dialog MUST NOT mutate negotiation state.
+The dialog MUST use a neutral agreement title when counterpart acceptance is not established by public action evidence.
+Dismissal MUST survive state refresh and browser reload in the current tab. Different sessions MUST have separate presentation state.
+See [DR-58](decisions/2026-09-29_contextual-package-replies.md).
+
+## Cooperative training policy (DR-57)
+
+New human-versus-NPC training sessions MUST store `npc_policy_version=cooperative-v1` in internal state.
+Scalar counterproposals MUST prefer normalized proximity to the player's terms over maximum NPC utility.
+Candidates MUST remain bounded and authored or validated monetary midpoints.
+Changed nonmonetary exchange terms MUST benefit the NPC at the selected price.
+Prior monetary concessions MUST remain preserved.
+The composite supply seller MAY consider the full authored price list on the first price discussion.
+Existing reservation and constraint checks MUST remain authoritative.
+Missing supply terms MUST remain unresolved in delivered packages.
+Tone, difficulty, and social state MUST NOT change economic eligibility.
+Action selection and explanation MUST use the same stored policy version.
+Historical sessions, forks of historical sessions, benchmarks, and external-agent sessions MUST keep their previous policy.
+The policy MUST NOT read counterpart utility or player preparation.
+No public contract or database migration is required. See [DR-57](decisions/2026-09-29_cooperative-npc-policy.md).
+
 ## Public marketing and private trainer boundary (DR-53)
 
 The deployment MUST publish static Russian and English marketing pages at `/ru/` and `/en/`.
@@ -23,7 +68,12 @@ The Russian and English marketing pages MUST publish canonical, language, social
 The deployment MUST publish valid crawler discovery files.
 Unknown public paths MUST return HTTP 404.
 
-The trainer MUST use `/app/training`, `/app/progress`, and `/app/inspector`.
+The trainer MUST use `/app/training`, `/app/progress`, `/app/inspector`, and `/app/admin`.
+DR-56 adds `GET /api/v1/admin/training-presets` with administrator Bearer authentication and an optional RU/EN language filter.
+The response MUST bind approved domain, topic, NPC role, and authored objective to an exact scenario version. It MUST NOT expose raw source or economic limits.
+The administrator form MUST use the ordinary Player API to create the chosen training session. It MUST NOT send administrator credentials or private objectives to that API.
+The form MUST clear administrator credentials and preset data before the player handoff.
+`TrainingSetup.authored_tone` MUST default to false. Opted-in sessions MAY use authored courtesy wording for non-binding replies. Economics and formal acceptance MUST remain unchanged.
 The previous trainer paths MUST redirect to these canonical paths.
 The trainer and bootstrap API MUST retain the deployment admission control.
 Trainer and API responses MUST remain non-indexable.
@@ -58,6 +108,25 @@ New coaching MUST include economics, process, and communication cards.
 Each card MUST cite message evidence and distinguish observed behavior from insufficient evidence.
 The Web UI MUST support Russian and English labels.
 These checks MUST NOT be presented as a validated competence score.
+
+Under [DR-55](decisions/2026-09-29_player-behavior-review.md), new coaching MUST also include `behavior` with version `player-behavior-v1`.
+The seven fixed criteria MUST be validated independently from the deal outcome.
+Observed assessments MUST cite a player message. NPC messages MAY supply context.
+The service MUST reject missing criteria, duplicate criteria, invalid references, and unsupported plan adherence without preparation.
+The service MAY normalize omitted inapplicable advice fields to null. Assessment-specific required advice MUST still pass validation.
+The existing grounding call MUST validate behavioral claims and hypothetical alternatives.
+Under `goal-coaching-v6`, a rejected, structurally valid draft MAY receive one correction using bounded checker issues.
+The corrected draft MUST pass the same checks and a new grounding call before publication.
+There MUST be at most four provider calls. Correction MUST NOT start after 70 elapsed seconds.
+Malformed verdicts and failed corrections MUST remain unavailable. Rejected drafts and checker issues MUST NOT enter the Player API.
+The service MUST attach exact excerpts after validation.
+The Web UI MUST show a separate bilingual section with qualitative assessments and no total score.
+For insufficient-evidence criteria, the UI MUST add authored, criterion-specific practice guidance without a provider call.
+This guidance MUST NOT modify model findings, evidence references, cached data, or private preparation.
+The UI MUST reuse this authored guidance in a separate practice section when no complete behavior assessment is available.
+The section MUST work with provider features disabled and with unavailable, pending, not-requested, or historical coaching.
+It MUST NOT create fallback ratings or claim to assess the recorded dialogue.
+Historical cached reviews MUST remain readable without regeneration.
 
 
 ## Required OpenAPI documentation (DR-37)

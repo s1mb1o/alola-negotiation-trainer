@@ -16,6 +16,8 @@ from .scenarios import (
     validate_terms,
 )
 
+COOPERATIVE_POLICY_VERSION = "cooperative-v1"
+
 
 @dataclass(frozen=True, slots=True)
 class CounterProposal:
@@ -54,12 +56,69 @@ def _monetary_direction(scenario: dict[str, Any], role: str, term_id: str) -> in
     return None
 
 
+def _cooperative_counterproposal(
+    scenario: dict[str, Any], role: str, received: dict[str, Any],
+    monetary_term: str, direction: int, anchor: float | None,
+) -> CounterProposal | None:
+    """Prefer proximity to public terms. Never rank by the other actor's utility."""
+    values = scenario.get("exchange_policy", {}).get("candidate_values", {})
+    candidates = []
+    if values and math.prod(len(items) for items in values.values()) <= MAX_EXCHANGE_CANDIDATES:
+        keys = tuple(sorted(values))
+        candidates.extend(
+            {**received, **dict(zip(keys, combination))}
+            for combination in product(*(values[key] for key in keys))
+        )
+        # Preserve the player's exact secondary terms when one change is sufficient.
+        candidates.extend(
+            {**received, term: value} for term, items in values.items() for value in items
+        )
+    if anchor is not None:
+        candidates.append({
+            **received, monetary_term: int(round((anchor + float(received[monetary_term])) / 2)),
+        })
+    choices = []
+    definitions = scenario["terms"]["definitions"]
+    for candidate in candidates:
+        price = float(candidate[monetary_term])
+        if anchor is not None and direction * (price - anchor) > 0:
+            continue
+        if direction * (price - float(received[monetary_term])) < 0:
+            continue
+        if not _eligible(scenario, role, candidate):
+            continue
+        changed = tuple(sorted(term for term in candidate if candidate[term] != received.get(term)))
+        trades = tuple(term for term in changed if term != monetary_term)
+        baseline = {**received, monetary_term: candidate[monetary_term]}
+        baseline_utility = evaluate_utility(scenario, role, baseline)
+        if not all(
+            evaluate_utility(scenario, role, {**baseline, term: candidate[term]}) > baseline_utility
+            for term in trades
+        ):
+            continue
+        distance = sum(
+            abs(float(candidate[term]) - float(received[term]))
+            / max(1e-12, float(definitions[term]["value_schema"]["maximum"])
+                  - float(definitions[term]["value_schema"]["minimum"]))
+            for term in changed
+        )
+        rank = (distance, len(changed), -evaluate_utility(scenario, role, candidate),
+                canonical_json(candidate))
+        choices.append((rank, CounterProposal(
+            candidate, "conditional_exchange" if trades else "cooperative_compromise",
+            monetary_term, trades,
+        )))
+    return min(choices, key=lambda choice: choice[0])[1] if choices else None
+
+
 def select_counterproposal(
     scenario: dict[str, Any],
     npc_role: str,
     received_terms: dict[str, Any],
     opening_terms: dict[str, Any],
     previous_counter_terms: dict[str, Any] | None = None,
+    *,
+    cooperative: bool = False,
 ) -> CounterProposal | None:
     """Select a complete exchange or a validated midpoint/previous public offer.
 
@@ -81,6 +140,13 @@ def select_counterproposal(
     own_anchor = previous_counter_terms or own_opening
     anchor = float(own_anchor[monetary_term]) if own_anchor and monetary_term in own_anchor else None
     received_price = float(received_terms[monetary_term])
+
+    if cooperative:
+        compromise = _cooperative_counterproposal(
+            scenario, npc_role, received_terms, monetary_term, direction, anchor,
+        )
+        if compromise is not None:
+            return compromise
 
     def preserves_concession(terms: dict[str, Any]) -> bool:
         return anchor is None or direction * (float(terms[monetary_term]) - anchor) <= 0

@@ -5,6 +5,7 @@ import type { SessionEnvelope, SessionReview, TimelineMessage, UiLanguage } from
 import { isTerminalStatus } from '../utils'
 import { PROVIDER_FEATURES_ENABLED } from '../features'
 import { ChatPanel } from './ChatPanel'
+import { AgreementDialog } from './AgreementDialog'
 import { ContextPanel } from './ContextPanel'
 import { OfferPanel } from './OfferPanel'
 import { ReviewPanel } from './ReviewPanel'
@@ -82,7 +83,22 @@ export function NegotiationWorkspace({
   const t = (key: string) => translate(language, key)
   const [accessOpen, setAccessOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [agreementViews, setAgreementViews] = useState<Record<string, 'chat' | 'review'>>({})
   const terminal = isTerminalStatus(session.status)
+  const agreement = session.status === 'agreement_reached'
+  const agreementKey = `negotiation.agreement-view.${session.session_id}`
+  let storedView: string | null = null
+  try { storedView = sessionStorage.getItem(agreementKey) } catch { /* Storage can be disabled. */ }
+  const agreementView = agreementViews[session.session_id] ?? storedView
+  const showReview = terminal && (!agreement || agreementView === 'review')
+  const setAgreementView = (view: 'chat' | 'review') => {
+    setAgreementViews((current) => ({ ...current, [session.session_id]: view }))
+    try { sessionStorage.setItem(agreementKey, view) } catch { /* Memory state remains sufficient for this mount. */ }
+  }
+  const counterpartAccepted = session.committed_actions?.some((action) => action.action === 'accept'
+    && !!action.participant_id && action.participant_id !== ownParticipantId)
+    || messages.some((message) => message.action === 'accept'
+      && !!message.participantId && message.participantId !== ownParticipantId)
   const normalizedNextActor = session.next_actor?.toLowerCase() ?? ''
   const isMyTurn = !session.next_actor
     || normalizedNextActor === ownParticipantId.toLowerCase()
@@ -145,7 +161,15 @@ export function NegotiationWorkspace({
         </div>
       </section>
 
-      {terminal ? (
+      {agreement && !showReview && (
+        <section className="panel-card agreement-notice">
+          <div><h2>{t('agreement_reached')}</h2><p>{t('agreementDialogLead')}</p></div>
+          <button data-open-agreement-review className="button button-primary" type="button"
+            onClick={() => setAgreementView('review')}>{t('openAnalysis')}</button>
+        </section>
+      )}
+
+      {showReview ? (
         <div className="terminal-layout">
           <ReviewPanel
             {...trainingActions}
@@ -196,15 +220,15 @@ export function NegotiationWorkspace({
             scenarioTitle={scenarioTitle}
             ownParticipantId={ownParticipantId}
             ownRoleId={ownRoleId}
-            isMyTurn={isMyTurn}
+            isMyTurn={!terminal && isMyTurn}
             busy={busy}
             locked={locked}
             waiting={waitingForCounterpart}
-            terminal={false}
+            terminal={terminal}
             currency={session.observation.currency}
-            clarification={session.clarification ?? undefined}
-            confirmation={session.pending_confirmation ?? undefined}
-            publication={session.pending_offer_publication ?? undefined}
+            clarification={terminal ? undefined : session.clarification ?? undefined}
+            confirmation={terminal ? undefined : session.pending_confirmation ?? undefined}
+            publication={terminal ? undefined : session.pending_offer_publication ?? undefined}
             error={error}
             failedText={failedMessageText}
             currentRevision={session.revision}
@@ -231,7 +255,7 @@ export function NegotiationWorkspace({
               observation={session.observation}
               hintsEnabled={hintsEnabled}
               requestingHint={requestingHint}
-              busy={busy || locked || assisting || rewindingRevision !== undefined}
+              busy={terminal || busy || locked || assisting || rewindingRevision !== undefined}
               onRequestHint={onRequestHint}
             />
             {providerFeatures && (
@@ -239,6 +263,11 @@ export function NegotiationWorkspace({
             )}
           </div>
         </div>
+      )}
+
+      {agreement && !agreementView && (
+        <AgreementDialog key={session.session_id} language={language} counterpartAccepted={!!counterpartAccepted}
+          onClose={() => setAgreementView('chat')} onReview={() => setAgreementView('review')} />
       )}
 
       <TokenDialog

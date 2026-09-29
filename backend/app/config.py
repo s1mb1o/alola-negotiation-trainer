@@ -107,6 +107,7 @@ class Settings:
     review_timeout_seconds: float = 45.0
     supply_semantic_extraction: bool = False
     llm_trace_enabled: bool = False
+    npc_relevance_check: bool = True
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -145,6 +146,7 @@ class Settings:
             scenario_schema_path=project_root / "schemas" / "scenario-v1.schema.json",
             admin_token=os.getenv("NEGOTIATION_ADMIN_TOKEN", ""),
             npc_provider=npc_provider,
+            npc_relevance_check=_optional_bool("NEGOTIATION_NPC_RELEVANCE_CHECK") is not False,
             npc_model=npc_model,
             npc_api_key_env=npc_api_key_env,
             npc_base_url=npc_base_url,

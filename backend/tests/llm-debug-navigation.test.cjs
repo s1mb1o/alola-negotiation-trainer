@@ -41,6 +41,17 @@ function fixture(t, hash = '', options = {}) {
 }
 function reply(document) { return document.querySelector('#response pre')?.textContent || ''; }
 
+test('relevance checks have a distinct readable task label', async t => {
+  const item = {...record(newer, 'Relevance verdict'), task:'npc_relevance'};
+  const {document} = fixture(t, '#' + newer, {
+    fetch: url => ({ok:true,status:200,json:async()=>url.includes('llm-traces?')
+      ? {enabled:true,capacity:200,items:[item]} : item}),
+  });
+  await until(() => reply(document).includes('Relevance verdict'));
+  assert.equal(document.getElementById('detail-title').textContent, 'Проверка уместности');
+  assert.ok(document.querySelector('.call').textContent.includes('Проверка уместности'));
+});
+
 test('direct links restore an older record instead of the newest record', async t => {
   const {window,document,requests} = fixture(t, '#' + older);
   await until(() => reply(document).includes('Older response'));

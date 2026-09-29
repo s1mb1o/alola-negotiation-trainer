@@ -1,5 +1,84 @@
 # Smoke Tests
 
+## Plain-language economic comparisons
+
+- Open the completed review in Russian and English. Check positive, zero, and negative differences. Check the better, equal, and worse explanation.
+- Check that missing values and no agreement do not become zero or a failure claim. Explain scenario points, the authored role minimum, the separate alternative, and the private-plan distinction. Do not imply a money amount or remaining concession capacity.
+
+## Separate reply relevance check (DR-59)
+
+- Run `pytest backend/tests/test_dialogue_relevance.py backend/tests/test_openapi.py`.
+- Enable an LLM renderer and create human training. Ask a question with two concerns. Check a separate `npc_relevance` call after validation. Check the latest question, every concern, repeated questions, topic, respectful tone, and the selected action.
+- Return a valid negative verdict from a fixture. Check one repair with the same action and package. Check deterministic validation, grounding, and relevance again. Permit no more than six logical provider calls in this path.
+- Test invalid JSON, unknown or repeated issue codes, contradictory verdicts, timeouts, unsafe repairs, and a second negative verdict. Check deterministic fallback and truthful bounded metadata.
+- Check that credentials, private preparation, private economics, and raw scenario source do not enter the checker input.
+- Check idempotent retries and restart persistence. Do not regenerate delivered messages. Check that disabling the feature affects new plans, not a stored versioned request.
+- Check historical unversioned plans, external-agent training, benchmarks, template mode, canonical acceptance, and immutable supply packages.
+- Repeat the DR-58 agreement-dialog tests. Do not open analysis until the player requests it.
+- Offline fixtures test the control flow. They do not establish live model relevance or quality improvement.
+
+## Contextual replies and visible agreement (DR-58)
+
+- In `office_lease_ru@4`, reject the opening offer. Propose 60% prepayment. The NPC must ask for annual rent. Reply `2 600 000`. Preserve 60% and set annual rent to RUB 2,600,000. Do not show an acceptance-scope question.
+- Propose annual rent of RUB 1,800,000 and 60% prepayment in separate sentences. Include readiness in four weeks. The counteroffer must name annual rent as changed and the other terms as retained.
+- Repeat in English. Test separate absolute terms and supported relative changes in one package.
+- Test numeric questions, quotations, negation, missing percentage units, and alternatives. Do not silently commit them as one package.
+- Reach agreement. Keep the final NPC reply visible behind an agreement dialog. Open analysis only after the player selects it.
+- Close the dialog with its button and Escape. Keep the completed chat and review button visible. Reload and do not reopen the dismissed dialog. Use a new session and show its independent dialog.
+- Test counterpart acceptance, player confirmation, and restoration without action evidence. Do not falsely attribute acceptance to the NPC.
+- Test Russian, English, keyboard focus containment, light and dark themes, and a 390 px viewport. A walk-away must not show the acceptance dialog.
+
+## Cooperative NPC counterproposals (DR-57)
+
+- Create a new human-versus-NPC `office_lease_ru@4` session. Offer annual rent of RUB 1,800,000, 0% prepayment, and readiness in one week. Expect a RUB 2,100,000 counteroffer with the other terms preserved. Do not expect automatic agreement.
+- Repeat in English. Check that canonical wording describes the selected package. Do not claim a conditional exchange when only the price changes.
+- Create `supplier_integration_ru@1`. Ask for a price reduction. Expect an authored EUR 111,000 preliminary price. Payment, delivery basis, and reserve terms remain unspecified.
+- Repeat the same request without new terms. Do not grant successive automatic discounts.
+- Test a package below NPC reservation utility and one with incompatible hard constraints. Do not accept either package.
+- Change tone and difficulty. Keep economic eligibility unchanged.
+- Restart and fork a new session. Preserve `cooperative-v1`. Restart and fork a historical session. Preserve its old policy.
+- Run benchmark and external-agent sessions. Preserve their old policy.
+- Confirm that no Player API response contains NPC utility, reservation utility, or the internal policy version.
+
+## Administrator context presets (DR-56)
+
+- Open `/app/admin` in Russian and English. Check system light and dark themes and a 390 px viewport.
+- Without a server administrator token, verify disabled access. Reject a participant token and an incorrect administrator token.
+- Sign in with the configured administrator token. Check domain, topic, NPC role, goal, difficulty, and tone selectors.
+- Select scalar supply and composite supply goals. Verify the corresponding scenario ID and exact version in session creation.
+- Change the NPC role. Verify that the human receives the opposite role and only the human brief.
+- Start guided and expert sessions. Verify that assistance changes.
+- Start concise and warm sessions with template providers. Verify different non-binding wording and identical economic terms.
+- Verify that starting clears `negotiation.admin-token`. Do not send this credential or `npc_goal` to the Player API.
+- Verify that active-session replacement is blocked until explicit New session or session completion.
+- Verify that restart and checkpoint fork preserve the selected profile and `authored_tone`.
+- At deployment, admit only the new exact GET path. Keep API administrator authentication and existing proxy restrictions.
+
+## Separate player behavior review (DR-55)
+
+- Open unavailable, pending, not-requested, and historical reviews. Check `Практика без AI-оценки` in Russian and English.
+- Disable provider features. Check that the seven authored practice disclosures remain available without behavior ratings or provider requests.
+- Use the keyboard to open a practice disclosure. Check light and dark themes and a 390-pixel viewport.
+- Supply explicit checker issues for a valid draft. Check one correction and a separate grounding call for the corrected draft.
+- Reject the corrected draft. Check unavailable status, at most four calls, and no rejected draft or checker issue in the Player API.
+- Start correction after more than 70 elapsed seconds. Check that the service does not make further provider calls.
+- Reject NPC-only listening evidence and claims that an agreed delivery already occurred. Do not weaken checks to obtain a successful review.
+
+- For each insufficient-evidence criterion, check a distinct next-dialogue action and example phrase in both languages.
+- Check that practice guidance is labelled as authored guidance, not transcript evidence or a finding about an omitted action.
+- Check that plan-adherence guidance does not request disclosure of private limits. No extra provider request or score change may occur.
+
+- Complete a training session. Request AI coaching. Check that **Поведение игрока** is separate from the deal result.
+- Check all seven criteria. Check qualitative labels, exact player excerpts, strengths, improvements, and hypothetical alternatives.
+- Open an evidence disclosure with the keyboard. Check player and NPC attribution.
+- Compare behavior with the private preparation. An empty preparation MUST show insufficient evidence for plan adherence.
+- Use a fixture with a favorable deal and poor behavior. Use another fixture with no agreement and effective behavior. Check that the two assessments remain separate.
+- Use a personal-interest question without supporting context. Check that the reviewer does not reward the phrase alone.
+- Reject missing criteria, duplicate criteria, unknown references, NPC-only observed behavior, and an unsafe grounding verdict.
+- Read a historical cached review. Check the missing-section notice and no automatic regeneration.
+- Check Russian and English text, light and dark themes, and a narrow viewport. Template mode MUST hide provider-only assessments.
+- Do not treat fixture output as evidence of live model quality or learning gains.
+
 ## Hackathon landing page — DR-53
 
 - Run `npm test` and `npm run build` in `frontend/`.
@@ -30,6 +109,24 @@
 - Check that `/presentation` returns the approved PDF without authentication.
 - Check that deployed HTML contains the approved credentials and no placeholders. Do not save credentials in test output or screenshots.
 
+## Markdown transcript playback — DR-54
+
+- Run `uv run pytest backend/tests/test_transcript_playback.py clients/tests/test_transcript_playback.py clients/tests/test_cli.py`.
+- Run `transcript-playback` in `exact` mode with a transcript that starts with the authored NPC opening.
+- Check that the first NPC message has `action: opening_reference` and is not submitted twice.
+- Check that later player and NPC messages use their separate participant credentials.
+- Add a recorded speaker that differs from `next_actor`.
+- Check that playback stops with `playback_status: diverged` and `kind: turn_mismatch`.
+- Run the same transcript in `npc-comparison` mode.
+- Check that only player messages are submitted.
+- Check that each recorded NPC message contains the current NPC messages in `comparison.engine_messages`.
+- Run with `--final-review` and a configured `NEGOTIATION_ADMIN_TOKEN`.
+- Check that the active session closes with the explicit source-exhausted reason.
+- Check that the Markdown report shows the player-visible dialogue before `Итоговый разбор`.
+- Search the JSON report for both participant credentials.
+- Check that neither credential is present.
+- Open the report `session_id` in `/app/inspector`.
+- Check the transcript, public events, offer revisions, and dialogue diagnostics.
 
 ## Negotiation methodologies — DR-51
 
@@ -173,7 +270,7 @@
 ## OpenAPI documentation — DR-37 acceptance target
 
 Run `uv run pytest backend/tests/test_openapi.py` for the implemented automated checks.
-The suite covers all 25 canonical operations. The shared backend client also validates response contracts during regression tests.
+The suite covers all 26 canonical operations. The shared backend client also validates response contracts during regression tests.
 
 - Fetch `/openapi.json`. Validate the document against its declared OpenAPI version.
 - Open `/docs`. Verify that Swagger UI loads the schema and displays the canonical `/api/v1` operations.

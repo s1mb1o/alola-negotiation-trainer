@@ -19,6 +19,7 @@ from .api import (
     response_status,
 )
 from .orchestrator import (
+    ADMIN_TOKEN_ENV,
     AgentSeat,
     TERMINAL_STATUSES,
     actor_safe_protocol_result,
@@ -27,6 +28,11 @@ from .orchestrator import (
     run_self_play,
 )
 from .providers import ProviderError, provider_for
+from .transcript_playback import (
+    load_markdown_transcript,
+    render_player_markdown,
+    run_transcript_playback,
+)
 
 
 # The interactive loop cannot recover from these; everything else keeps the loop running.
@@ -263,6 +269,56 @@ def command_self_play(api: NegotiationApiClient, args: argparse.Namespace) -> in
     return 2 if result.get("status") == "technical_failure" else 0
 
 
+def command_transcript_playback(api: NegotiationApiClient, args: argparse.Namespace) -> int:
+    turns = load_markdown_transcript(
+        args.transcript,
+        player_heading=args.player_heading,
+        npc_heading=args.npc_heading,
+        player_role=args.player_role,
+        npc_role=args.npc_role,
+    )
+    report = run_transcript_playback(
+        api,
+        source=args.transcript,
+        turns=turns,
+        mode=args.mode,
+        scenario_id=args.scenario,
+        scenario_version=args.scenario_version,
+        language=args.language,
+        player_role=args.player_role,
+        npc_role=args.npc_role,
+        finalize_for_review=args.final_review,
+        admin_token=os.getenv(ADMIN_TOKEN_ENV) if args.final_review else None,
+    )
+    outputs: dict[str, str] = {}
+    if args.output:
+        destination = Path(args.output).expanduser().resolve()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        outputs["json_output"] = str(destination)
+    if args.markdown_output:
+        destination = Path(args.markdown_output).expanduser().resolve()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(render_player_markdown(report), encoding="utf-8")
+        outputs["markdown_output"] = str(destination)
+    if outputs:
+        _print_json(
+            {
+                **outputs,
+                "session_id": report["session_id"],
+                "playback_status": report["playback_status"],
+                "session_status": report["session_status"],
+                "review_available": "review" in report,
+                **({"divergence": report["divergence"]} if "divergence" in report else {}),
+            }
+        )
+    else:
+        _print_json(report)
+    return 1 if report["playback_status"] == "diverged" else 0
+
+
 def command_simple(api: NegotiationApiClient, args: argparse.Namespace) -> int:
     if args.command == "scenarios":
         _print_json(api.list_scenarios(language=args.language))
@@ -385,6 +441,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     self_play.add_argument("--output")
 
+    playback = subparsers.add_parser(
+        "transcript-playback",
+        help="Play a Markdown transcript through the Player API",
+    )
+    playback.add_argument("transcript", help="Markdown transcript file")
+    playback.add_argument("--scenario", required=True)
+    playback.add_argument("--scenario-version", type=int, default=1)
+    playback.add_argument("--language", choices=("ru", "en"), default="ru")
+    playback.add_argument("--mode", choices=("exact", "npc-comparison"), default="exact")
+    playback.add_argument("--player-heading", default="Александр")
+    playback.add_argument("--npc-heading", default="Nord Systems")
+    playback.add_argument("--player-role", default="buyer")
+    playback.add_argument("--npc-role", default="seller")
+    playback.add_argument("--output", help="Write the credential-free JSON report to this path")
+    playback.add_argument(
+        "--markdown-output",
+        help="Write the player-visible transcript and final review to this Markdown path",
+    )
+    playback.add_argument(
+        "--final-review",
+        action="store_true",
+        help=f"Close a non-terminal playback session and fetch its review; requires {ADMIN_TOKEN_ENV}",
+    )
+
     for name in ("history", "review", "coach", "checkpoints", "compare", "retry"):
         command = subparsers.add_parser(name)
         command.add_argument("session_id")
@@ -416,8 +496,10 @@ def main(argv: list[str] | None = None) -> int:
             return command_agent(api, args)
         if args.command == "self-play":
             return command_self_play(api, args)
+        if args.command == "transcript-playback":
+            return command_transcript_playback(api, args)
         return command_simple(api, args)
-    except (ApiError, ProviderError, ValueError) as exc:
+    except (ApiError, OSError, ProviderError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

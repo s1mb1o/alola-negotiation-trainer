@@ -143,7 +143,7 @@ def test_difficulty_assistance_and_role_style_do_not_change_economic_selection(d
     ("ru", "supplier_001", 5, "scenario_supplier_001_v5.yaml",
      "Предлагаю цену 103000 евро, предоплату 0% и срок поставки 2 недели.", "Предлагаю обмен уступками"),
     ("en", "office_lease_en", 4, "scenario_office_lease_en_v4.yaml",
-     "I offer annual rent of 1800000 RUB, prepayment 0%, and office readiness in 1 week.", "I propose a trade"),
+     "I offer annual rent of 1800000 RUB, prepayment 0%, and office readiness in 1 week.", "My complete counteroffer"),
 ])
 def test_player_api_delivers_canonical_exchange_with_same_validated_package(
     client: TestClient, language: str, scenario_id: str, version: int,

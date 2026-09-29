@@ -18,7 +18,7 @@ Automated checks MUST validate OpenAPI conformance, canonical operation coverage
 Contract tests MUST verify representative successful and error responses against the documented schemas.
 Planned operations MUST NOT appear as implemented operations.
 Compatibility aliases MAY remain excluded.
-All 25 canonical operations now have typed response contracts and explicit operation IDs.
+All 26 canonical operations now have typed response contracts and explicit operation IDs.
 The generated document declares participant and administrator Bearer security.
 See [DR-37](decisions/2026-09-24_openapi-documentation.md) for the acceptance rules and the [OpenAPI guide](openapi-guide.md) for usage and verification.
 
@@ -765,7 +765,19 @@ Qwen rendering defaults to `qwen3.8-max` and the QwenCloud Token Plan endpoint.
 
 The service does not send `temperature` when `NEGOTIATION_NPC_TEMPERATURE` is empty.
 
-The optional `NEGOTIATION_CONTROL_*` profile selects the model for grounding, social classification, and semantic extraction.
+The optional `NEGOTIATION_CONTROL_*` profile selects the model for grounding, relevance, social classification, and semantic extraction.
+
+Under DR-59, `NEGOTIATION_NPC_RELEVANCE_CHECK` defaults to true for new human training render plans in the configured LLM runtime.
+The separate relevance check permits one fully revalidated correction of generated conversational wording.
+The check MUST NOT change the structured action or deal.
+Canonical financial messages, template mode, benchmarks, external-agent training, and historical unversioned plans keep their existing call behavior.
+Delivered renderer metadata MAY include `relevance_check` with `version: "npc-relevance-v1"`, `status`, `check_attempts` (1 or 2), `repair_attempted`, and `issues`.
+Status is one of `passed`, `corrected`, `failed`, `unavailable`, `invalid`, or `repair_failed`.
+Issue codes are `off_topic`, `unanswered_question`, `missed_condition`, `redundant_question`, `abrupt_tone`, and `action_mismatch`.
+The issue list contains at most five distinct codes. A corrected result retains the first failed check's codes.
+An absent field means that this gate did not report a verdict. It does not establish AI approval.
+Restricted LLM traces use the task label `npc_relevance`.
+The existing message contract, revision checks, and idempotency rules remain unchanged.
 
 The optional `NEGOTIATION_REVIEW_*` profile selects the model for final coaching.
 
@@ -1192,6 +1204,32 @@ Application context limits still apply before submission. The trace adds no earl
 Provider-internal instructions and HTTP-library-generated headers are outside this trace.
 See [DR-40](decisions/2026-09-24_llm-debug-window.md) and [the usage guide](llm-debug-guide.md).
 
+## Administrator context presets (DR-56)
+
+```http
+GET /admin/training-presets?language=ru
+Authorization: Bearer <NEGOTIATION_ADMIN_TOKEN>
+```
+
+The optional `language` filter accepts `ru` or `en`.
+The response contains `items` and `count`.
+Each item contains `preset_id`, `domain_id`, `domain`, `topic_id`, `topic`, `npc_role`, `npc_goal`, and public `scenario` metadata.
+Each item pins an exact published scenario version.
+`npc_goal` is the authored objective for the selected NPC role. It is privileged authoring data.
+The endpoint MUST NOT return raw source, private player preparation, economic limits, or credentials.
+The endpoint uses the existing administrator authentication rules: 401 for missing or invalid credentials, 503 for disabled administrator access, and 422 for an invalid filter.
+Successful responses use `Cache-Control: no-store`.
+
+The administrator UI selects the opposing human role and calls ordinary `POST /sessions` without the administrator credential.
+The request includes the selected scenario version, difficulty, and `training.profile`.
+The UI sets `training.authored_tone` to `true`.
+This optional Boolean defaults to `false` for existing callers.
+It enables authored tone in template greetings and non-binding replies.
+It MUST NOT change formal actions, economic rules, or agreement terms.
+The flag remains stored in session state and checkpoint copies.
+The NPC goal and the administrator credential MUST NOT enter the player's setup.
+See [DR-56](decisions/2026-09-29_admin-context-presets.md).
+
 ## Administrative Session Inspector
 
 ```http
@@ -1366,6 +1404,22 @@ Without agreement and without offer evidence, `economics` MUST use `insufficient
 An `observed` economic assessment in that case MUST produce unavailable coaching.
 The grounding pass MUST validate claims against the cited evidence and engine economics.
 Historical cached cards MAY omit `dimension` and `assessment`.
+Under [DR-55](decisions/2026-09-29_player-behavior-review.md), `goal-coaching-v6` MUST also return `behavior`.
+One bounded correction MAY follow explicit grounding issues. The corrected result MUST pass all checks again.
+The job MUST make at most four provider calls. It MUST NOT start correction after 70 elapsed seconds.
+The response contract and historical cache policy remain unchanged. Rejected drafts and checker issues are not Player API fields.
+This object contains `version: player-behavior-v1`, `summary`, and exactly seven `criteria`.
+The identifiers are `rapport`, `listening`, `interest_discovery`, `argumentation`, `conditional_trading`, `clarity`, and `plan_adherence`.
+Each item contains `criterion`, `assessment`, `evidence_refs`, `observation`, `strength`, `improvement`, `alternative_phrase`, `next_practice`, exact `evidence`, and `alternative_is_hypothesis: true`.
+`assessment` is `effective`, `needs_improvement`, `mixed`, or `insufficient_evidence`.
+Each item MAY cite up to three actual messages. Observed assessments MUST cite at least one player message.
+`effective` and `mixed` MUST include a strength.
+`needs_improvement` and `mixed` MUST include an improvement, alternative phrase, and practice task.
+An insufficient-evidence item MUST explain its limit. Its four advice fields MUST be null.
+An insufficient-evidence item MAY have no references. It MUST NOT claim a failed skill.
+An empty private preparation MUST produce insufficient evidence for plan adherence.
+The response contract permits omitted `behavior` for historical cached reviews only.
+Current generation MUST reject omitted behavior. Existing cached reviews MUST NOT be regenerated automatically.
 These fields MUST NOT appear in active observations or add benchmark assistance.
 Under [DR-35](decisions/2026-09-23_player-background.md), the review MUST distinguish initial relationship advantages from behavior demonstrated during this session.
 

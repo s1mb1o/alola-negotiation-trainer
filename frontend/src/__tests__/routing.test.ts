@@ -6,6 +6,7 @@ describe('page routing', () => {
     expect(appViewPath('training')).toBe('/app/training')
     expect(appViewPath('stats')).toBe('/app/progress')
     expect(appViewPath('inspector')).toBe('/app/inspector')
+    expect(appViewPath('admin')).toBe('/app/admin')
   })
 
   it('restores the view from direct and trailing-slash paths', () => {
@@ -15,6 +16,7 @@ describe('page routing', () => {
     expect(appViewFromPathname('/app/progress/')).toBe('stats')
     expect(appViewFromPathname('/app/inspector')).toBe('inspector')
     expect(appViewFromPathname('/app/inspector/')).toBe('inspector')
+    expect(appViewFromPathname('/app/admin/')).toBe('admin')
   })
 
   it('routes unknown application paths to training', () => {

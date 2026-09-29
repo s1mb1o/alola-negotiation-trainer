@@ -30,13 +30,41 @@ describe('training loop', () => {
         outcome: 'agreement', surplus_over_batna: 10, margin_over_reservation: -10, meets_reservation: false,
       } }, coaching: { status: 'complete', summary: 'Summary', cards },
     }} />)
-    expect(screen.getByText(language === 'ru' ? 'Выгода относительно BATNA' : 'Surplus over BATNA')).toBeInTheDocument()
-    expect(screen.getByText('10')).toBeInTheDocument()
+    expect(screen.getByText(language === 'ru' ? 'Сравнение с лучшим вариантом без сделки' : 'Compared with your best option without a deal')).toBeInTheDocument()
+    expect(screen.getByText('+10')).toBeInTheDocument()
     expect(screen.getByText('-10')).toBeInTheDocument()
-    expect(screen.getByText(language === 'ru' ? 'Сделка ниже вашего порога приемлемости.' : 'The deal is below your reservation utility.')).toBeInTheDocument()
+    expect(screen.getByText(language === 'ru' ? 'Сделка хуже минимально приемлемого для вас результата.' : 'The deal is worse than your minimum acceptable result.')).toBeInTheDocument()
+    expect(screen.getByText(language === 'ru' ? /не в деньгах и не в процентах/ : /not money or percentages/)).toBeInTheDocument()
+    expect(screen.queryByText(/Запас до порога|Margin over reservation/)).not.toBeInTheDocument()
     expect(screen.getByText(/· Harvard/)).toBeInTheDocument()
     expect(screen.getByText(/· Voss/)).toBeInTheDocument()
     expect(screen.getAllByText(language === 'ru' ? /Недостаточно данных для вывода/ : /Insufficient evidence/)).toHaveLength(3)
+  })
+
+  it.each([
+    ['ru', 20, '+20', 'Сделка лучше минимально приемлемого для вас результата.'],
+    ['en', 20, '+20', 'The deal is better than your minimum acceptable result.'],
+    ['ru', 0, '0', 'Сделка ровно на минимально приемлемом для вас уровне.'],
+    ['en', 0, '0', 'The deal is exactly at your minimum acceptable level.'],
+  ] as const)('explains a %s margin of %s without jargon', (language, margin, value, explanation) => {
+    render(<TrainingReviewPanel language={language} data={{ ...data, methodology: {
+      version: 'harvard-batna-voss-v1', zopa: 'not_inferred', economics: {
+        outcome: 'agreement', surplus_over_batna: 5, margin_over_reservation: margin, meets_reservation: true,
+      },
+    } }} />)
+    expect(screen.getByText(value)).toBeInTheDocument()
+    expect(screen.getByText(explanation)).toBeInTheDocument()
+    expect(screen.getByText(language === 'ru' ? /Это не цель из личного плана/ : /It is not your personal-plan target/)).toBeInTheDocument()
+  })
+
+  it('does not invent a minimum comparison when the value is missing', () => {
+    render(<TrainingReviewPanel language="ru" data={{ ...data, methodology: {
+      version: 'harvard-batna-voss-v1', zopa: 'not_inferred', economics: {
+        outcome: 'agreement', surplus_over_batna: 5, margin_over_reservation: null, meets_reservation: null,
+      },
+    } }} />)
+    expect(screen.queryByText(/Сделка (лучше|хуже|ровно)/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
   it('keeps absent deal margins distinct from zero when there is no agreement', () => {
@@ -46,7 +74,7 @@ describe('training loop', () => {
       },
     } }} />)
     expect(screen.getByText(/Deal surplus is not calculated/)).toBeInTheDocument()
-    expect(screen.queryByText('Surplus over BATNA')).not.toBeInTheDocument()
+    expect(screen.queryByText('Compared with your best option without a deal')).not.toBeInTheDocument()
   })
 
   it('keeps shared background and private goals in separate setup fields', async () => {

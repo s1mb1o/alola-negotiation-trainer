@@ -730,6 +730,8 @@ def decide_supply_action(
     language: str,
     formal: bool = False,
     proposer_role: str | None = None,
+    *,
+    cooperative: bool = False,
 ) -> SupplyDecision:
     """Select a legal action from authored economics and this actor's interests."""
     from .supply import unresolved_supply_terms, validate_supply_terms
@@ -911,6 +913,8 @@ def decide_supply_action(
         ):
             tier = npc_policy["split_price_index"]
         candidates = npc_policy["price_candidates_minor"]
+        if cooperative:
+            tier = len(candidates) - 1
         old_price = terms.get("base_price", {}).get("minor_units")
         for price in reversed(candidates[: min(tier + 1, len(candidates))]):
             if old_price is not None and price > old_price:

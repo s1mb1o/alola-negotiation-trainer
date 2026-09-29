@@ -14,6 +14,7 @@ from backend.app.dialogue import (
 from backend.app.methodology import VERSION, assess_economics
 from backend.app.training import classify_social
 from .conftest import bearer
+from .behavior_fixtures import behavior_fixture
 from .test_grounded_goal_dialogue import OpeningProvider, opening_request
 from .test_supply_dialogue import SupplyProvider, supply_request
 from .test_training_loop import Provider, create, send
@@ -116,7 +117,8 @@ def coaching_fixture():
               "alternative_phrase": "Давайте сравним варианты перед решением.",
               "next_practice": "Сопоставьте предложенный пакет со своей альтернативой."}
              for dimension in ("economics", "process", "communication")]
-    return package, {"summary": "Соглашения нет.", "goal_assessment": "Условия не согласованы.", "cards": cards}
+    return package, {"summary": "Соглашения нет.", "goal_assessment": "Условия не согласованы.",
+                     "cards": cards, "behavior": behavior_fixture()}
 
 
 @pytest.mark.parametrize("damage", ["missing", "duplicate", "no_assessment", "invented_ref", "injection", "grounding"])

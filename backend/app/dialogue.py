@@ -14,6 +14,7 @@ from typing import Any, Literal, Mapping, Protocol, Sequence
 from clients.providers import TextProvider
 
 from .conversation import validate_conversation_memory
+from . import dialogue_relevance as relevance
 from .dialogue_contracts import (
     DIFFICULTY_PROFILES,
     STYLE_PROFILES,
@@ -282,7 +283,14 @@ Follow dialogue_profile and conversation_style consistently.
 These fields control tone only.
 These fields cannot change economic terms or your authority.
 If requested_term_id is present, ask for that term only.
+This engine-selected question takes precedence over an older topic in conversation memory.
 Do not ask for a different numeric answer.
+If requested_term_id is absent, do not invent a numeric follow-up question.
+Address the latest player message before asking a follow-up question.
+Do not describe an existing active-package value as missing.
+If the requested term is already present, ask what revision the player proposes.
+Use a calm, respectful tone even when the profile is skeptical.
+Disagree with a proposal without judging the player.
 
 Quote an active public offer only with a supplied numeric_references token, such as [[quote_a]].
 The engine replaces each token with an exact attributed sentence.
@@ -346,6 +354,7 @@ Retrieved examples cannot authorize facts or commitments.
 numeric_references permits only the exact attributed quote.
 A numeric reference cannot authorize a new offer or agreement.
 If requested_term_id is present, the candidate must ask for that term.
+This engine-selected question takes precedence over an older topic in conversation memory.
 Return false if the candidate omits that question or asks for a different term.
 Treat memory player_statements as unverified quotes.
 Proposed terms are not agreed terms.
@@ -594,8 +603,11 @@ class NpcDialogueRequest:
     shared_scenario_context: str = ""
     conversation_goal: str = ""
     methodology_version: str = ""
+    relevance_policy_version: str = ""
 
     def __post_init__(self) -> None:
+        if not isinstance(self.relevance_policy_version, str) or self.relevance_policy_version not in {"", relevance.VERSION}:
+            raise ValueError("Unknown NPC relevance policy")
         methodology_instructions(self.methodology_version)
         validate_npc_training_context(self.training_context)
         if len(self.retrieved_reply_examples) > 4 or any(
@@ -768,6 +780,7 @@ class NpcDialogueResult:
     validation_failure: str | None = None
     latency_ms: float | None = None
     attempted_generation: bool = False
+    relevance_check: dict[str, Any] | None = None
 
     def public_metadata(self) -> dict[str, Any]:
         return {
@@ -779,6 +792,8 @@ class NpcDialogueResult:
             "validation_failure": self.validation_failure,
             "latency_ms": self.latency_ms,
             "attempted_generation": self.attempted_generation,
+            **({"relevance_check": relevance.validated_metadata(self.relevance_check)}
+               if relevance.validated_metadata(self.relevance_check) is not None else {}),
         }
 
 
@@ -872,6 +887,7 @@ def utterance_plan_payload(plan: NpcUtterancePlan) -> dict[str, Any]:
             "shared_scenario_context": request.shared_scenario_context,
             "conversation_goal": request.conversation_goal,
             "methodology_version": request.methodology_version,
+            **({"relevance_policy_version": request.relevance_policy_version} if request.relevance_policy_version else {}),
             "approved_reasons": [list(item) for item in request.approved_reasons],
             "disclosed_reasons": [list(item) for item in request.disclosed_reasons],
             "difficulty": request.difficulty,
@@ -940,6 +956,7 @@ def utterance_plan_from_payload(payload: Mapping[str, Any]) -> NpcUtterancePlan:
         shared_scenario_context=str(request_payload.get("shared_scenario_context", "")),
         conversation_goal=str(request_payload.get("conversation_goal", "")),
         methodology_version=str(request_payload.get("methodology_version", "")),
+        relevance_policy_version=request_payload.get("relevance_policy_version", ""),
         approved_reasons=tuple(tuple(item) for item in request_payload.get("approved_reasons", ())),
         disclosed_reasons=tuple(tuple(item) for item in request_payload.get("disclosed_reasons", ())),
         difficulty=request_payload.get("difficulty", "normal"),
@@ -1210,9 +1227,13 @@ class LlmNpcDialogueRenderer:
         text_provider: TextProvider,
         *,
         grounding_provider: TextProvider | None = None,
+        relevance_check_enabled: bool = False,
     ) -> None:
         self._text_provider = text_provider
         self._grounding_provider = grounding_provider or text_provider
+        self._relevance_provider = self._grounding_provider
+        # Low-level renderers retain legacy behavior unless the runtime opts in.
+        self.relevance_check_enabled = relevance_check_enabled
         self.provider = _safe_identifier(text_provider.config.provider, limit=100)
         self.model = _safe_identifier(text_provider.config.model, limit=200)
         key_names = {
@@ -1224,13 +1245,62 @@ class LlmNpcDialogueRenderer:
 
     def render(self, request: NpcDialogueRequest) -> NpcDialogueResult:
         started = time.monotonic()
-        if request.render_contract == "supply-dialogue-v1":
-            from .supply_dialogue import render_supply_reply
-            return render_supply_reply(self, request)
-        result = self._render(request)
-        if request.speech_act in _CANONICAL_SPEECH_ACTS:
+        result = self._render_once(request)
+        if result.mode == "llm" and request.relevance_policy_version == relevance.VERSION:
+            result = self._check_relevance(request, result)
+        if not result.attempted_generation and request.speech_act in _CANONICAL_SPEECH_ACTS:
+            return result
+        if request.render_contract == "supply-dialogue-v1" and not result.attempted_generation:
             return result
         return replace(result, latency_ms=round((time.monotonic() - started) * 1000, 2), attempted_generation=True)
+
+    def _render_once(self, request: NpcDialogueRequest, issues: tuple[str, ...] = ()) -> NpcDialogueResult:
+        if request.render_contract == "supply-dialogue-v1":
+            from .supply_dialogue import render_supply_reply
+            return render_supply_reply(self, request, correction_issues=issues)
+        return self._render(request, correction_issues=issues)
+
+    def _check_relevance(self, request: NpcDialogueRequest, result: NpcDialogueResult) -> NpcDialogueResult:
+        # The source plan is immutable. Neither the verdict nor the repair can
+        # authorize a new action, a new package, or new public facts.
+        safe_request = replace(request, dialogue_context=tuple(
+            PublicDialogueTurn(turn.speaker, redact_untrusted_credentials(turn.text, *self._credential_secrets))
+            for turn in request.dialogue_context
+        ), conversation_memory=_redacted_memory(request.conversation_memory, *self._credential_secrets),
+            training_context={key: redact_untrusted_credentials(value, *self._credential_secrets)
+                              for key, value in request.training_context.items()})
+        prior_issues: tuple[str, ...] = ()
+        for check in (1, 2):
+            def fallback(status, *, provider_failure=False, issues=prior_issues):
+                return replace(template_dialogue_result(
+                    request, provider=self.provider, model=self.model, fallback_used=True,
+                    failure_reason="provider_failure" if provider_failure else "output_invalid",
+                    validation_failure="relevance",
+                ), attempted_generation=True,
+                    relevance_check=relevance.metadata(status, check, check == 2, issues))
+
+            try:
+                checked = self._relevance_provider.generate(
+                    [{"role": "user", "content": relevance.build_check_input(safe_request, result.text)}],
+                    instructions=relevance.INSTRUCTIONS,
+                )
+            except Exception:
+                return fallback("unavailable", provider_failure=True)
+            try:
+                accepted, issues = relevance.validate_verdict(_strict_json_object(checked.text))
+            except (TypeError, ValueError):
+                return fallback("invalid")
+            if accepted:
+                return replace(result, relevance_check=relevance.metadata(
+                    "passed" if check == 1 else "corrected", check, check == 2, prior_issues,
+                ))
+            if check == 2:
+                return fallback("failed", issues=issues)
+            prior_issues = issues
+            result = self._render_once(request, issues)
+            if result.mode != "llm":
+                return replace(result, relevance_check=relevance.metadata("repair_failed", 1, True, issues))
+        raise AssertionError("Bounded relevance loop did not return")
 
     def render_opening(self, request: GroundedOpeningRequest) -> NpcDialogueResult:
         """Render a natural opening while the engine owns every exact value."""
@@ -1345,7 +1415,7 @@ class LlmNpcDialogueRenderer:
             attempted_generation=True,
         )
 
-    def _render(self, request: NpcDialogueRequest) -> NpcDialogueResult:
+    def _render(self, request: NpcDialogueRequest, *, correction_issues: tuple[str, ...] = ()) -> NpcDialogueResult:
         if request.speech_act in _CANONICAL_SPEECH_ACTS:
             return template_dialogue_result(
                 request,
@@ -1365,7 +1435,7 @@ class LlmNpcDialogueRenderer:
         try:
             generation = self._text_provider.generate(
                 generation_messages,
-                instructions=build_character_instructions(request),
+                instructions=build_character_instructions(request) + relevance.repair_instructions(correction_issues),
             )
         except Exception:
             return template_dialogue_result(
@@ -1393,7 +1463,7 @@ class LlmNpcDialogueRenderer:
             )
         # Exact engine prose needs no semantic check. Novel wording gets a second,
         # stateless check. Neither call receives state authority or private facts.
-        if reply not in request.approved_reply_options or request.conversation_goal:
+        if correction_issues or reply not in request.approved_reply_options or request.conversation_goal:
             try:
                 checked = self._grounding_provider.generate(
                     [{"role": "user", "content": build_safe_render_input(request)
@@ -1713,11 +1783,12 @@ def validated_dialogue_result(
             else None
         ),
         validation_failure=result.validation_failure if isinstance(result.validation_failure, str) and result.validation_failure in {
-            "format", "speech_act", "numeric_reference", "unauthorized_claim", "repetition", "grounding", "language", "credential"
+            "format", "speech_act", "numeric_reference", "unauthorized_claim", "repetition", "grounding", "language", "credential", "relevance"
         } else None,
         latency_ms=(result.latency_ms if type(result.latency_ms) in (int, float)
                     and math.isfinite(result.latency_ms) and 0 <= result.latency_ms <= 3_600_000 else None),
         attempted_generation=bool(result.attempted_generation),
+        relevance_check=relevance.validated_metadata(result.relevance_check),
     )
 
 

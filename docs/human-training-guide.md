@@ -4,14 +4,52 @@ Date: 2026-09-26.
 Contracts: [DR-36](decisions/2026-09-24_training-loop.md) and [DR-48](decisions/2026-09-26_rewind-and-player-assist.md).
 ## Use the Web UI
 
+You can propose several supported terms in one message.
+The NPC evaluates the complete proposed package.
+A counteroffer identifies changed terms and retained terms.
+If the NPC asks for one missing term, a short numeric answer uses that question's context.
+Use `%` for a prepayment percentage.
+Clarifications identify missing units or ambiguous alternatives. They do not imply that you accepted the deal.
+After agreement, the UI keeps the final conversation visible and opens an agreement dialog.
+Select **View agreement** to read the conversation. Select **Open review** to see the analysis.
+Closing the dialog does not undo the agreement.
+See [DR-58](decisions/2026-09-29_contextual-package-replies.md).
+
+An administrator can prepare a session at `/app/admin`.
+The form selects domain, topic, NPC role, an authored NPC goal, difficulty, and tone.
+Each goal belongs to a pinned scenario and role. A topic can have one approved goal per role.
+The goal is not the player's private preparation.
+The form starts the player in the opposite role and clears administrator access before the handoff.
+The player sees only the normal role-scoped session.
+The administrator tones work in template mode. They do not change acceptable terms.
+The ordinary player setup remains available at `/app/training`.
+See [DR-56](decisions/2026-09-29_admin-context-presets.md).
+
+New human-versus-NPC sessions use the cooperative policy in [DR-57](decisions/2026-09-29_cooperative-npc-policy.md).
+The NPC prefers feasible counterproposals close to your proposed terms.
+It can preserve secondary terms when a price-only compromise is sufficient.
+In the composite supply case, the seller considers eligible authored discounts earlier.
+This changes actual proposals, not only wording.
+The NPC keeps its mandatory constraints and minimum acceptable utility.
+Agreement is not guaranteed.
+Tone, difficulty, and rapport do not change these economic limits.
+Existing sessions and retries from their checkpoints retain their previous policy.
+Start a new session to use the new policy after this version is deployed.
+Benchmark sessions retain the previous policy.
+
 [DR-51](decisions/2026-09-26_negotiation-methodologies.md) adds Harvard, BATNA/ZOPA, and Voss to NPC wording and final coaching.
 The NPC can ask about interests, explain an authorized exchange, or tentatively reflect a stated concern.
 It must answer a direct question first.
 The engine still selects the action and validates the terms.
 Warm wording does not change the acceptable economic range.
 
-The completed report shows agreement surplus over your BATNA and margin over your reservation utility.
-These numbers use scenario utility units.
+The completed report compares the deal with your best option without a deal and with your minimum acceptable result.
+The minimum is authored for your role in the scenario. It is not calculated from your private preparation target.
+The differences use scenario points, not money or percentages.
+A positive difference means better, a negative difference means worse, and zero means equal.
+For example, a deal score of 70 and a minimum of 50 give a difference of +20 points.
+This difference does not specify how much you can concede on an individual term.
+The API fields and economic calculations remain unchanged.
 Without agreement, no deal surplus is shown.
 An exit alone does not prove success or failure.
 The report does not infer an exact ZOPA from the conversation.
@@ -21,6 +59,23 @@ The coach can report insufficient evidence for a dimension.
 This is not a negative skill rating.
 Voss techniques are optional. A technique name does not earn a score.
 Old cached coaching remains readable and is not regenerated automatically.
+
+[DR-55](decisions/2026-09-29_player-behavior-review.md) adds a separate **Поведение игрока** / **Player behavior** section.
+It assesses rapport, questions and listening, interest discovery, argumentation, conditional trading, clarity, and plan adherence.
+Each criterion shows an effective, needs-improvement, mixed, or insufficient-evidence assessment.
+The section cites player messages and may include NPC context.
+Open **Реплики-основания** / **Source messages** to read exact excerpts.
+Strengths, improvements, hypothetical alternatives, and practice tasks appear when supported.
+Missing evidence is not a failed skill. An empty plan cannot establish plan adherence.
+For these criteria, **Что попробовать в следующем диалоге** gives a concrete practice action.
+**Пример реплики — не из переписки** gives an authored example with placeholders.
+These hints are general product guidance, not model findings or claims that you omitted an action.
+Use real information in the placeholders. Keep private limits in your private plan.
+The hints do not change the assessment or require another provider request.
+The review evaluates actions, not personality. It does not calculate a total behavior score.
+Economic success does not establish effective behavior. No agreement does not establish ineffective behavior.
+Personal-interest questions and technique names do not earn automatic credit.
+Historical reviews show an explicit missing-version notice instead of invented behavior ratings.
 
 ### Steps
 
@@ -233,6 +288,8 @@ The existing public conversation memory retains attributed statements and offer 
 The model does not write an unrestricted MEMORY document.
 The optional personal fact is a dog named Гуффи in Russian or Goofy in English.
 It is available for relevant questions and one early opportunity in the sociable profile.
+The supply scenario gives one authored neutral answer to a supported wellbeing question.
+It says that Goofy is doing well and thanks the player for asking.
 The engine records disclosure only when the delivered reply contains the name.
 
 ## Clarification recovery
@@ -277,13 +334,24 @@ It stores provider, model, prompt version, source revision, coverage status, and
 Model calls run outside write transactions.
 Economic facts remain deterministic.
 Semantic grounding is probabilistic and can fail.
+New coaching can correct one rejected draft using specific checker issues.
+The corrected draft passes the same checks and another grounding call.
+There are at most four provider calls per job. Correction does not start after 70 elapsed seconds.
+Invalid or still-unsupported output remains unavailable. Rejected drafts are not shown to the player.
+
+When no complete behavior assessment is available, the review shows `Практика без AI-оценки` / `Practice without AI assessment`.
+This section contains authored exercises, not findings about the transcript.
+It remains available before a coaching request, during a pending request, after failure, and in template mode.
+Historical reviews without behavior also retain access to these exercises.
+The player can open one criterion and choose a practice action before retrying a checkpoint.
+No model call or behavior rating is required for this section.
 
 The evidence package uses at most 80 recent message excerpts within a 28000-character selection budget.
 Each excerpt contains at most 1600 characters.
 The package includes at most 12 recent offer events.
 `evidence_truncated` identifies reduced coverage.
 The coach must disclose that limitation in its text.
-The generation budget is 2200 output tokens per review call.
+The generation budget is 5000 output tokens per review call.
 The classifier budget is 350 output tokens.
 Each call has one transport attempt and a timeout no greater than 45 seconds.
 The configured NPC timeout can impose a shorter limit.
@@ -328,7 +396,7 @@ It does not print that credential.
 External agents retain the common Player API.
 Their English instruction template version is `natural-language-agent-v5`.
 The supply branch uses `supply-agent-v2`.
-New final coaching uses `goal-coaching-v4`.
+New final coaching uses `goal-coaching-v6` and behavior rubric `player-behavior-v1`.
 Existing cached coaching retains its original result and version.
 Do not combine benchmark results across changed prompt versions without identifying the difference.
 

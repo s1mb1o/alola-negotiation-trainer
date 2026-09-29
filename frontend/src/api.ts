@@ -1,5 +1,6 @@
 import type {
   ApiErrorPayload,
+  AdminTrainingPreset,
   AdminSessionDetail,
   AdminSessionFilters,
   AdminSessionListResponse,
@@ -137,6 +138,13 @@ export function createSession(payload: CreateSessionRequest, token?: string): Pr
     token,
     body: JSON.stringify(payload),
   })
+}
+
+export async function listAdminTrainingPresets(language: UiLanguage, adminToken: string): Promise<AdminTrainingPreset[]> {
+  const payload = await apiRequest<{ items: Array<Omit<AdminTrainingPreset, 'scenario'> & { scenario: Record<string, unknown> }> }>(
+    `/admin/training-presets?language=${encodeURIComponent(language)}`, { token: adminToken },
+  )
+  return payload.items.map(item => ({ ...item, scenario: normalizeScenario(item.scenario) }))
 }
 
 export function getSession(sessionId: string, token: string): Promise<SessionEnvelope> {

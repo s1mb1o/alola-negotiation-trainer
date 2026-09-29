@@ -31,6 +31,7 @@ describe('AppHeader preferences', () => {
     expect(screen.getByRole('link', { name: 'Тренировка' })).toHaveAttribute('href', '/app/training')
     expect(screen.getByRole('link', { name: 'Прогресс' })).toHaveAttribute('href', '/app/progress')
     expect(screen.getByRole('link', { name: 'Сессии' })).toHaveAttribute('href', '/app/inspector')
+    expect(screen.getByRole('link', { name: 'Настройка NPC' })).toHaveAttribute('href', '/app/admin')
     expect(onViewChange).toHaveBeenCalledWith('stats')
     expect(onThemeChange).toHaveBeenCalledWith('dark')
     expect(screen.getByRole('option', { name: 'Светлая' })).toBeInTheDocument()

@@ -3,14 +3,19 @@
 ## Public marketing and private trainer release gate (DR-53)
 
 The MVP deployment MUST publish static Russian and English marketing pages.
+The MVP deployment MUST publish the static Russian hackathon landing page.
 The root path MUST redirect to the Russian page.
-The pages MUST define canonical, language, social, and structured metadata.
+The pages MUST define applicable canonical, language, social, and structured metadata.
+The hackathon landing page MUST contain the pitch, verified demonstration path, architecture boundary, and project resource links.
+The hackathon landing page MUST show approved negotiation and assessment screenshots.
+It MUST label recorded scores as product scores from one demonstration run, not validated skill improvement.
+It MUST provide an anonymous presentation download and explicit access instructions for protected resources.
 The deployment MUST publish valid `robots.txt` and `sitemap.xml` files.
 Unknown public paths MUST return HTTP 404.
 
 The trainer MUST use the `/app/*` namespace and retain admission control.
 Trainer and API responses MUST remain non-indexable.
-The release checks MUST cover the public pages, discovery files, redirects, private routes, and immutable asset caching.
+The release checks MUST cover all public pages, discovery files, redirects, private routes, and immutable asset caching.
 The detailed requirements are defined in [DR-53](decisions/2026-09-29_public-marketing-private-trainer.md).
 
 ## OpenAPI release gate (DR-37)

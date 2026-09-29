@@ -9,10 +9,15 @@ import uuid
 
 from .dialogue import NpcDialogueRequest, redact_untrusted_credentials
 from .methodology import VERSION as METHODOLOGY_VERSION
-from .dialogue_redirect import select_varied_fallback, topic_return_options
+from .negotiation_policy import COOPERATIVE_POLICY_VERSION
+from .dialogue_redirect import (
+    personal_fact_reply_options,
+    select_varied_fallback,
+    topic_return_options,
+)
 from .engine import ParsedAction, offer_is_acceptable, offer_is_bindable
 from .reply_retrieval import retrieve_reply_examples
-from .training import npc_training_context
+from .training import authored_tone_options, npc_training_context
 from .scenarios import canonical_json, digest
 from .supply import (
     is_supply_scenario,
@@ -191,11 +196,22 @@ class SupplyProtocolMixin:
                 session["language"],
                 formal=bool(state.get("active_offer")),
                 proposer_role=role,
+                cooperative=state.get("npc_policy_version") == COOPERATIVE_POLICY_VERSION,
             )
             action, text = decision.action, decision.text
         training_context = npc_training_context(state.get("training", {}), session["language"], player_message)
         context = self._dialogue_context(connection, session["id"], npc["id"])
-        if action == "inform":
+        personal_options = personal_fact_reply_options(
+            player_message,
+            session["language"],
+            training_context,
+        )
+        rendered_terms = terms
+        if personal_options:
+            action = "personal_fact"
+            text = personal_options[0]
+            rendered_terms = {}
+        elif action == "inform":
             # Use scalar topic aliases for wording only. The supply terms stay immutable.
             labels = (
                 {"price": "цена", "prepayment_fraction": "условия оплаты", "delivery_weeks": "срок поставки"}
@@ -207,13 +223,22 @@ class SupplyProtocolMixin:
                 text = select_varied_fallback(
                     options, player_message, [turn.text.split("\n\n", 1)[0] for turn in context if turn.speaker == "npc"],
                 )
-        block = format_supply_terms(scenario, terms, session["language"]) if terms else ""
+        block = (
+            format_supply_terms(scenario, rendered_terms, session["language"])
+            if rendered_terms
+            else ""
+        )
+        if action in {"inform", "personal_fact", "propose"}:
+            text = authored_tone_options(
+                (text,), state.get("training", {}).get("setup", {}),
+                session["language"], "acknowledge_information",
+            )[0]
         fallback = text + ("\n\n" + block if block else "")
         return NpcDialogueRequest(
             language=session["language"],
             currency=scenario["currency"],
             speech_act="acknowledge_information",
-            approved_terms=tuple(sorted(deepcopy(terms).items())),
+            approved_terms=tuple(sorted(deepcopy(rendered_terms).items())),
             public_interest_labels=(),
             participant_facing_terms=(),
             dialogue_context=context,

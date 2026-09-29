@@ -87,7 +87,7 @@ def test_supply_pending_render_recovers_without_new_llm_calls(settings, monkeypa
             response.json()["observation"]["preliminary_proposals"][0]["terms"]["base_price"][
                 "minor_units"
             ]
-            == 11500000
+            == 11100000
         )
 
 

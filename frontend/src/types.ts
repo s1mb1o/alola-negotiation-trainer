@@ -33,6 +33,17 @@ export interface ScenarioRole {
   description?: string
 }
 
+export interface AdminTrainingPreset {
+  preset_id: string
+  domain_id: string
+  domain: string
+  topic_id: string
+  topic: string
+  npc_role: string
+  npc_goal: string
+  scenario: ScenarioSummary
+}
+
 export interface OfferView {
   offer_id: string
   offer_revision: number
@@ -473,6 +484,7 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 
 export interface TrainingSetup {
   profile: 'concise_skeptical' | 'sociable'
+  authored_tone?: boolean
   relationship: 'first_meeting' | 'successful_history'
   player_name: string
   shared_background: string
@@ -532,11 +544,33 @@ export interface CoachingEvidence {
   is_player: boolean
 }
 
+export type BehaviorCriterion = 'rapport' | 'listening' | 'interest_discovery' | 'argumentation'
+  | 'conditional_trading' | 'clarity' | 'plan_adherence'
+export type BehaviorAssessment = 'effective' | 'needs_improvement' | 'mixed' | 'insufficient_evidence'
+
+export interface PlayerBehaviorReview {
+  version: 'player-behavior-v1'
+  summary: string
+  criteria: Array<{
+    criterion: BehaviorCriterion
+    assessment: BehaviorAssessment
+    evidence_refs: string[]
+    observation: string
+    strength: string | null
+    improvement: string | null
+    alternative_phrase: string | null
+    next_practice: string | null
+    evidence: CoachingEvidence[]
+    alternative_is_hypothesis: true
+  }>
+}
+
 export interface CoachingResult {
   evidence_truncated?: boolean
   status: 'not_requested' | 'pending' | 'complete' | 'unavailable'
   summary?: string
   goal_assessment?: string
+  behavior?: PlayerBehaviorReview | null
   cards?: Array<{
     dimension?: 'economics' | 'process' | 'communication' | null
     assessment?: 'observed' | 'insufficient_evidence' | null

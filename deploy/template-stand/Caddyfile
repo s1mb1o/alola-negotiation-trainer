@@ -1,3 +1,14 @@
+# The API enforces AdministratorBearer. All other admin routes remain blocked.
+@training_presets {
+  method GET
+  path /api/v1/admin/training-presets
+}
+handle @training_presets {
+  header X-Robots-Tag "noindex, nofollow"
+  header Cache-Control "no-store"
+  reverse_proxy 127.0.0.1:8172
+}
+
 @blocked path /llm-debug* /api/v1/admin/*
 handle @blocked {
   header X-Robots-Tag "noindex, nofollow"

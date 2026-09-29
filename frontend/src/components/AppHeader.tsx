@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { BarChart3, Database, MessageSquareText, MonitorCog, Moon, Plus, Sun } from 'lucide-react'
+import { BarChart3, Database, MessageSquareText, MonitorCog, Moon, Plus, Settings2, Sun } from 'lucide-react'
 import { translate } from '../i18n'
 import { appViewPath, type AppView } from '../routing'
 import type { ThemePreference, UiLanguage } from '../types'
@@ -48,6 +48,12 @@ export function AppHeader({
       </a>
 
       <nav className="primary-nav" aria-label={t('primaryNavigation')}>
+        <a className={activeView === 'admin' ? 'nav-button active' : 'nav-button'}
+          href={appViewPath('admin')} onClick={event => navigate(event, 'admin')}
+          aria-label={t('navAdmin')}
+          aria-current={activeView === 'admin' ? 'page' : undefined}>
+          <Settings2 size={17} aria-hidden="true" /><span>{t('navAdmin')}</span>
+        </a>
         <a
           className={activeView === 'training' ? 'nav-button active' : 'nav-button'}
           href={appViewPath('training')}

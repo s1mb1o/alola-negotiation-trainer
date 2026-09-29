@@ -3,7 +3,9 @@
 Date: 2026-09-27.
 Contract: [DR-51](decisions/2026-09-26_negotiation-methodologies.md).
 Runtime version: `harvard-batna-voss-v1`.
-Current coaching prompt version: `goal-coaching-v4`.
+Coaching prompt version at this verification: `goal-coaching-v4`.
+Current coaching uses `goal-coaching-v6` under [DR-55](decisions/2026-09-29_player-behavior-review.md).
+The historical live results below do not validate the new behavior rubric.
 The initial live probe used `goal-coaching-v3`.
 
 ## Scope

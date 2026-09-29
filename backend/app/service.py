@@ -8,10 +8,11 @@ import secrets
 import sqlite3
 import threading
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from statistics import fmean
 from typing import Any
 
+from .admin_presets import CONTEXTS, LABELS
 from .conversation import (
     build_conversation_memory,
     detected_conditional_exchange,
@@ -43,6 +44,7 @@ from .dialogue import (
     validated_grounded_opening_result,
 )
 from .dialogue_contracts import PublicNumericReference
+from .dialogue_relevance import VERSION as RELEVANCE_VERSION
 from .dialogue_quality import build_dialogue_quality
 from .dialogue_redirect import select_varied_fallback, topic_return_options
 from .engine import (
@@ -68,7 +70,7 @@ from .models import (
     HintRequest,
     SubmitMessageRequest,
 )
-from .negotiation_policy import select_counterproposal
+from .negotiation_policy import COOPERATIVE_POLICY_VERSION, select_counterproposal
 from .reply_retrieval import retrieve_reply_examples
 from .scenarios import (
     authored_opening,
@@ -82,6 +84,7 @@ from .supply import is_supply_scenario, supply_financial_summary
 from .supply_extraction import VERSION as SUPPLY_EXTRACTOR_VERSION
 from .supply_protocol import SupplyProtocolMixin, supply_current, supply_envelope
 from .training import (
+    authored_tone_options,
     CLARIFICATION_RECOVERY_VERSION,
     apply_social,
     initialize_training,
@@ -308,7 +311,7 @@ def _review_recommendations(
             "conditional_trading": "Формулируйте обмен полным пакетом: «предлагаю X и Y», затем объясните взаимосвязь условий.",
             "package_design": "Предлагайте полный пакет сразу: все условия вместе, а не по одному.",
             "clarity": "Формулируйте одно полное предложение в сообщении, без нескольких альтернатив.",
-            "outcome_below_reservation": "Сделка ниже вашего порога приемлемости: сравнивайте пакет с альтернативой (BATNA) до принятия.",
+            "outcome_below_reservation": "Сделка хуже минимально приемлемого для вас результата по условиям сценария. Прежде чем соглашаться, сравните все условия с вашим минимумом и с лучшим вариантом без этой сделки.",
             "outcome_expired": "Переговоры истекли по лимиту раундов: раньше переходите к полному пакету условий.",
             "outcome_walked_away": "Партнёр вышел из переговоров: проверяйте, остаётся ли ваше предложение в зоне возможного соглашения.",
         },
@@ -317,7 +320,7 @@ def _review_recommendations(
             "conditional_trading": "State the exchange as one complete package: 'I propose X and Y', then explain how the terms relate.",
             "package_design": "Propose the complete package at once instead of one term at a time.",
             "clarity": "State one complete offer per message, without several alternatives.",
-            "outcome_below_reservation": "The deal is below your reservation level: compare the package with your BATNA before accepting.",
+            "outcome_below_reservation": "The deal is worse than the minimum acceptable result set for your role in the scenario. Before accepting, compare all terms with your minimum and your best option without this deal.",
             "outcome_expired": "The session expired on the round limit: move to a complete package earlier.",
             "outcome_walked_away": "The counterpart walked away: check whether your proposal stays inside the zone of possible agreement.",
         },
@@ -427,6 +430,30 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
         return self._scenario_training_metadata(row)
 
     # Session creation --------------------------------------------------
+
+    def list_training_presets(self, language: str | None = None) -> list[dict[str, Any]]:
+        """Privileged authored objectives, never part of the Player API catalog."""
+        presets = []
+        for public in self.list_scenarios(language):
+            domain_id = CONTEXTS.get(public["id"])
+            if domain_id is None:
+                continue
+            with self.database.read_connection() as connection:
+                row = connection.execute(
+                    "SELECT source_json FROM scenario_versions WHERE scenario_id = ? AND version = ?",
+                    (public["id"], public["version"]),
+                ).fetchone()
+            source = _loads(row["source_json"])
+            domain, topic = LABELS[public["language"]][domain_id]
+            for role, definition in source["roles"].items():
+                presets.append({
+                    "preset_id": f"{public['id']}@{public['version']}:{role}",
+                    "domain_id": domain_id, "domain": domain,
+                    "topic_id": domain_id, "topic": topic,
+                    "npc_role": role, "npc_goal": definition["brief"]["objective"],
+                    "scenario": public,
+                })
+        return presets
 
     def create_session(self, request: CreateSessionRequest) -> ServiceResult:
         lock = self.locks.for_session(f"create:{request.idempotency_key}")
@@ -639,6 +666,8 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             }
             if str(request.run_mode) == "training":
                 state["clarification_recovery_version"] = CLARIFICATION_RECOVERY_VERSION
+                if len(human_roles) == 1 and len(npc_roles) == 1:
+                    state["npc_policy_version"] = COOPERATIVE_POLICY_VERSION
             if request.training is not None:
                 try:
                     state["training"] = initialize_training(
@@ -777,6 +806,10 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                         session_id=session_id,
                         relationship=relationship,
                     )
+                    greeting = authored_tone_options(
+                        (greeting,), state.get("training", {}).get("setup", {}),
+                        request.language, "greeting",
+                    )[0]
                     greeting_speech_act = "greeting"
                     greeting_renderer = None
                 self._insert_message(
@@ -1005,6 +1038,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                         str(session["language"]),
                         str(details.get("reason_code", "ambiguous_message")),
                         expected_currency=details.get("expected_currency"),
+                        term_label=participant_term_labels(scenario, session["language"]).get(details.get("term_id")),
                     ),
                 }
             return {
@@ -1929,6 +1963,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                             session["language"],
                             reason,
                             expected_currency=parsed.details.get("expected_currency"),
+                            term_label=participant_term_labels(scenario, session["language"]).get(parsed.details.get("term_id")),
                         ),
                         "evidence_event_id": event_id,
                     }
@@ -2547,7 +2582,8 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             current = supply_current(state)
             decision = decide_supply_action(scenario, npc["role"], current.get("terms", {}), player_message,
                                            scenario.get("language", "ru"), formal=bool(state.get("active_offer")),
-                                           proposer_role=current.get("proposer_role") or next((role for role, pid in state["role_to_participant"].items() if pid == current.get("proposer_participant_id")), None))
+                                           proposer_role=current.get("proposer_role") or next((role for role, pid in state["role_to_participant"].items() if pid == current.get("proposer_participant_id")), None),
+                                           cooperative=state.get("npc_policy_version") == COOPERATIVE_POLICY_VERSION)
             return decision.action, "acknowledge_information", decision.terms or {}
         conversational = classify_npc_speech_act(player_message, player_action)
         public_position: dict[str, Any] = {}
@@ -2619,6 +2655,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 active_terms,
                 state["opening_terms"],
                 previous_counter_terms=state.get("npc_counter_terms"),
+                cooperative=state.get("npc_policy_version") == COOPERATIVE_POLICY_VERSION,
             )
             if counter is not None:
                 return "counter_offer", "complete_counteroffer", counter.terms
@@ -2725,7 +2762,7 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             and not conditional_exchange
         ):
             requested_term_id = focused_terms[0]
-        if speech_act == "request_complete_offer":
+        if speech_act in {"request_complete_offer", "acknowledge_partial_offer"}:
             requested_term_id = next((term_id for term_id in scenario["terms"]["required_term_ids"]
                                       if term_id not in offer_terms and term_id in labels), None)
         missing_labels = tuple(
@@ -2747,13 +2784,36 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                         term_id=term_id, value=value, currency=scenario["currency"],
                     ))
         exchange_labels: tuple[str, ...] = ()
+        changed_labels: tuple[str, ...] = ()
+        retained_labels: tuple[str, ...] = ()
+        objection_labels: tuple[str, ...] = ()
+        if speech_act == "offer_rejection" and offer_is_complete(scenario, offer_terms):
+            violations = constraint_violations(scenario, npc["role"], offer_terms)
+            pending = [constraint["expression"] for constraint in scenario["hard_constraints"]
+                       if constraint["applies_to_role"] == npc["role"]
+                       and constraint.get("violation_code", constraint["id"]) in violations]
+            objection_terms: set[str] = set()
+            while pending:
+                expression = pending.pop()
+                if isinstance(expression, dict):
+                    if expression.get("term") in labels:
+                        objection_terms.add(expression["term"])
+                    pending.extend(expression.values())
+                elif isinstance(expression, list):
+                    pending.extend(expression)
+            objection_labels = tuple(labels[term] for term in labels if term in objection_terms)
         if speech_act == "complete_counteroffer":
             # Explain only a visible package change. Never expose either role's utility.
             prior = next((offer for offer in reversed(memory.get("offers", [])) if offer["speaker"] == "player"), None)
             if prior:
+                changed_labels = tuple(labels[term_id] for term_id in (terms or {})
+                                       if term_id in labels and terms[term_id] != prior["terms"].get(term_id))
+                retained_labels = tuple(labels[term_id] for term_id in (terms or {})
+                                        if term_id in labels and terms[term_id] == prior["terms"].get(term_id))
                 counter = select_counterproposal(scenario, npc["role"], prior["terms"],
                                                   (_loads(session["state_json"]) or {}).get("opening_terms", {}),
-                                                  previous_counter_terms=(_loads(session["state_json"]) or {}).get("npc_counter_terms"))
+                                                  previous_counter_terms=(_loads(session["state_json"]) or {}).get("npc_counter_terms"),
+                                                  cooperative=(_loads(session["state_json"]) or {}).get("npc_policy_version") == COOPERATIVE_POLICY_VERSION)
                 if counter and counter.reason_code == "conditional_exchange" and counter.terms == terms:
                     exchange_labels = tuple(labels[term_id] for term_id in counter.trade_term_ids if term_id in labels)
         options = npc_message_options(
@@ -2769,6 +2829,9 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             conversation_style=scenario["roles"][npc["role"]].get("conversation_style", "pragmatic"),
             requested_label=labels.get(requested_term_id),
             exchange_labels=exchange_labels,
+            changed_labels=changed_labels,
+            retained_labels=retained_labels,
+            objection_labels=objection_labels,
         )
         signal_options: tuple[str, ...] = ()
         if speech_act == "focused_discussion" and conditional_exchange:
@@ -2846,6 +2909,10 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 player_message, str(session["language"]), labels, dialogue_context,
                 training_context, focus,
             ) or options
+        options = authored_tone_options(options, training.get("setup", {}),
+                                        str(session["language"]), speech_act)
+        signal_options = authored_tone_options(signal_options, training.get("setup", {}),
+                                               str(session["language"]), speech_act)
         fallback = select_varied_fallback(
             signal_options or options,
             player_message,
@@ -2994,6 +3061,11 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             terms=terms,
             player_message=player_message,
         )
+        if (getattr(self.dialogue_renderer, "relevance_check_enabled", False)
+                and session["run_mode"] == "training"
+                and connection.execute("SELECT 1 FROM participants WHERE session_id = ? AND controller = 'human'",
+                                       (session["id"],)).fetchone()):
+            request = replace(request, relevance_policy_version=RELEVANCE_VERSION)
         return NpcUtterancePlan(
             render_id=stable_render_id(str(session["id"]), intent_revision),
             session_id=str(session["id"]),
@@ -4537,6 +4609,15 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
                 f"{strategy['shared_context']} Is this a workable basis, and which term "
                 "would you like to discuss first?"
             )
+        if setup.get("authored_tone"):
+            original = introduction
+            introduction = (
+                ("Рад встрече. Давайте вместе обсудим условия." if language == "ru"
+                 else "I am glad to meet you. Let us discuss the terms together.")
+                if setup.get("profile") == "sociable" else
+                ("Перейдём к условиям." if language == "ru" else "Let us discuss the terms.")
+            )
+            fallback_template = fallback_template.replace(original, introduction, 1)
         return GroundedOpeningRequest(
             language=language,
             scenario_title=str(scenario["title"]),
@@ -4547,8 +4628,10 @@ class NegotiationService(TrainingServiceMixin, SupplyProtocolMixin):
             untrusted_player_background=player_background,
             opening_goal=str(strategy["opening_goal"]),
             public_position=public_position,
-            conversation_style=str(
-                scenario["roles"][npc_role].get("conversation_style", "pragmatic")
+            conversation_style=(
+                ("relationship_focused" if setup.get("profile") == "sociable" else "pragmatic")
+                if setup.get("authored_tone") else
+                str(scenario["roles"][npc_role].get("conversation_style", "pragmatic"))
             ),
             fallback_template=fallback_template,
             methodology_version=METHODOLOGY_VERSION,

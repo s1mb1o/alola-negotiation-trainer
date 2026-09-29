@@ -13,6 +13,7 @@ Read [`../CLAUDE.md`](../CLAUDE.md) and [`../AGENTS.md`](../AGENTS.md) first.
 - Follow the system light or dark preference by default.
 - Keep browser STT and TTS optional. Text remains the canonical message.
 - Run `npm test` and `npm run build` after a change.
+- Use plain language for economic review comparisons. Explain positive, zero, and negative scenario points. Keep the authored minimum distinct from the private preparation target and the best option without a deal. Never describe `margin_over_reservation` as money, a percentage, or remaining concession capacity.
 
 ## Supply package contract
 

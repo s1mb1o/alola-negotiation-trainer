@@ -22,6 +22,7 @@ from .dialogue import (
     MAX_CONTEXT_TEXT_CHARACTERS,
 )
 from .dialogue import _safe_identifier
+from .dialogue_relevance import repair_instructions, validated_metadata
 from .methodology import instructions as methodology_instructions
 
 CONTRACT = "supply-dialogue-v1"
@@ -96,7 +97,15 @@ Approval cannot create an action or agreement.
 def validate_supply_request(request):
     if request.language not in {"ru", "en"} or request.currency != "EUR":
         raise ValueError("Unsupported supply language or currency")
-    if request.supply_action not in {"opening", "inform", "propose", "publish", "accept", "reject"}:
+    if request.supply_action not in {
+        "opening",
+        "inform",
+        "personal_fact",
+        "propose",
+        "publish",
+        "accept",
+        "reject",
+    }:
         raise ValueError("Unsupported supply action")
     if request.speech_act != "acknowledge_information" or request.conversation_memory:
         raise ValueError("Supply dialogue uses only its explicit public context")
@@ -204,9 +213,11 @@ def validate_supply_delivery(request, result):
                 "grounding",
                 "language",
                 "credential",
+                "relevance",
             }
             else None,
             attempted_generation=bool(result.attempted_generation),
+            relevance_check=validated_metadata(result.relevance_check),
             latency_ms=result.latency_ms
             if type(result.latency_ms) in {float, int}
             and math.isfinite(result.latency_ms)
@@ -219,8 +230,14 @@ def validate_supply_delivery(request, result):
         )
 
 
-def render_supply_reply(renderer, request):
-    if request.supply_action in {"opening", "publish", "accept", "reject"}:
+def render_supply_reply(renderer, request, *, correction_issues=()):
+    if request.supply_action in {
+        "opening",
+        "personal_fact",
+        "publish",
+        "accept",
+        "reject",
+    }:
         return template_dialogue_result(request, provider=renderer.provider, model=renderer.model)
     started = time.monotonic()
     facts = {
@@ -254,7 +271,8 @@ def render_supply_reply(renderer, request):
     content = json.dumps(facts, ensure_ascii=False)
     try:
         generated = renderer._text_provider.generate(
-            [{"role": "user", "content": content}], instructions=_GENERATION + methodology_instructions(request.methodology_version)
+            [{"role": "user", "content": content}],
+            instructions=_GENERATION + methodology_instructions(request.methodology_version) + repair_instructions(correction_issues)
         )
     except Exception:
         return replace(

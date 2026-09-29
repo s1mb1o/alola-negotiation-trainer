@@ -3,6 +3,9 @@
 ALOLA даёт безопасную практику деловых переговоров в браузере.
 Игрок пишет естественные реплики.
 Детерминированный движок отдельно проверяет условия сделки, ограничения, порог приемлемости и подтверждение соглашения.
+В одной реплике можно предложить несколько поддерживаемых условий. NPC оценивает пакет и указывает изменения в своём встречном предложении.
+После соглашения интерфейс показывает уведомление и сохраняет финальный диалог. Игрок открывает разбор отдельной кнопкой.
+В AI-режиме новая отдельная проверка оценивает уместность сгенерированных разговорных ответов NPC. Допускается одна попытка исправления с повторной проверкой. При сбое используется реплика движка. Проверка добавляет задержку и расходы; она не меняет решения по сделке. См. [границы и настройку](docs/npc-dialogue-guide.md#additional-relevance-check-dr-59).
 
 Материалы и доступы для жюри распространяются по отдельной прямой ссылке.
 Скриншоты показывают демонстрационный прогон Nord Systems от 29.09.2026.
@@ -14,7 +17,7 @@ ALOLA даёт безопасную практику деловых перего
 2. Игрок может вернуться к сохранённому решению и сравнить два фактических исхода на одном состоянии.
 3. Люди, внешние агенты и CLI используют один Player API. Это позволяет применять сценарии и для обучения, и для сопоставимых прогонов агентов.
 
-Локальные артефакты кандидата: [презентация](docs/release/ALOLA_LCT2026_Task9_v2.pptx), [PDF](output/pdf/ALOLA_LCT2026_Task9_v2.pdf) и [сценарий видео](docs/release/video-script.md).
+Локальные артефакты кандидата: [презентация](docs/release/ALOLA_LCT2026_Task9_v6.pptx), [PDF](output/pdf/ALOLA_LCT2026_Task9_v6.pdf) и [сценарий видео](docs/release/video-script.md).
 Внешние URL и точный публичный тег добавляют только после прохождения release gate.
 
 ## Целевая аудитория, проблема и границы MVP
@@ -33,6 +36,7 @@ MVP не является юридическим конструктором до
 Он не оценивает психологию человека.
 Он не выводит точную скрытую ZOPA из переписки.
 Шаблонный режим не выполняет LLM-коучинг, не меняет тон через модель и не обновляет социальные индикаторы.
+Административные пресеты поддерживают два авторских тона без модели: краткий деловой и доброжелательный. Тон не меняет экономику сделки.
 Эти элементы скрыты в сборке по умолчанию.
 
 ## Архитектура и логика симуляции
@@ -245,6 +249,9 @@ The executable scenarios and clients also support English.
 ## Implemented MVP
 
 The [human training loop](docs/human-training-guide.md) adds private preparation, shared player background, two NPC profiles, bounded social state, and goal-based LLM coaching.
+New human-versus-NPC sessions use [cooperative counterproposals](docs/decisions/2026-09-29_cooperative-npc-policy.md).
+The NPC seeks a feasible compromise close to the player's proposal. Hard constraints and reservation utility stay unchanged.
+Historical sessions and benchmark sessions retain their previous policy.
 Completed sessions can restart from a recorded decision checkpoint with fresh credentials.
 Active training sessions can rewind to an earlier NPC checkpoint three times per root lineage.
 The **Ответь за меня** action uses `Qwen3.8-Max` to create one actor-safe player reply and submits it through the normal Player API.
@@ -284,7 +291,7 @@ Full coaching quality remains unvalidated on live Qwen dialogues.
 - The Web UI includes a read-only Admin Session Inspector with filters, transcripts, public events, offer revisions, dialogue diagnostics, and gated public reviews.
 - The separate [LLM diagnostics window](docs/llm-debug-guide.md) at `http://127.0.0.1:8172/llm-debug` shows new training-session provider calls. Local access opens without sign-in. Remote access requires an administrator credential. Redacted traces remain only in bounded process memory.
 - An offline evaluator exports source-attributed human scorecards and compares dialogue diagnostics separately from economic outcomes.
-- The CLI supports interactive play, one-agent play, self-play, history export, reviews, and statistics.
+- The CLI supports interactive play, one-agent play, self-play, Markdown transcript playback, history export, reviews, and statistics.
 - Provider adapters support the OpenAI Responses API and Qwen Cloud Chat Completions API.
 - The benchmark runner creates fresh trials, swaps model roles, records safe telemetry, retries transient provider errors before attributing a failure, records the provider-reported model id and per-seat seeds, and separates technical failures from negotiation outcomes.
 - Benchmark reviews remain sealed until the declared run set is terminal.
@@ -347,7 +354,7 @@ This command loads `~/.zshrc`.
 /bin/zsh -ic 'exec /bin/zsh scripts/run-qwen-api.zsh'
 ```
 
-Set an administrator token before service startup to enable the Session Inspector.
+Set an administrator token before service startup to enable administrator context setup and the Session Inspector.
 
 ```sh
 export NEGOTIATION_ADMIN_TOKEN='replace-with-a-local-secret'
@@ -358,6 +365,29 @@ Open `http://127.0.0.1:8171/app/inspector`.
 Enter the same token in the access form.
 The browser keeps this credential in `sessionStorage` only.
 The Inspector never returns raw session state, private event payloads, credentials, or sealed benchmark reviews.
+
+### Administrator context setup
+
+Open `http://127.0.0.1:8171/app/admin` or choose **Настройка NPC / NPC setup**.
+Enter the administrator token.
+Select domain, negotiation topic, NPC role, NPC goal preset, difficulty, and counterpart tone.
+The approved catalog covers equipment supply, software subscriptions, freight, and office rental.
+The equipment topic offers scalar and composite supply goals in Russian.
+The NPC objective belongs to an authored scenario and role. It is not the player's private plan.
+A topic can have one approved goal per role. The form does not edit arbitrary goals or economic rules.
+
+Choose **Запустить тренировку игрока / Start player training**.
+The form starts a normal player session with the pinned scenario version and the opposite role.
+It clears administrator access and private preset data before the handoff.
+Finish the current session or choose **New session** before starting another preset.
+Template mode supports both tones without a provider key.
+Formal offers, acceptance, utilities, and hidden limits do not change with tone.
+
+The deployment proxy must admit exact `GET /api/v1/admin/training-presets` to the API.
+The API still requires `AdministratorBearer`.
+The public Caddy template includes this read-only exception and blocks other administrator paths.
+An existing private deployment needs its normal reviewed proxy update. A source change does not deploy it.
+See [DR-56](docs/decisions/2026-09-29_admin-context-presets.md).
 
 Use `.env.example` as a configuration reference.
 Export each selected variable into the service process environment.
@@ -416,6 +446,38 @@ uv run python -m clients agent \
   --provider openai \
   --model gpt-5.6-luna
 ```
+
+Play both recorded speakers through the Player API.
+
+```sh
+uv run python -m clients transcript-playback /path/to/transcript.md \
+  --base-url http://127.0.0.1:8172 \
+  --scenario supplier_integration_ru \
+  --scenario-version 1 \
+  --language ru \
+  --mode exact \
+  --player-heading "Александр" \
+  --npc-heading "Nord Systems" \
+  --final-review \
+  --output /path/to/exact-playback.json \
+  --markdown-output /path/to/player-session.md
+```
+
+The Markdown file uses level-three speaker headings and block quotes for messages.
+The configured NPC heading also matches a heading with a name suffix, such as `Nord Systems — Михаил`.
+The `exact` mode creates two `scripted_bot` participants and submits both recorded speakers.
+It treats one leading NPC message as the scenario opening reference when the scenario already assigns the first live turn to the player.
+It stops and reports a divergence when the file speaker differs from `next_actor`.
+
+Use `--mode npc-comparison` to submit only recorded player messages.
+The built-in NPC produces current replies.
+The JSON report keeps each recorded NPC message beside the corresponding current NPC messages.
+The report contains no participant credentials.
+Use its `session_id` to inspect the stored transcript, events, offers, and diagnostics in `/app/inspector`.
+`--final-review` closes a non-terminal playback session with an explicit source-exhausted reason.
+It requires `NEGOTIATION_ADMIN_TOKEN` and adds the actor-safe review to both reports.
+The Markdown report presents the stored dialogue as the player saw it and places the review last.
+See [DR-54](docs/decisions/2026-09-29_transcript-playback.md) for the exact behavior and safety boundary.
 
 ## Provider configuration
 

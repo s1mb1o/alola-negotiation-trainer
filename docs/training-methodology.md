@@ -23,6 +23,9 @@ The review MUST NOT infer or disclose an exact hidden ZOPA.
 New coaching MUST include economics, process, and communication cards.
 Each card MUST cite message evidence and distinguish observed behavior from insufficient evidence.
 The Web UI MUST support Russian and English labels.
+Economic comparison labels MUST use plain language. Explain positive, zero, and negative values in scenario points.
+The authored minimum MUST remain distinct from the private preparation target and the best option without a deal.
+The difference MUST NOT be presented as money, a percentage, or remaining concession capacity.
 These checks MUST NOT be presented as a validated competence score.
 
 

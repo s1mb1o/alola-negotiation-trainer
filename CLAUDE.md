@@ -17,7 +17,7 @@ Each implementation directory contains a local `CLAUDE.md` file.
 ## API documentation
 
 - [DR-37](docs/decisions/2026-09-24_openapi-documentation.md) and the [API specification](docs/api.md) require OpenAPI 3.1 at `/openapi.json` and interactive Swagger UI at `/docs`.
-- Keep contracts, authentication, examples, and schema checks synchronized with API changes. All 25 canonical operations have typed response contracts and contract checks. See the [OpenAPI guide](docs/openapi-guide.md).
+- Keep contracts, authentication, examples, and schema checks synchronized with API changes. All 26 canonical operations have typed response contracts and contract checks. See the [OpenAPI guide](docs/openapi-guide.md).
 
 ## Live social indicators
 
@@ -26,10 +26,37 @@ Each implementation directory contains a local `CLAUDE.md` file.
 ## Public delivery routes
 
 - [DR-53](docs/decisions/2026-09-29_public-marketing-private-trainer.md) defines the public `/ru/` and `/en/` marketing pages and the private `/app/*` trainer namespace.
-- Use `/app/training`, `/app/progress`, and `/app/inspector` as the canonical trainer routes.
+- Use `/app/admin`, `/app/training`, `/app/progress`, and `/app/inspector` as the canonical trainer routes.
 - Keep trainer and API responses non-indexable.
 
 ## Dialogue documentation
+
+- [DR-59](docs/decisions/2026-09-29_npc-relevance-check.md): new human training render plans use `npc-relevance-v1` when enabled. Make a separate control-model relevance call after existing checks. Permit one repair from fixed issue guidance. Repeat all validation. Keep canonical deal messages and engine authority unchanged. Preserve unversioned plans and delivered messages. See the [dialogue guide](docs/npc-dialogue-guide.md#additional-relevance-check-dr-59) for configuration, call bounds, and limitations.
+
+- [DR-58](docs/decisions/2026-09-29_contextual-package-replies.md): persist the engine-selected numeric question after partial offers. Prefer this question over older topic focus for short replies. Extract explicit package terms across clauses. Do not convert questions, quotations, negation, or alternatives into offers. Clarify the actual parsing issue. Name changed and retained terms in canonical counteroffers. Keep the final dialogue visible before the user opens review.
+
+### Context gotcha
+
+Wrong: let a relevance verdict change a deal or insert model-written instructions into the repair prompt.
+Right: validate bounded issue codes, use fixed application guidance, and render the same immutable action again.
+Wrong: treat a checker failure or a deterministic fallback as a positive AI verdict.
+Right: preserve the failure status and use the engine fallback without an approval claim.
+
+Wrong: use `focused_term_id` from an older prepayment discussion for a number that answers the latest rent question.
+Right: use the latest delivered `requested_term_id` as `expected_term_id` for a short numeric reply.
+Do not infer this authority from generated NPC prose.
+Wrong: show an acceptance-scope question for every parser failure.
+Right: use the parser reason code to select a specific clarification.
+
+### Related decisions
+
+- [DR-57](docs/decisions/2026-09-29_cooperative-npc-policy.md): new human-versus-NPC sessions store `cooperative-v1`. Prefer validated counterproposals close to public player terms. The composite seller considers eligible authored discounts earlier. Preserve hard constraints, reservation utility, historical sessions, benchmark policy, and checkpoint versions. Tone and rapport do not authorize concessions.
+
+- [DR-56](docs/decisions/2026-09-29_admin-context-presets.md): administrator selection of authored context, NPC role and goal, difficulty, and tone. Keep the goal catalog privileged. Clear administrator data before player handoff. `authored_tone` changes only non-binding wording. Preserve legacy sessions and economic rules.
+
+- [DR-55](docs/decisions/2026-09-29_player-behavior-review.md): separate seven-criterion player behavior review in `goal-coaching-v6`. Keep qualitative evidence-linked action assessments independent from economic results. Permit one bounded, revalidated correction after explicit checker issues. Preserve historical cached reviews. Keep authored practice available without AI assessment.
+
+- [DR-54](docs/decisions/2026-09-29_transcript-playback.md): Markdown transcript playback through the Player API. Exact mode submits two scripted participants. NPC comparison mode submits recorded player turns and retains recorded NPC turns as references. Playback stops on turn or terminal divergence.
 
 - [DR-51](docs/decisions/2026-09-26_negotiation-methodologies.md): versioned Harvard, BATNA/ZOPA, and Voss wording rules. New render plans retain `methodology_version`. Completed owner-only reviews calculate the learner's economic margins. New coaching requires three evidence-linked dimensions. Preserve canonical actions, hidden economics, legacy render plans, and cached coaching.
 

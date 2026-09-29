@@ -18,11 +18,33 @@ _SIDE_TOPIC = re.compile(
 )
 _BUSINESS = re.compile(
     r"\d|[%€$₽]|\b(?:услови\w*|сделк\w*|предлож\w*|бюджет\w*|компьютер\w*|"
-    r"оборудован\w*|договор\w*|заказ\w*|конфигурац\w*|резерв\w*|скидк\w*|"
-    r"terms?|deal|offer|budget|computer\w*|equipment|contract|order|configuration|reserve|discount)\b",
+    r"оборудован\w*|договор\w*|заказ\w*|конфигурац\w*|резерв\w*|скидк\w*|цен\w*|"
+    r"terms?|deal|offer|budget|price|computer\w*|equipment|contract|order|configuration|reserve|discount)\b",
     re.I,
 )
 _DOG = re.compile(r"\b(?:собак\w*|гуффи|dog\w*|goofy)\b", re.I)
+_DOG_WELLBEING_RU = re.compile(r"\bкак\s+(?:там\s+)?поживает\b|\bкак\s+себя\s+чувствует\b", re.I)
+_DOG_WELLBEING_EN = re.compile(r"\bhow\s+is\b|\bhow(?:'s|\s+does)\b", re.I)
+
+
+def personal_fact_reply_options(
+    message: str,
+    language: str,
+    training_context: Mapping[str, str],
+) -> tuple[str, ...]:
+    """Return one authored reply for a supported personal-fact question."""
+    if (
+        not training_context.get("personal_fact")
+        or not _QUESTION.search(message)
+        or not _DOG.search(message)
+        or _BUSINESS.search(message)
+    ):
+        return ()
+    if language == "ru" and _DOG_WELLBEING_RU.search(message):
+        return ("Гуффи чувствует себя хорошо. Спасибо, что спросили.",)
+    if language == "en" and _DOG_WELLBEING_EN.search(message):
+        return ("Goofy is doing well. Thank you for asking.",)
+    return ()
 
 
 def topic_return_options(
@@ -55,12 +77,12 @@ def topic_return_options(
             if focus else "Какие условия вы хотели бы обсудить?"
         )
         leads = (
-            "Не совсем понимаю, как этот вопрос связан с нашей беседой. Давайте вернёмся к переговорам.",
-            "Предлагаю оставить этот вопрос в стороне и вернуться к нашему обсуждению.",
-            "Давайте пока отложим эту тему и продолжим разговор об условиях сделки.",
-            "Я бы предпочёл сосредоточиться на наших переговорах. Давайте продолжим обсуждение.",
-            "Этот вопрос немного уводит нас от темы. Давайте вернёмся к условиям сделки.",
-            "Предлагаю обсудить это в другой раз. Сейчас давайте продолжим переговоры.",
+            "Предлагаю продолжить обсуждение нашей сделки.",
+            "Давайте сосредоточимся на условиях сделки, которые помогут нам договориться.",
+            "Буду рад продолжить разговор об условиях сделки.",
+            "Мне важно найти подходящее для нас обоих решение в этих переговорах.",
+            "Давайте вернёмся к условиям, которые мы обсуждали.",
+            "Предлагаю вместе рассмотреть следующий шаг в переговорах.",
         )
     else:
         follow_up = (
@@ -68,12 +90,12 @@ def topic_return_options(
             if focus else "Which terms would you like to discuss?"
         )
         leads = (
-            "I am not sure how that question relates to our discussion. Let us return to the negotiation.",
-            "I suggest setting that question aside and returning to our discussion.",
-            "Let us leave that topic for now and continue discussing the deal terms.",
-            "I would prefer to focus on our negotiation. Let us continue.",
-            "That question takes us away from our topic. Let us return to the deal terms.",
-            "I suggest discussing that another time. For now, let us continue the negotiation.",
+            "I suggest we continue discussing our deal terms.",
+            "Let us focus on deal terms that can help us reach an agreement.",
+            "I would be glad to continue discussing the deal terms.",
+            "Finding deal terms that work for both of us matters to me.",
+            "Let us return to the deal terms we were discussing.",
+            "I suggest we consider the next step in our negotiation together.",
         )
     return tuple(f"{lead} {follow_up}" for lead in leads)
 

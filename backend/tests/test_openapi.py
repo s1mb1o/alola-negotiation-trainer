@@ -47,6 +47,7 @@ EXPECTED_OPERATION_IDS = {
     "compareTraining",
     "closeSession",
     "listAdminSessions",
+    "listAdminTrainingPresets",
     "getAdminSession",
     "getStats",
     "listLlmTraces",
@@ -259,6 +260,7 @@ def test_every_operation_returns_a_documented_success(client):
     )
     assert client.get(child_base + "/comparison", headers=child_headers).status_code == 200
     admin = bearer("test-admin")
+    assert client.get("/api/v1/admin/training-presets", headers=admin).status_code == 200
     from .test_llm_trace import record_fixture
     client.app.state.llm_traces.enabled = True
     trace_id = record_fixture(client.app.state.llm_traces)

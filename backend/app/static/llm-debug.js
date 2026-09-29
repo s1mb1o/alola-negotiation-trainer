@@ -1,6 +1,6 @@
 'use strict';
 const el = (id) => document.getElementById(id);
-const tasks = {npc_dialogue:'Ответ NPC', npc_grounding:'Проверка ответа', social:'Социальная реакция', coaching:'Разбор результата', supply_extraction:'Разбор предложения'};
+const tasks = {npc_dialogue:'Ответ NPC', npc_grounding:'Проверка ответа', npc_relevance:'Проверка уместности', social:'Социальная реакция', coaching:'Разбор результата', supply_extraction:'Разбор предложения'};
 const statuses = {running:'Ожидание модели', completed:'Ответ получен', error:'Ошибка провайдера'};
 const routePattern = /^#(llm_[a-f0-9]{32})(?:\/(instructions|message-\d+|request-\d+|response|parameters))?$/;
 let credential = '', selected = '', selectedSection = '', timer, busy = false, refreshQueued = false, generation = 0, detailVersion = 0;

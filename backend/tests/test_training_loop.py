@@ -15,6 +15,7 @@ from backend.app.training import (
     training_observation,
 )
 from .conftest import bearer, create_payload
+from .behavior_fixtures import behavior_fixture
 
 
 class Provider:
@@ -140,6 +141,7 @@ def test_review_grounding_exact_evidence_and_no_write_lock(client):
         for dimension in ("economics", "process", "communication")
     ]
     service = client.app.state.service
+    candidate["behavior"] = behavior_fixture()
     service.review_provider = Provider([candidate, {"safe": True}], service.database)
     response = client.post(url + "/coaching", headers=bearer(session["participant_token"])).json()
     assert response["status"] == "complete"
@@ -429,5 +431,6 @@ def test_coaching_requires_boolean_grounding_verdict(verdict):
     candidate = {"summary": "Итог", "goal_assessment": "Цель", "cards": [{
         "evidence_refs": ["message:1"], "observation": "Факт", "recommendation": "Совет",
         "alternative_phrase": "Вопрос", "next_practice": "Практика"}]}
+    candidate["behavior"] = behavior_fixture()
     result = generate_coaching(Provider([candidate, verdict]), {"revision": 1, "evidence": [{"ref": "message:1"}]}, lambda x: x)
     assert result["status"] == "unavailable"

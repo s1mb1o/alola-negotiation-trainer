@@ -297,7 +297,7 @@ describe('session persistence', () => {
     expect(screen.getByRole('textbox', { name: 'Сформулируйте следующий ход…' })).toBeEnabled()
   })
 
-  it('restores a finished session straight into its review', async () => {
+  it('restores a finished agreement into the dialogue before its review', async () => {
     storeIdentity({ revision: 9 })
     apiMocks.getSession.mockResolvedValue({
       ...restoredSession,
@@ -312,7 +312,8 @@ describe('session persistence', () => {
 
     render(<App />)
 
-    await screen.findByRole('heading', { name: 'Соглашение достигнуто' })
+    await screen.findByRole('dialog', { name: 'Соглашение достигнуто' })
+    expect(screen.queryByText('Разбор результата')).not.toBeInTheDocument()
     expect(apiMocks.getReview).toHaveBeenCalledWith('sess_restored', 'stored-token')
     expect(screen.queryByRole('textbox', { name: 'Сформулируйте следующий ход…' })).not.toBeInTheDocument()
   })
@@ -381,7 +382,8 @@ describe('new session confirmation', () => {
 
     render(<App />)
     await startSession(user)
-    await screen.findByRole('heading', { name: 'Соглашение достигнуто' })
+    await screen.findByRole('dialog', { name: 'Соглашение достигнуто' })
+    await user.keyboard('{Escape}')
 
     await user.click(screen.getByRole('button', { name: 'Новая сессия' }))
     await screen.findByRole('button', { name: 'Начать переговоры' })

@@ -6,7 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.dialogue import LlmNpcDialogueRenderer, PublicDialogueTurn, utterance_plan_from_payload
-from backend.app.dialogue_redirect import select_varied_fallback, topic_return_options
+from backend.app.dialogue_redirect import (
+    personal_fact_reply_options,
+    select_varied_fallback,
+    topic_return_options,
+)
 from backend.app.main import create_app
 from .conftest import bearer, create_payload, credentials
 from .test_npc_dialogue import FailingProvider, SelectingRenderer
@@ -46,6 +50,42 @@ def test_approved_dog_fact_is_not_redirected_and_previous_prices_are_not_copied(
         PublicDialogueTurn("player", question),
     ), {})
     assert all("цена" in text and "110000" not in text and "Гуффи" not in text for text in options)
+
+
+def test_supported_dog_wellbeing_question_has_one_neutral_reply() -> None:
+    context = {"personal_fact": "У вас есть собака по кличке Гуффи."}
+    assert personal_fact_reply_options(
+        "Как поживает ваша собака Гуффи?", "ru", context
+    ) == ("Гуффи чувствует себя хорошо. Спасибо, что спросили.",)
+    assert personal_fact_reply_options(
+        "Как поживает ваша собака Гуффи? Давайте обсудим цену.", "ru", context
+    ) == ()
+    assert personal_fact_reply_options(
+        "Как поживает ваша собака Гуффи?", "ru", {}
+    ) == ()
+
+
+def test_supply_dog_wellbeing_reply_is_neutral_and_deterministic(settings) -> None:
+    provider = FailingProvider()
+    renderer = LlmNpcDialogueRenderer(provider)
+    with TestClient(create_app(settings, npc_dialogue_renderer=renderer)) as client:
+        payload = create_payload("supply-dog-wellbeing")
+        payload.update(
+            scenario_id="supplier_integration_ru",
+            scenario_version=1,
+            training={"personal_detail": True},
+        )
+        session = client.post("/api/v1/sessions", json=payload).json()
+        result = submit(
+            client,
+            session,
+            credentials(session)["buyer"],
+            "Как поживает ваша собака Гуффи?",
+        )
+        action = result["committed_actions"][-1]
+        assert action["action"] == "inform"
+        assert action["message"] == "Гуффи чувствует себя хорошо. Спасибо, что спросили."
+        assert provider.calls == 0
 
 
 def test_multitopic_previous_question_returns_to_terms_without_choosing_one() -> None:

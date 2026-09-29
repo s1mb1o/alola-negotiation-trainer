@@ -3,6 +3,7 @@ import { identifierLabel } from '../i18n'
 import type { TrainingComparison, TrainingReview, UiLanguage } from '../types'
 import { TermsList } from './TermsList'
 import { PROVIDER_FEATURES_ENABLED } from '../features'
+import { BehaviorPracticePanel, PlayerBehaviorPanel } from './PlayerBehaviorPanel'
 
 export interface TrainingReviewActions {
   onCoaching?: () => void
@@ -21,11 +22,12 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
   const coaching = data.coaching
   const economics = data.methodology?.economics
   const dimensions = {
-    economics: text('Экономика · BATNA и порог приемлемости', 'Economics · BATNA and reservation utility'),
+    economics: text('Насколько выгодна сделка', 'Deal value'),
     process: text('Переговорные решения · Harvard', 'Negotiation process · Harvard'),
     communication: text('Общение · Voss', 'Communication · Voss'),
   }
   const format = (value: number | null | undefined) => value == null ? '—' : value.toLocaleString(language === 'ru' ? 'ru-RU' : 'en-US')
+  const formatDifference = (value: number | null) => value == null ? '—' : `${value > 0 ? '+' : ''}${format(value)}`
   const axes: Record<string, string> = {
     rapport: text('Контакт', 'Rapport'), credibility: text('Доверие к словам', 'Credibility'),
     tension: text('Напряжение', 'Tension'), patience: text('Терпение', 'Patience'),
@@ -54,15 +56,18 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
       <h3>{text('Экономика сделки', 'Deal economics')}</h3>
       {economics.outcome === 'agreement' ? <>
         <dl>
-          <div><dt>{text('Выгода относительно BATNA', 'Surplus over BATNA')}</dt><dd>{format(economics.surplus_over_batna)}</dd></div>
-          <div><dt>{text('Запас до порога приемлемости', 'Margin over reservation utility')}</dt><dd>{format(economics.margin_over_reservation)}</dd></div>
+          <div><dt>{text('Сравнение с лучшим вариантом без сделки', 'Compared with your best option without a deal')}</dt><dd>{formatDifference(economics.surplus_over_batna)}</dd></div>
+          <div><dt>{text('Сравнение с вашим минимумом', 'Compared with your minimum acceptable result')}</dt><dd>{formatDifference(economics.margin_over_reservation)}</dd></div>
         </dl>
-        <p>{economics.meets_reservation
-          ? text('Сделка достигает вашего порога приемлемости.', 'The deal meets your reservation utility.')
-          : text('Сделка ниже вашего порога приемлемости.', 'The deal is below your reservation utility.')}</p>
-        <p className="field-note">{text('Значения выражены в единицах полезности сценария, а не в деньгах.', 'Values use scenario utility units, not money.')}</p>
+        {economics.margin_over_reservation != null && <p>{economics.margin_over_reservation > 0
+          ? text('Сделка лучше минимально приемлемого для вас результата.', 'The deal is better than your minimum acceptable result.')
+          : economics.margin_over_reservation === 0
+            ? text('Сделка ровно на минимально приемлемом для вас уровне.', 'The deal is exactly at your minimum acceptable level.')
+            : text('Сделка хуже минимально приемлемого для вас результата.', 'The deal is worse than your minimum acceptable result.')}</p>}
+        <p className="field-note">{text('Разница указана в баллах сценария, не в деньгах и не в процентах. Плюс — сделка лучше, минус — хуже, 0 — на том же уровне.', 'Differences are in scenario points, not money or percentages. Positive means the deal is better, negative means worse, and 0 means the same value.')}</p>
       </> : <p>{text('Соглашение не заключено. Выгода сделки не рассчитана. Выход из переговоров сам по себе не означает успех или неудачу.', 'No agreement was reached. Deal surplus is not calculated. Ending negotiations alone does not prove success or failure.')}</p>}
-      <p className="field-note">{text('BATNA — лучшая альтернатива без сделки. Порог приемлемости может отличаться от её полезности. Точная зона возможного соглашения (ZOPA) по переписке не определяется.', 'BATNA is the best alternative without a deal. Reservation utility can differ from its utility. An exact zone of possible agreement (ZOPA) is not inferred from the transcript.')}</p>
+      <p className="field-note">{text('Ваш минимум — самая низкая приемлемая оценка сделки, заданная для вашей роли в сценарии. Это не цель из личного плана и не сумма, которую ещё можно уступить.', 'Your minimum is the lowest acceptable deal score set for your role in the scenario. It is not your personal-plan target or an amount you can still concede.')}</p>
+      <p className="field-note">{text('Лучший вариант без сделки — то, что вы можете получить, если договориться не удастся. Он сравнивается отдельно с тем же результатом сделки. По переписке нельзя точно определить минимальные условия собеседника.', 'Your best option without a deal is what you can obtain if these negotiations fail. It is compared separately with the same deal outcome. The transcript cannot establish the counterpart’s exact minimum terms.')}</p>
     </section>}
     {providerFeatures && <section className="review-section" aria-busy={trainingBusy}>
       <h3>{text('Разбор с тренером', 'Coaching review')}</h3>
@@ -85,13 +90,15 @@ export function TrainingReviewPanel({ language, data, onCoaching, onFork, traini
         <p>{coaching.status === 'unavailable'
           ? text('LLM-разбор недоступен. Расчёты результата и история сохранены.', 'LLM coaching is unavailable. Outcome calculations and history remain available.')
           : coaching.status === 'pending' ? text('Разбор готовится. Обновите его через некоторое время.', 'Analysis is in progress. Refresh it shortly.')
-          : text('Тренер сопоставит ваш план с результатом и предложит другие реплики на основе истории.', 'The coach will compare your plan with the outcome and suggest evidence-based alternatives.')}</p>
+          : text('Тренер отдельно оценит результат сделки и ваше поведение по семи критериям. Он сопоставит действия с личным планом и предложит другие реплики на основе истории.', 'The coach will assess deal outcome and player behavior separately across seven criteria. It will compare actions with your private plan and suggest evidence-based alternatives.')}</p>
         {coaching.status !== 'unavailable' && <button type="button" className="button button-primary" disabled={trainingBusy || !onCoaching} onClick={onCoaching}>
           {trainingBusy ? text('Готовим разбор…', 'Preparing review…') : coaching.status === 'pending' ? text('Обновить разбор', 'Refresh review') : text('Получить разбор', 'Get coaching')}
         </button>}
       </>}
       {trainingError && <p role="alert" className="review-error-detail">{trainingError}</p>}
     </section>}
+    {providerFeatures && coaching.status === 'complete' && <PlayerBehaviorPanel language={language} behavior={coaching.behavior} truncated={coaching.evidence_truncated} />}
+    {(!providerFeatures || coaching.status !== 'complete' || !coaching.behavior) && <BehaviorPracticePanel language={language} />}
     <section className="review-section">
       <h3>{text('Повторить решение', 'Retry a decision')}</h3>
       <p>{text('Выберите состояние перед вашим ходом. Повтор сохранит предысторию и условия на этот момент.', 'Select the state before your turn. The retry preserves history and conditions at that point.')}</p>

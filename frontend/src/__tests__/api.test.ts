@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getAdminSession, isResumableRequestError, listAdminSessions, listScenarios, requestPlayerAssist, rewindSession } from '../api'
+import { ApiError, getAdminSession, isResumableRequestError, listAdminSessions, listAdminTrainingPresets, listScenarios, requestPlayerAssist, rewindSession } from '../api'
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -78,6 +78,21 @@ describe('Admin Inspector API', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it('uses administrator auth for the preset catalog and normalizes only public scenario metadata', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [{
+      npc_goal: 'Authored private goal', scenario: {
+        id: 'supplier_001', version: 6, language: 'ru', name: 'Supply',
+        roles: [{ role: 'buyer', company: 'Buyer' }, { role: 'seller', company: 'Seller' }],
+      },
+    }] }))
+    vi.stubGlobal('fetch', fetchMock)
+    const [preset] = await listAdminTrainingPresets('ru', 'admin-test-only')
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/admin/training-presets?language=ru',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer admin-test-only' }) }))
+    expect(preset.scenario).toMatchObject({ scenario_id: 'supplier_001', version: 6, languages: ['ru'] })
+    expect(preset.scenario).not.toHaveProperty('npc_goal')
   })
 
   it('sends filters and the administrator credential only to the admin list endpoint', async () => {

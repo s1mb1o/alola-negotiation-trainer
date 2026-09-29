@@ -150,7 +150,7 @@ def test_short_answers_use_structured_public_focus(message, context, expected):
 @pytest.mark.parametrize("message, context, reason", [
     ("105 тысяч", None, "numeric_answer_requires_term"),
     ("105000", ParseContext(), "numeric_answer_requires_term"),
-    ("105000", replace(BASELINE, expected_term_id="prepayment_fraction"), "ambiguous_numeric_reference"),
+    ("105000", replace(BASELINE, expected_term_id="prepayment_fraction"), "numeric_answer_requires_unit"),
     ("105000 USD", BASELINE, "currency_mismatch"),
     ("30", replace(BASELINE, focused_term_id="prepayment_fraction"), "numeric_answer_requires_unit"),
 ])

@@ -1,5 +1,39 @@
 # Product Model
 
+## Additional AI relevance check (DR-59)
+
+LLM-backed human training MUST add a separate relevance check for generated NPC conversation when the feature is enabled.
+The check MUST assess the latest player message, all stated issues, repeated questions, topic, and respectful tone.
+One failed check MAY trigger one rewrite. The rewrite MUST pass every check again.
+An unavailable or failing checker MUST select a deterministic fallback. The UI MUST NOT present that fallback as AI-approved.
+The model MUST NOT change economic terms, actions, or agreement authority.
+The feature adds latency and provider usage. It MUST NOT add calls to template-only sessions, external-agent training, or benchmarks.
+The existing agreement dialog and explicit review transition MUST remain unchanged.
+See [DR-59](decisions/2026-09-29_npc-relevance-check.md).
+
+## Contextual package discussion and completion (DR-58)
+
+The NPC MUST consider all supported proposed conditions in a player message together.
+It MUST explain which conditions a counterproposal changes and which conditions it retains.
+A short answer to an NPC term question MUST stay in that question's context.
+Only a real ambiguity MUST require clarification. The question MUST identify that ambiguity.
+After agreement, the player MUST see the final conversation and a completion dialog before analysis.
+The dialog MUST offer agreement details and analysis. It MUST support Russian, English, keyboard use, and system themes.
+No dialog action may create or confirm an agreement. The engine remains authoritative.
+See [DR-58](decisions/2026-09-29_contextual-package-replies.md).
+
+## Cooperative NPC training (DR-57)
+
+New human-versus-NPC training sessions MUST prefer feasible counterproposals close to the player's offered terms.
+The composite supply seller MAY offer an eligible authored discount earlier.
+NPC hard constraints and reservation utility MUST remain unchanged.
+The policy MUST NOT claim that proximity proves mutual benefit or that agreement is always possible.
+The change MUST be independent of friendly tone and social indicators.
+Existing sessions and benchmark sessions MUST keep their previous policy.
+Stored checkpoints MUST preserve the selected policy version.
+Incomplete offers and preliminary packages MUST retain their existing confirmation boundaries.
+See [DR-57](decisions/2026-09-29_cooperative-npc-policy.md).
+
 ## Public product page and private trainer (DR-53)
 
 The deployed product MUST provide a public Russian page at `/ru/` and a public English page at `/en/`.
@@ -28,7 +62,11 @@ The page MUST NOT label these scores as independently validated skill measuremen
 The page MUST provide an anonymous presentation download and explicit access instructions for protected resources.
 
 The trainer MUST remain behind deployment admission control under `/app/*`.
-The canonical trainer routes are `/app/training`, `/app/progress`, and `/app/inspector`.
+The canonical trainer routes are `/app/training`, `/app/progress`, `/app/inspector`, and `/app/admin`.
+Under DR-56, `/app/admin` MUST let an authenticated administrator select domain, topic, an authored NPC role-goal bundle, difficulty, and tone.
+Goal selection MUST select an exact immutable scenario version. It MUST NOT edit economic rules.
+The administrator catalog MUST remain privileged. The player handoff MUST contain only public scenario metadata and ordinary training settings.
+The selected tone MUST work in template mode for sessions that opt into `authored_tone`. It MUST NOT alter actions or deal terms.
 Trainer and API responses MUST remain non-indexable.
 The full delivery and metadata rules are defined in [DR-53](decisions/2026-09-29_public-marketing-private-trainer.md).
 
@@ -199,6 +237,19 @@ The NPC MUST receive only background explicitly marked as known to it.
 Background MUST NOT create a current-session agreement or override economic constraints.
 Prior successful deals can support familiarity and authored initial trust.
 The review MUST distinguish initial relationship advantages from behavior demonstrated during this session.
+Under [DR-55](decisions/2026-09-29_player-behavior-review.md), new coaching MUST include a separate player behavior section.
+It MUST assess rapport, listening, interest discovery, argumentation, conditional trading, clarity, and plan adherence.
+It MUST assess actions independently from economic success.
+It MUST use evidence-linked qualitative assessments, not a total behavior score or personality judgment.
+Missing evidence MUST NOT become a failed skill.
+For insufficient-evidence criteria, the UI MUST show a general practice action and an example phrase for the next dialogue.
+These authored hints MUST remain separate from assessment findings and MUST NOT imply an omitted player action.
+When no complete behavior assessment is available, general practice guidance MUST remain accessible without a provider.
+This includes unavailable, pending, not-requested, historical, and provider-disabled reviews.
+The guidance MUST NOT create fallback ratings or imply that the dialogue was assessed.
+New coaching MAY make one bounded correction after explicit grounding issues.
+It MUST independently recheck corrected output and MUST NOT publish rejected drafts or checker issues.
+Historical cached reviews MUST remain unchanged.
 See [DR-35](decisions/2026-09-23_player-background.md) and the implemented scope in [DR-36](decisions/2026-09-24_training-loop.md).
 
 Information should be divided into four categories.

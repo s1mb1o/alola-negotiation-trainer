@@ -13,7 +13,7 @@ Start the API with the commands in [COMMANDS.md](../COMMANDS.md).
 | Swagger UI | <http://127.0.0.1:8172/docs> |
 | ReDoc | <http://127.0.0.1:8172/redoc> |
 
-The document covers 25 operations on 24 canonical paths under `/api/v1`.
+The document covers 26 operations on 25 canonical paths under `/api/v1`.
 Compatibility aliases remain available but do not appear in OpenAPI.
 Schema generation does not initialize the database or call a model.
 Swagger UI and ReDoc use the framework's CDN assets.
@@ -94,7 +94,7 @@ uv run pytest backend/tests clients/tests benchmarks/tests
 
 The focused checks validate the document against OpenAPI 3.1.
 They compare registered canonical routes with documented operations.
-They verify stable operation IDs, security declarations, examples, and successful responses for all 25 operations.
+They verify stable operation IDs, security declarations, examples, and successful responses for all 26 operations.
 They verify error responses, documentation pages, idempotent credential omission, and pending coaching.
 The shared backend client fixture also validates actual responses against the generated contract.
 This includes `JSONResponse` routes that bypass FastAPI response serialization.
